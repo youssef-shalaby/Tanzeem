@@ -5,6 +5,8 @@ import {
   X, FileText, Check,
 } from "lucide-react";
 
+import { Link } from 'react-router';
+
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const initialProducts = [
@@ -315,10 +317,13 @@ export function ProductsPage() {
               <Upload className="w-[18px] h-[18px]" />
               Import CSV
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors">
-              <Plus className="w-[18px] h-[18px]" />
-              Add Product
-            </button>
+           <Link
+  to="/add-item"
+  className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors"
+>
+  <Plus className="w-[18px] h-[18px]" />
+  Add Product
+</Link>
           </div>
         </div>
 
