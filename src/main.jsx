@@ -5,7 +5,12 @@ import ProductsPage from './pages/products'
 import { AddItemPage } from './pages/AddItemPage'
 import './index.css'
 import { Sidebar } from './components/Sidebar'
-
+import { Addstockpage } from './pages/Addstockpage'
+import { Stockoutpage } from './pages/Stockoutpage'
+import { Inventory} from './pages/Inventory'
+import { StockOutLogPage } from './pages/StockOutLogPage'
+// import { StockLogsPage } from './pages/StockLogsPage'
+import { StockInlogs } from './pages/StockInlogs'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
@@ -15,6 +20,12 @@ createRoot(document.getElementById('root')).render(
           <Routes>
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/add-item" element={<AddItemPage />} />
+            <Route path="/add-stock" element={<Addstockpage />} />
+            <Route path="/stock-out" element={<Stockoutpage />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/stock-out-log" element={<StockOutLogPage />} />
+            {/* <Route path="/stock-logs" element={<StockLogsPage />} /> */}
+            <Route path="/stock-in-logs" element={<StockInlogs />} />
             <Route path="*" element={<Navigate to="/products" replace />} />
           </Routes>
         </main>
