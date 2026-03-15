@@ -6,8 +6,9 @@ export function Sidebar() {
   const location = useLocation();
 
   const menuItems = [
-    { icon: Box, label: "Products", path: "/products" },
+    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
     { icon: Package, label: "Inventory", path: "/inventory" },
+    { icon: Box, label: "Products", path: "/products" },
     { icon: ShoppingCart, label: "Orders", path: "/orders" },
     { icon: Users, label: "Suppliers", path: "/suppliers" },
   ];

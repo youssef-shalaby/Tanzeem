@@ -1,155 +1,168 @@
-import { useState } from 'react';
-import { Search, SlidersHorizontal, Download, Calendar, TrendingUp, TrendingDown, RefreshCw, ArrowUpCircle, ArrowDownCircle, Package, Eye } from 'lucide-react';
-import { Link } from 'react-router';
+import { useState } from "react";
+import {
+  Search,
+  SlidersHorizontal,
+  Download,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  RefreshCw,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Package,
+  Eye,
+} from "lucide-react";
+import { Link } from "react-router";
 
 const transactions = [
   {
-    id: 'TXN-8901',
-    date: 'Jan 24, 2026',
-    time: '02:45 PM',
-    type: 'Stock In',
-    productName: 'Office Chair - Ergonomic',
-    sku: 'OC-884',
+    id: "TXN-8901",
+    date: "Jan 24, 2026",
+    time: "02:45 PM",
+    type: "Stock In",
+    productName: "Office Chair - Ergonomic",
+    sku: "OC-884",
     quantity: 50,
-    unitPrice: 149.00,
-    totalValue: 7450.00,
-    source: 'Received from Supplier',
-    performedBy: 'John Admin',
-    reference: 'PO-2024-001',
+    unitPrice: 149.0,
+    totalValue: 7450.0,
+    source: "Received from Supplier",
+    performedBy: "John Admin",
+    reference: "PO-2024-001",
   },
   {
-    id: 'TXN-8900',
-    date: 'Jan 24, 2026',
-    time: '11:30 AM',
-    type: 'Stock Out',
-    productName: 'Wireless Mouse',
-    sku: 'WM-445',
+    id: "TXN-8900",
+    date: "Jan 24, 2026",
+    time: "11:30 AM",
+    type: "Stock Out",
+    productName: "Wireless Mouse",
+    sku: "WM-445",
     quantity: 15,
     unitPrice: 25.99,
     totalValue: 389.85,
-    source: 'Sold to Customer',
-    performedBy: 'Sarah Manager',
+    source: "Sold to Customer",
+    performedBy: "Sarah Manager",
   },
   {
-    id: 'TXN-8899',
-    date: 'Jan 23, 2026',
-    time: '04:20 PM',
-    type: 'Stock In',
-    productName: 'USB-C Cable (2m)',
-    sku: 'CB-203',
+    id: "TXN-8899",
+    date: "Jan 23, 2026",
+    time: "04:20 PM",
+    type: "Stock In",
+    productName: "USB-C Cable (2m)",
+    sku: "CB-203",
     quantity: 200,
-    unitPrice: 8.50,
-    totalValue: 1700.00,
-    source: 'Received from Supplier',
-    performedBy: 'John Admin',
-    reference: 'PO-2024-002',
+    unitPrice: 8.5,
+    totalValue: 1700.0,
+    source: "Received from Supplier",
+    performedBy: "John Admin",
+    reference: "PO-2024-002",
   },
   {
-    id: 'TXN-8898',
-    date: 'Jan 23, 2026',
-    time: '02:15 PM',
-    type: 'Stock Out',
-    productName: 'Laptop Stand',
-    sku: 'LS-112',
+    id: "TXN-8898",
+    date: "Jan 23, 2026",
+    time: "02:15 PM",
+    type: "Stock Out",
+    productName: "Laptop Stand",
+    sku: "LS-112",
     quantity: 3,
-    unitPrice: 45.00,
-    totalValue: 135.00,
-    source: 'Damaged',
-    performedBy: 'Mike Staff',
+    unitPrice: 45.0,
+    totalValue: 135.0,
+    source: "Damaged",
+    performedBy: "Mike Staff",
   },
   {
-    id: 'TXN-8897',
-    date: 'Jan 23, 2026',
-    time: '10:00 AM',
-    type: 'Adjustment',
-    productName: 'Desk Lamp - LED',
-    sku: 'DL-556',
+    id: "TXN-8897",
+    date: "Jan 23, 2026",
+    time: "10:00 AM",
+    type: "Adjustment",
+    productName: "Desk Lamp - LED",
+    sku: "DL-556",
     quantity: -2,
-    unitPrice: 32.00,
-    totalValue: -64.00,
-    source: 'Inventory Count Correction',
-    performedBy: 'Sarah Manager',
+    unitPrice: 32.0,
+    totalValue: -64.0,
+    source: "Inventory Count Correction",
+    performedBy: "Sarah Manager",
   },
   {
-    id: 'TXN-8896',
-    date: 'Jan 22, 2026',
-    time: '05:30 PM',
-    type: 'Stock In',
-    productName: 'Notebook A4',
-    sku: 'NB-778',
+    id: "TXN-8896",
+    date: "Jan 22, 2026",
+    time: "05:30 PM",
+    type: "Stock In",
+    productName: "Notebook A4",
+    sku: "NB-778",
     quantity: 500,
     unitPrice: 3.25,
-    totalValue: 1625.00,
-    source: 'Customer Return',
-    performedBy: 'Mike Staff',
+    totalValue: 1625.0,
+    source: "Customer Return",
+    performedBy: "Mike Staff",
   },
   {
-    id: 'TXN-8895',
-    date: 'Jan 22, 2026',
-    time: '01:45 PM',
-    type: 'Stock Out',
-    productName: 'Wireless Keyboard',
-    sku: 'WK-334',
+    id: "TXN-8895",
+    date: "Jan 22, 2026",
+    time: "01:45 PM",
+    type: "Stock Out",
+    productName: "Wireless Keyboard",
+    sku: "WK-334",
     quantity: 8,
-    unitPrice: 68.00,
-    totalValue: 544.00,
-    source: 'Sold to Customer',
-    performedBy: 'Sarah Manager',
+    unitPrice: 68.0,
+    totalValue: 544.0,
+    source: "Sold to Customer",
+    performedBy: "Sarah Manager",
   },
   {
-    id: 'TXN-8894',
-    date: 'Jan 22, 2026',
-    time: '09:20 AM',
-    type: 'Stock In',
+    id: "TXN-8894",
+    date: "Jan 22, 2026",
+    time: "09:20 AM",
+    type: "Stock In",
     productName: 'Monitor 27" 4K',
-    sku: 'MN-990',
+    sku: "MN-990",
     quantity: 25,
-    unitPrice: 425.00,
-    totalValue: 10625.00,
-    source: 'Received from Supplier',
-    performedBy: 'John Admin',
-    reference: 'PO-2024-003',
+    unitPrice: 425.0,
+    totalValue: 10625.0,
+    source: "Received from Supplier",
+    performedBy: "John Admin",
+    reference: "PO-2024-003",
   },
   {
-    id: 'TXN-8893',
-    date: 'Jan 21, 2026',
-    time: '03:50 PM',
-    type: 'Stock Out',
-    productName: 'HDMI Cable (3m)',
-    sku: 'HC-445',
+    id: "TXN-8893",
+    date: "Jan 21, 2026",
+    time: "03:50 PM",
+    type: "Stock Out",
+    productName: "HDMI Cable (3m)",
+    sku: "HC-445",
     quantity: 12,
     unitPrice: 12.99,
     totalValue: 155.88,
-    source: 'Sold to Customer',
-    performedBy: 'Mike Staff',
+    source: "Sold to Customer",
+    performedBy: "Mike Staff",
   },
   {
-    id: 'TXN-8892',
-    date: 'Jan 21, 2026',
-    time: '11:15 AM',
-    type: 'Adjustment',
-    productName: 'Printer Paper A4',
-    sku: 'PP-223',
+    id: "TXN-8892",
+    date: "Jan 21, 2026",
+    time: "11:15 AM",
+    type: "Adjustment",
+    productName: "Printer Paper A4",
+    sku: "PP-223",
     quantity: 10,
-    unitPrice: 4.50,
-    totalValue: 45.00,
-    source: 'Found/Recovered',
-    performedBy: 'Sarah Manager',
+    unitPrice: 4.5,
+    totalValue: 45.0,
+    source: "Found/Recovered",
+    performedBy: "Sarah Manager",
   },
 ];
 
 export function TransactionsPage() {
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const filteredTransactions = transactions.filter((txn) => {
+    const matchesType =
+      typeFilter === "all" ||
+      (typeFilter === "stock-in" && txn.type === "Stock In") ||
+      (typeFilter === "stock-out" && txn.type === "Stock Out") ||
+      (typeFilter === "adjustment" && txn.type === "Adjustment");
 
-  const filteredTransactions = transactions.filter(txn => {
-    const matchesType = typeFilter === 'all' || 
-      (typeFilter === 'stock-in' && txn.type === 'Stock In') ||
-      (typeFilter === 'stock-out' && txn.type === 'Stock Out') ||
-      (typeFilter === 'adjustment' && txn.type === 'Adjustment');
-    
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch =
+      searchQuery === "" ||
       txn.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       txn.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       txn.sku.toLowerCase().includes(searchQuery.toLowerCase());
@@ -159,44 +172,44 @@ export function TransactionsPage() {
 
   const getTypeStyle = (type) => {
     switch (type) {
-      case 'Stock In':
+      case "Stock In":
         return {
-          badge: 'bg-green-100 text-green-700 border-green-200',
+          badge: "bg-green-100 text-green-700 border-green-200",
           icon: ArrowUpCircle,
-          iconColor: 'text-green-600',
+          iconColor: "text-green-600",
         };
-      case 'Stock Out':
+      case "Stock Out":
         return {
-          badge: 'bg-red-100 text-red-700 border-red-200',
+          badge: "bg-red-100 text-red-700 border-red-200",
           icon: ArrowDownCircle,
-          iconColor: 'text-red-600',
+          iconColor: "text-red-600",
         };
-      case 'Adjustment':
+      case "Adjustment":
         return {
-          badge: 'bg-blue-100 text-blue-700 border-blue-200',
+          badge: "bg-blue-100 text-blue-700 border-blue-200",
           icon: RefreshCw,
-          iconColor: 'text-blue-600',
+          iconColor: "text-blue-600",
         };
       default:
         return {
-          badge: 'bg-gray-100 text-gray-700 border-gray-200',
+          badge: "bg-gray-100 text-gray-700 border-gray-200",
           icon: Package,
-          iconColor: 'text-gray-600',
+          iconColor: "text-gray-600",
         };
     }
   };
 
   // Calculate stats
   const totalStockIn = transactions
-    .filter(t => t.type === 'Stock In')
+    .filter((t) => t.type === "Stock In")
     .reduce((sum, t) => sum + t.totalValue, 0);
-  
+
   const totalStockOut = transactions
-    .filter(t => t.type === 'Stock Out')
+    .filter((t) => t.type === "Stock Out")
     .reduce((sum, t) => sum + t.totalValue, 0);
-  
+
   const totalAdjustments = transactions
-    .filter(t => t.type === 'Adjustment')
+    .filter((t) => t.type === "Adjustment")
     .reduce((sum, t) => sum + Math.abs(t.totalValue), 0);
 
   return (
@@ -204,8 +217,12 @@ export function TransactionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Transaction History</h1>
-          <p className="text-sm text-gray-600 mt-1">Complete record of all inventory movements and adjustments</p>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Transaction History
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Complete record of all inventory movements and adjustments
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -231,9 +248,14 @@ export function TransactionsPage() {
               <TrendingUp className="w-6 h-6 text-green-600" />
             </div>
           </div>
-          <div className="text-3xl font-semibold text-gray-900 mb-2">${totalStockIn.toLocaleString()}</div>
+          <div className="text-3xl font-semibold text-gray-900 mb-2">
+            ${totalStockIn.toLocaleString()}
+          </div>
           <div className="flex items-center gap-1 text-sm text-gray-600">
-            <span>{transactions.filter(t => t.type === 'Stock In').length} transactions</span>
+            <span>
+              {transactions.filter((t) => t.type === "Stock In").length}{" "}
+              transactions
+            </span>
           </div>
         </div>
 
@@ -244,9 +266,14 @@ export function TransactionsPage() {
               <TrendingDown className="w-6 h-6 text-red-600" />
             </div>
           </div>
-          <div className="text-3xl font-semibold text-gray-900 mb-2">${totalStockOut.toLocaleString()}</div>
+          <div className="text-3xl font-semibold text-gray-900 mb-2">
+            ${totalStockOut.toLocaleString()}
+          </div>
           <div className="flex items-center gap-1 text-sm text-gray-600">
-            <span>{transactions.filter(t => t.type === 'Stock Out').length} transactions</span>
+            <span>
+              {transactions.filter((t) => t.type === "Stock Out").length}{" "}
+              transactions
+            </span>
           </div>
         </div>
 
@@ -257,9 +284,14 @@ export function TransactionsPage() {
               <RefreshCw className="w-6 h-6 text-blue-600" />
             </div>
           </div>
-          <div className="text-3xl font-semibold text-gray-900 mb-2">${totalAdjustments.toLocaleString()}</div>
+          <div className="text-3xl font-semibold text-gray-900 mb-2">
+            ${totalAdjustments.toLocaleString()}
+          </div>
           <div className="flex items-center gap-1 text-sm text-gray-600">
-            <span>{transactions.filter(t => t.type === 'Adjustment').length} transactions</span>
+            <span>
+              {transactions.filter((t) => t.type === "Adjustment").length}{" "}
+              transactions
+            </span>
           </div>
         </div>
       </div>
@@ -290,41 +322,41 @@ export function TransactionsPage() {
         {/* Type Filter Tabs */}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setTypeFilter('all')}
+            onClick={() => setTypeFilter("all")}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              typeFilter === 'all'
-                ? 'bg-[#15aaad] text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              typeFilter === "all"
+                ? "bg-[#15aaad] text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             All Transactions
           </button>
           <button
-            onClick={() => setTypeFilter('stock-in')}
+            onClick={() => setTypeFilter("stock-in")}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              typeFilter === 'stock-in'
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              typeFilter === "stock-in"
+                ? "bg-green-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             Stock In
           </button>
           <button
-            onClick={() => setTypeFilter('stock-out')}
+            onClick={() => setTypeFilter("stock-out")}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              typeFilter === 'stock-out'
-                ? 'bg-red-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              typeFilter === "stock-out"
+                ? "bg-red-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             Stock Out
           </button>
           <button
-            onClick={() => setTypeFilter('adjustment')}
+            onClick={() => setTypeFilter("adjustment")}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              typeFilter === 'adjustment'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              typeFilter === "adjustment"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             Adjustments
@@ -371,11 +403,16 @@ export function TransactionsPage() {
               {filteredTransactions.map((txn) => {
                 const { badge, icon: Icon, iconColor } = getTypeStyle(txn.type);
                 return (
-                  <tr key={txn.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={txn.id}
+                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  >
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
                       {txn.id}
                       {txn.reference && (
-                        <div className="text-xs text-gray-500 mt-0.5">{txn.reference}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          {txn.reference}
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -384,30 +421,44 @@ export function TransactionsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full ${badge.replace('text-', 'bg-').replace('-700', '-100')} flex items-center justify-center`}>
+                        <div
+                          className={`w-8 h-8 rounded-full ${badge.replace("text-", "bg-").replace("-700", "-100")} flex items-center justify-center`}
+                        >
                           <Icon className={`w-4 h-4 ${iconColor}`} />
                         </div>
-                        <span className={`inline-flex px-3 py-1 rounded-md text-xs font-medium border ${badge}`}>
+                        <span
+                          className={`inline-flex px-3 py-1 rounded-md text-xs font-medium border ${badge}`}
+                        >
                           {txn.type}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{txn.productName}</div>
-                      <div className="text-xs text-gray-500">SKU: {txn.sku}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {txn.productName}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        SKU: {txn.sku}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <span className={`text-sm font-semibold ${
-                        txn.quantity > 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {txn.quantity > 0 ? '+' : ''}{txn.quantity}
+                      <span
+                        className={`text-sm font-semibold ${
+                          txn.quantity > 0 ? "text-green-600" : "text-red-600"
+                        }`}
+                      >
+                        {txn.quantity > 0 ? "+" : ""}
+                        {txn.quantity}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <span className={`text-sm font-semibold ${
-                        txn.totalValue > 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {txn.totalValue > 0 ? '+' : ''}${Math.abs(txn.totalValue).toFixed(2)}
+                      <span
+                        className={`text-sm font-semibold ${
+                          txn.totalValue > 0 ? "text-green-600" : "text-red-600"
+                        }`}
+                      >
+                        {txn.totalValue > 0 ? "+" : ""}$
+                        {Math.abs(txn.totalValue).toFixed(2)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
@@ -418,9 +469,12 @@ export function TransactionsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-center">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors group">
+                        <Link
+                          to={`/transactions/${txn.id}`}
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors group"
+                        >
                           <Eye className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                        </button>
+                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -433,7 +487,8 @@ export function TransactionsPage() {
         {/* Pagination */}
         <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            Showing {filteredTransactions.length} of {transactions.length} transactions
+            Showing {filteredTransactions.length} of {transactions.length}{" "}
+            transactions
           </div>
           <div className="flex items-center gap-2">
             <button className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
