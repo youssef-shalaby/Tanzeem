@@ -93,19 +93,17 @@ export function SuppliersPage() {
   const [suppliersList, setSuppliersList] = useState(suppliers);
 
   const handleDelete = (supplierId) => {
-    console.log('Deleting supplier:', supplierId);
+    setSuppliersList(prev => prev.filter(s => s.id !== supplierId));
     setDeleteModalOpen(null);
   };
 
   const handleCSVUpload = (data) => {
-    console.log('CSV Upload - Received data:', data);
     setImportedData(data);
     setCsvModalOpen(false);
     setReviewModalOpen(true);
   };
 
   const handleConfirmImport = (data) => {
-    console.log('Confirm Import - Received data:', data);
     const newSuppliers = data.map((item, index) => ({
       id: suppliersList.length + index + 1,
       name: item.name,
@@ -115,7 +113,6 @@ export function SuppliersPage() {
       badge: item.badge || 'New Supplier',
       status: item.status || 'Active'
     }));
-    console.log('Converted suppliers:', newSuppliers);
     setSuppliersList([...newSuppliers, ...suppliersList]);
     setReviewModalOpen(false);
   };
@@ -161,7 +158,7 @@ export function SuppliersPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-visible">
         <div className="p-5 border-b border-gray-200">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
@@ -173,8 +170,8 @@ export function SuppliersPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-visible">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
@@ -246,7 +243,7 @@ export function SuppliersPage() {
                             className="fixed inset-0 z-10"
                             onClick={() => setOpenDropdown(null)}
                           />
-                          <div className="absolute right-0 top-8 z-20 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                          <div className="absolute right-0 top-full z-50 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
                             <button
                               onClick={() => {
                                 setOpenDropdown(null);
@@ -291,7 +288,7 @@ export function SuppliersPage() {
         {/* Pagination */}
         <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            Showing 1 to {suppliers.length} of 89 results
+            Showing 1 to {suppliersList.length} of 89 results
           </div>
           <div className="flex items-center gap-2">
             <button className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">‹</button>
@@ -305,7 +302,6 @@ export function SuppliersPage() {
         </div>
       </div>
 
-      {/* Delete Supplier Modal */}
       <DeleteSupplierModal
         isOpen={deleteModalOpen !== null}
         onClose={() => setDeleteModalOpen(null)}
@@ -313,7 +309,6 @@ export function SuppliersPage() {
         onConfirm={() => handleDelete(deleteModalOpen)}
       />
 
-      {/* CSV Upload Modal */}
       <CSVUploadModal
         isOpen={csvModalOpen}
         onClose={() => setCsvModalOpen(false)}
@@ -321,7 +316,6 @@ export function SuppliersPage() {
         onUploadComplete={handleCSVUpload}
       />
 
-      {/* CSV Review Modal */}
       <CSVReviewModal
         isOpen={reviewModalOpen}
         onClose={() => setReviewModalOpen(false)}
