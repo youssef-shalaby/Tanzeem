@@ -79,7 +79,7 @@ export function Inventory() {
           </p>
         </Link>
 
-        <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer">
+        <Link to="/products" className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer">
           <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-4">
             <List className="w-6 h-6 text-purple-600" />
           </div>
@@ -87,14 +87,14 @@ export function Inventory() {
           <p className="text-sm text-gray-600 leading-relaxed">
             View the complete inventory list. Filter by category, status, or supplier.
           </p>
-        </div>
+        </Link>
       </div>
 
       {/* Recent Transactions */}
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="p-5 border-b border-gray-200 flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Recent Transactions</h2>
-          <button className="text-[#15aaad] text-sm font-medium hover:underline">View all history</button>
+          <Link to="/transactions" className="text-[#15aaad] text-sm font-medium hover:underline"> View all history</Link>
         </div>
 
         <div className="overflow-x-auto">

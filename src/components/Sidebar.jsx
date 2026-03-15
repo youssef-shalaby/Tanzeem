@@ -1,13 +1,15 @@
 import { Link, useLocation } from "react-router";
-import { Package, Box } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Users, Box, Settings, User, Bell, AlertTriangle, TrendingUp, Building2, ChevronDown } from 'lucide-react';
 import logo from '../assets/logo white.svg';
 
 export function Sidebar() {
   const location = useLocation();
 
   const menuItems = [
-    { icon: Package, label: "Products", path: "/products" },
-    { icon: Box, label: "Add Item", path: "/add-item" },
+    { icon: Box, label: "Products", path: "/products" },
+    { icon: Package, label: "Inventory", path: "/inventory" },
+    { icon: ShoppingCart, label: "Orders", path: "/orders" },
+    { icon: Users, label: "Suppliers", path: "/suppliers" },
   ];
 
   return (

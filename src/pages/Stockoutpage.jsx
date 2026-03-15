@@ -67,7 +67,7 @@ export function Stockoutpage() {
           <p className="text-sm text-gray-600 mt-1">Scan or search for items to remove from inventory and track reasons.</p>
         </div>
         <button
-          onClick={() => navigate('/products')}
+          onClick={() => navigate('/inventory')}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <X className="w-5 h-5 text-gray-600" />
@@ -81,7 +81,7 @@ export function Stockoutpage() {
             <label className="text-sm font-medium text-gray-900 mb-2 block">Search Product</label>
             <div className="flex items-center gap-3">
               <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search by name/SKU/barcode to remove items..."

@@ -68,7 +68,7 @@ export function Addstockpage() {
           <p className="text-sm text-gray-600 mt-1">Scan or search for items to replenish inventory from suppliers or returns.</p>
         </div>
         <button
-          onClick={() => navigate('/products')}
+          onClick={() => navigate('/inventory')}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <X className="w-5 h-5 text-gray-600" />

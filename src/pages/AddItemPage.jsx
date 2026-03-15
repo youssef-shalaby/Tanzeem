@@ -28,7 +28,7 @@ export function AddItemPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Products submitted:', products);
-    navigate('/products');
+    navigate('/inventory');
   };
 
   const handleChange = (id, field, value) => {
@@ -124,7 +124,7 @@ export function AddItemPage() {
           <p className="text-sm text-gray-600 mt-1">Add one or multiple products at once</p>
         </div>
         <button
-          onClick={() => navigate('/products')}
+          onClick={() => navigate('/inventory')}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <X className="w-5 h-5 text-gray-600" />
@@ -204,7 +204,7 @@ export function AddItemPage() {
                   </div>
                 </div>
 
-                <div>
+                <div className='md:col-span-2'>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-sm font-medium text-gray-700">Category *</label>
                     <button
@@ -258,7 +258,7 @@ export function AddItemPage() {
                   )}
                 </div>
 
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Supplier *</label>
                   <select
                     value={product.supplier}
@@ -273,7 +273,7 @@ export function AddItemPage() {
                     <option value="DisplayTech">DisplayTech</option>
                     <option value="Global Trade Co">Global Trade Co</option>
                   </select>
-                </div>
+                </div> */}
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
@@ -292,7 +292,7 @@ export function AddItemPage() {
             <div className="bg-white rounded-xl p-6 border border-gray-200">
               <h3 className="font-semibold text-gray-900 mb-5">Pricing & Stock</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Cost Price *</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
@@ -302,7 +302,7 @@ export function AddItemPage() {
                       className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                       placeholder="0.00" />
                   </div>
-                </div>
+                </div> */}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Unit Price (Selling) *</label>
@@ -341,7 +341,7 @@ export function AddItemPage() {
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500" />
                 </div>
 
-                <div>
+                <div className='md:col-span-2'>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Status *</label>
                   <select value={product.status}
                     onChange={(e) => handleChange(product.id, 'status', e.target.value)}
@@ -372,7 +372,7 @@ export function AddItemPage() {
             className="flex-1 px-6 py-2.5 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors font-medium">
             Add {products.length} {products.length === 1 ? 'Product' : 'Products'}
           </button>
-          <button type="button" onClick={() => navigate('/products')}
+          <button type="button" onClick={() => navigate('/inventory')}
             className="px-6 py-2.5 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors">
             Cancel
           </button>
