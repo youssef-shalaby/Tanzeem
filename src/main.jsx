@@ -19,7 +19,9 @@ import { StockOutLogPage } from "./pages/StockOutLogPage";
 import { StockInlogs } from "./pages/StockInlogs";
 import { Header } from "./components/Header";
 import { TransactionsPage } from "./pages/TransactionPage";
+
 import { OrdersPage } from "./pages/OrdersPage.jsx";
+import { CreateOrderPage } from './pages/CreateOrderPage';
 import { ViewOrderPage } from "./pages/ViewOrderPage.jsx";
 import { ConfirmDeliveryPage } from "./pages/ConfirmDeliveryPage.jsx";
 
@@ -29,6 +31,13 @@ import { EditSupplierPage } from "./pages/EditSupplierPage.jsx";
 import { AddSupplierPage } from "./pages/AddSupplierPage.jsx";
 
 import { ViewTransactionPage } from "./pages/ViewTransactionPage";
+
+import { AlertsPage } from './pages/AlertsPage';
+import { AnalyticsPage } from "./pages/AnalyticsPage.jsx";
+import { DeliveryIssuesPage } from "./pages/DeliveryIssuesPage.jsx";
+import { ViewDeliveryIssuePage } from "./pages/ViewDeliveryIssuePage.jsx";
+
+import { SettingsPage } from './pages/SettingsPage';
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -54,14 +63,26 @@ createRoot(document.getElementById("root")).render(
               <Route path="/transactions/:transactionId" element={<ViewTransactionPage />} />
               <Route path="/stock-out-log" element={<StockOutLogPage />} />
               <Route path="/stock-in-logs" element={<StockInlogs />} />
+
               <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/orders/create" element={<CreateOrderPage />} />
               <Route path="/orders/:orderId" element={<ViewOrderPage />} />
               <Route path="/orders/:orderId/confirm-delivery" element={<ConfirmDeliveryPage />} />
+
               <Route path="/suppliers" element={<SuppliersPage />} />
               <Route path="/suppliers/view-supplier/:supplierId" element={<ViewSupplierPage />} />
               <Route path="/suppliers/edit-supplier/:supplierId" element={<EditSupplierPage />} />
               <Route path="/suppliers/add" element={<AddSupplierPage />} />
+
               <Route path="*" element={<Navigate to="/products" replace />} />
+
+              <Route path="/alerts" element={<AlertsPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+
+              <Route path="/delivery-issues" element={<DeliveryIssuesPage />} />
+              <Route path="/delivery-issues/:issueId" element={<ViewDeliveryIssuePage />} />
+
+              <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </main>
         </div>

@@ -229,11 +229,11 @@ export function TransactionsPage() {
             to="/add-stock"
             className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <ArrowUpCircle className="w-[18px] h-[18px] text-gray-600" />
+            <ArrowUpCircle className="w-4.5 h-4.5 text-gray-600" />
             Add Stock
           </Link>
           <button className="flex items-center gap-2 px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors">
-            <Download className="w-[18px] h-[18px]" />
+            <Download className="w-4.5 h-4.5" />
             Export
           </button>
         </div>
@@ -300,7 +300,7 @@ export function TransactionsPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
             <input
               type="text"
               placeholder="Search by Transaction ID, Product Name, or SKU..."
@@ -310,11 +310,11 @@ export function TransactionsPage() {
             />
           </div>
           <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-            <Calendar className="w-[18px] h-[18px] text-gray-600" />
+            <Calendar className="w-4.5 h-4.5 text-gray-600" />
             Date Range
           </button>
           <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-            <SlidersHorizontal className="w-[18px] h-[18px] text-gray-600" />
+            <SlidersHorizontal className="w-4.5 h-4.5 text-gray-600" />
             More Filters
           </button>
         </div>
