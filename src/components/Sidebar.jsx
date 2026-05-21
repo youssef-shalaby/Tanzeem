@@ -11,42 +11,48 @@ import {
   AlertTriangle,
   TrendingUp,
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext'; // adjust path as needed
+import { permissions } from '../config/permissions'; // adjust path as needed
+
+// Map each nav item to the permission required to see it
+const menuItems = [
+  { icon: LayoutDashboard, label: 'Dashboard',        path: '/dashboard',        permission: 'view_dashboard' },
+  { icon: Package,         label: 'Inventory',        path: '/inventory',        permission: 'view_products' },
+  { icon: Box,             label: 'Products',         path: '/products',         permission: 'view_products' },
+  { icon: Bell,            label: 'Alerts',           path: '/alerts',           permission: 'view_alerts' },
+  { icon: ShoppingCart,    label: 'Orders',           path: '/orders',           permission: 'view_orders' },
+  { icon: Users,           label: 'Suppliers',        path: '/suppliers',        permission: 'view_suppliers' },
+  { icon: TrendingUp,      label: 'Analytics',        path: '/analytics',        permission: 'view_analytics' },
+  { icon: AlertTriangle,   label: 'Delivery Issues',  path: '/delivery-issues',  permission: 'view_delivery_issues' },
+];
+
+const bottomMenuItems = [
+  { icon: Settings, label: 'Settings', path: '/settings', permission: 'view_settings' },
+  { icon: User,     label: 'Profile',  path: '/profile',  permission: 'view_profile' },
+];
 
 export function Sidebar() {
   const location = useLocation();
+  const { currentUser } = useAuth(); // expects user.role to be 'admin' | 'manager' | 'staff'
 
-  // Main navigation items – no role prefixes
-  const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: Package, label: 'Inventory', path: '/inventory' },
-    { icon: Box, label: 'Products', path: '/products' },
-    { icon: Bell, label: 'Alerts', path: '/alerts' },
-    { icon: ShoppingCart, label: 'Orders', path: '/orders' },
-    { icon: Users, label: 'Suppliers', path: '/suppliers' },
-    { icon: TrendingUp, label: 'Analytics', path: '/analytics' },
-    { icon: AlertTriangle, label: 'Delivery Issues', path: '/delivery-issues' },
-  ];
+  const userPermissions = permissions[currentUser?.role] ?? [];
+  const hasPermission = (permission) => userPermissions.includes(permission);
 
-  const bottomMenuItems = [
-    { icon: Settings, label: 'Settings', path: '/settings' },
-    { icon: User, label: 'Profile', path: '/profile' },
-  ];
+  const visibleMenuItems = menuItems.filter((item) => hasPermission(item.permission));
+  const visibleBottomItems = bottomMenuItems.filter((item) => hasPermission(item.permission));
 
   return (
     <div className="w-[240px] bg-[#1a1d1f] flex flex-col min-h-screen">
       {/* Logo */}
       <div className="px-6 py-6">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-md bg-[#15aaad] flex items-center justify-center">
-            <Package className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-white text-lg font-semibold">Tanzeem</span>
+        <div className="flex items-center">
+          <img src="/logo.svg" alt="Tanzeem Logo" className="w-36 h-12" />
         </div>
       </div>
 
       {/* Main Navigation */}
       <nav className="flex-1 px-3 space-y-1">
-        {menuItems.map((item) => {
+        {visibleMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
 
@@ -69,7 +75,7 @@ export function Sidebar() {
 
       {/* Bottom Navigation */}
       <div className="px-3 pb-4 space-y-1">
-        {bottomMenuItems.map((item) => {
+        {visibleBottomItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
 
