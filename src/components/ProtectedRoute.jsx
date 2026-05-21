@@ -8,6 +8,10 @@ export default function ProtectedRoute({
 }) {
   const { currentUser } = useAuth();
 
+  if (!currentUser) {
+    return <Navigate to="/signin" replace />;
+  }
+
   const userPermissions =
     permissions[currentUser.role] || [];
 
