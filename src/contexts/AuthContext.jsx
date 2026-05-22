@@ -36,10 +36,24 @@ function extractToken(data) {
   );
 }
 
-/* 🔥 FIXED USER NORMALIZER */
+function decodeJWT(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return {
+      id: payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || "current-user",
+      name: payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || "User",
+      email: payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] || "",
+      role: normalizeRole(payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]),
+      companyId: payload["CompanyId"] || null,
+      branchId: payload["BranchId"] || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function normalizeUser(data) {
   const source = data?.user || data?.data || data || {};
-
   const email = source.email || "";
 
   return {
@@ -59,7 +73,6 @@ function normalizeUser(data) {
 export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState(() => {
     const stored = readStoredAuth();
-
     return {
       currentUser: stored?.currentUser || null,
       token: stored?.token || null,
@@ -75,9 +88,13 @@ export function AuthProvider({ children }) {
 
   /* LOGIN / SIGNUP */
   const setSession = (data) => {
+    // Handle case where backend returns raw JWT string
+    const token = typeof data === "string" ? data : extractToken(data);
+    const currentUser = token ? decodeJWT(token) : normalizeUser(data);
+
     const nextState = {
-      currentUser: normalizeUser(data),
-      token: extractToken(data),
+      currentUser,
+      token,
       backendResponse: data,
     };
 
