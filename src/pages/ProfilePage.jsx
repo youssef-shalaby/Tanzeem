@@ -177,6 +177,8 @@ const roleConfig = {
 export function ProfilePage() {
   const { currentUser } = useAuth();
 
+  console.log(currentUser);
+
   // Normalize role to lowercase key; fallback to 'staff'
   const role = currentUser?.role?.toLowerCase() ?? "staff";
   const profile = roleConfig[role] ?? roleConfig.staff;
