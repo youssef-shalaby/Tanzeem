@@ -1,46 +1,105 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
 
-const mockProducts = {
-  '1': { productName: 'Wireless Mouse', sku: 'WM-002', category: 'Electronics', price: '19.99', costPrice: '12.00', stockLevel: '234', reorderLevel: '50', expiryDate: '2025-12-31', description: 'Ergonomic wireless mouse with 2.4GHz connectivity', status: 'Active' },
-  '2': { productName: 'USB-C Cable', sku: 'UC-003', category: 'Accessories', price: '12.99', costPrice: '6.00', stockLevel: '567', reorderLevel: '100', expiryDate: '', description: 'Durable USB-C charging cable', status: 'Active' },
-  '3': { productName: 'HDMI Cable', sku: 'HC-006', category: 'Accessories', price: '8.99', costPrice: '4.50', stockLevel: '445', reorderLevel: '80', expiryDate: '', description: 'High-speed HDMI cable 2m', status: 'Active' },
-  '4': { productName: 'Laptop Stand', sku: 'LS-001', category: 'Office Supplies', price: '29.99', costPrice: '18.00', stockLevel: '123', reorderLevel: '30', expiryDate: '', description: 'Adjustable aluminum laptop stand', status: 'Active' },
-  '5': { productName: 'Webcam HD', sku: 'WC-008', category: 'Electronics', price: '59.99', costPrice: '35.00', stockLevel: '89', reorderLevel: '25', expiryDate: '2026-06-30', description: '1080p HD webcam with built-in microphone', status: 'Active' },
-  '6': { productName: 'Office Chair', sku: 'OC-884', category: 'Furniture', price: '149.00', costPrice: '90.00', stockLevel: '45', reorderLevel: '15', expiryDate: '', description: 'Ergonomic office chair with lumbar support', status: 'Active' },
-  '7': { productName: 'Monitor 24"', sku: 'MN-005', category: 'Electronics', price: '199.99', costPrice: '130.00', stockLevel: '67', reorderLevel: '20', expiryDate: '2026-03-15', description: '24-inch Full HD monitor', status: 'Active' },
-  '8': { productName: 'Wireless Keyboard', sku: 'WK-004', category: 'Electronics', price: '49.99', costPrice: '28.00', stockLevel: '178', reorderLevel: '40', expiryDate: '', description: 'Wireless mechanical keyboard', status: 'Active' },
+const EMPTY_FORM = {
+  productName: '',
+  sku: '',
+  category: '',
+  price: '',
+  stockLevel: '',
+  reorderLevel: '',
+  expiryDate: '',
+  description: '',
+  status: 'Active',
 };
 
 export function EditProductPage() {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const [formData, setFormData] = useState(
-    mockProducts[id || '1'] || {
-      productName: '',
-      sku: '',
-      category: '',
-      price: '',
-      costPrice: '',
-      stockLevel: '',
-      reorderLevel: '',
-      expiryDate: '',
-      description: '',
-      status: 'Active',
-    }
-  );
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [saveError, setSaveError] = useState(null);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Product updated:', formData);
-    navigate(-1);
-  };
+  // Load product from API on mount
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/Products/Get-Product/${id}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to load product (status ${res.status})`);
+        return res.json();
+      })
+      .then((data) => {
+        setFormData({
+          productName: data.name || '',
+          sku: data.sku || '',
+          category: data.category || '',
+          price: String(data.sellingPrice ?? data.price ?? ''),
+          stockLevel: String(data.stock ?? data.stockLevel ?? ''),
+          reorderLevel: String(data.reorderLevel ?? ''),
+          // API may return ISO string — strip time portion for the date input
+          expiryDate: data.expiryDate ? data.expiryDate.split('T')[0] : '',
+          description: data.description || '',
+          status: data.status || 'Active',
+        });
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [id]);
 
   const handleChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setSaveError(null);
+
+    // Build the payload — adjust field names to match what your backend PUT expects.
+    // Using the same field names as the GET response where possible.
+    const payload = {
+      name: formData.productName,
+      sku: formData.sku,
+      category: formData.category,
+      sellingPrice: parseFloat(formData.price) || 0,
+      stock: parseInt(formData.stockLevel, 10) || 0,
+      reorderLevel: parseInt(formData.reorderLevel, 10) || 0,
+      expiryDate: formData.expiryDate || null,
+      description: formData.description,
+      status: formData.status,
+    };
+
+    try {
+      // ⚠️  Verify the exact PUT endpoint path in Swagger — adjust if different
+      const res = await fetch(`/api/Products/Update-Product/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = 'Failed to save product.';
+        try { msg = JSON.parse(text)?.message || msg; } catch {}
+        throw new Error(msg);
+      }
+
+      navigate(-1);
+    } catch (err) {
+      setSaveError(err.message);
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="p-6 text-gray-500">Loading product...</div>;
+  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
 
   return (
     <div className="space-y-6">
@@ -57,6 +116,13 @@ export function EditProductPage() {
           <p className="text-sm text-gray-600">Update product information</p>
         </div>
       </div>
+
+      {/* Save error banner */}
+      {saveError && (
+        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          {saveError}
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit}>
@@ -115,9 +181,7 @@ export function EditProductPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                   <select
                     value={formData.status}
                     onChange={(e) => handleChange('status', e.target.value)}
@@ -130,9 +194,7 @@ export function EditProductPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
@@ -148,13 +210,14 @@ export function EditProductPage() {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Pricing</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className='md:col-span-2'>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Unit Price <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={formData.price}
                     onChange={(e) => handleChange('price', e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
@@ -162,20 +225,6 @@ export function EditProductPage() {
                     required
                   />
                 </div>
-
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cost Price
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.costPrice}
-                    onChange={(e) => handleChange('costPrice', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
-                    placeholder="0.00"
-                  />
-                </div> */}
               </div>
             </div>
 
@@ -189,6 +238,7 @@ export function EditProductPage() {
                   </label>
                   <input
                     type="number"
+                    min="0"
                     value={formData.stockLevel}
                     onChange={(e) => handleChange('stockLevel', e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
@@ -198,11 +248,10 @@ export function EditProductPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Reorder Level
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Reorder Level</label>
                   <input
                     type="number"
+                    min="0"
                     value={formData.reorderLevel}
                     onChange={(e) => handleChange('reorderLevel', e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
@@ -211,9 +260,7 @@ export function EditProductPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Expiry Date
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
                   <input
                     type="date"
                     value={formData.expiryDate}
@@ -230,16 +277,18 @@ export function EditProductPage() {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={saving}
+              className="px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors"
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-60"
             >
               <Save className="w-[18px] h-[18px]" />
-              Save Changes
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>

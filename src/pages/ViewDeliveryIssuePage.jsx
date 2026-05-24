@@ -1,8 +1,9 @@
-import { ArrowLeft, AlertTriangle, Package, Calendar, User, FileText, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Package, Calendar, User, FileText } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
 import { useState, useEffect } from 'react';
 
 const ISSUE_TYPE_LABELS = {
+  0: 'Other',
   1: 'Damaged',
   2: 'Missing',
   3: 'Defective',
@@ -10,8 +11,9 @@ const ISSUE_TYPE_LABELS = {
 };
 
 const ISSUE_TYPE_STYLES = {
-  'Damaged': 'bg-red-100 text-red-700',
-  'Missing': 'bg-orange-100 text-orange-700',
+  'Other':     'bg-gray-100 text-gray-700',
+  'Damaged':   'bg-red-100 text-red-700',
+  'Missing':   'bg-orange-100 text-orange-700',
   'Incorrect': 'bg-purple-100 text-purple-700',
   'Defective': 'bg-yellow-100 text-yellow-700',
 };
@@ -156,12 +158,12 @@ export function ViewDeliveryIssuePage() {
                     <div className="bg-white rounded-lg p-4 border border-gray-200">
                       <p className="text-xs font-medium text-gray-900 mb-3">Issue Breakdown:</p>
                       <div className="flex flex-wrap gap-2">
-                        {item.issues?.map((issue, idx) => {
-                          const label = ISSUE_TYPE_LABELS[issue.issueType] || `Type ${issue.issueType}`;
-                          const style = ISSUE_TYPE_STYLES[label] || 'bg-gray-100 text-gray-700';
+                        {item.issues?.map((iss, idx) => {
+                          const label = ISSUE_TYPE_LABELS[iss.issueType] ?? `Type ${iss.issueType}`;
+                          const style = ISSUE_TYPE_STYLES[label] ?? 'bg-gray-100 text-gray-700';
                           return (
                             <span key={idx} className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium ${style}`}>
-                              {label}: {issue.quantity} units
+                              {label}: {iss.quantity} units
                             </span>
                           );
                         })}

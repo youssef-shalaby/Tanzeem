@@ -1,9 +1,10 @@
-import { Search, Filter, Eye, AlertTriangle, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Search, Eye, AlertTriangle, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useState, useEffect } from 'react';
 
-// issueType numbers → labels
+// issueType numbers → labels  (0 = Other/Unknown as a safe fallback for unmapped backend values)
 const ISSUE_TYPE_LABELS = {
+  0: 'Other',
   1: 'Damaged',
   2: 'Missing',
   3: 'Defective',
@@ -13,7 +14,6 @@ const ISSUE_TYPE_LABELS = {
 export function DeliveryIssuesPage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [issues, setIssues] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -41,19 +41,18 @@ export function DeliveryIssuesPage() {
       });
   }, [currentPage]);
 
-  // Helper: get all issue type labels for an issue
+  // Collect unique issue type labels across all items in a delivery issue
   const getIssueTypeLabels = (items) => {
     const types = new Set();
     items?.forEach(item =>
       item.issues?.forEach(i => {
-        const label = ISSUE_TYPE_LABELS[i.issueType] || `Type ${i.issueType}`;
+        const label = ISSUE_TYPE_LABELS[i.issueType] ?? `Type ${i.issueType}`;
         types.add(label);
       })
     );
     return [...types];
   };
 
-  // Client-side search filter (API has searchTerm param too if you prefer)
   const filteredIssues = issues.filter((issue) => {
     const id = issue.stringId?.toLowerCase() || '';
     const orderId = String(issue.orderId);
@@ -67,7 +66,6 @@ export function DeliveryIssuesPage() {
 
   const stats = {
     total: totalCount,
-    // Status not in API yet — show item/discrepancy counts instead
     itemsAffected: issues.reduce((sum, i) => sum + (i.itemsAffected || 0), 0),
     discrepancy: issues.reduce((sum, i) => sum + (i.discrepancy || 0), 0),
   };

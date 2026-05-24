@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, Package, AlertCircle, Download, Calendar, BarChart3, Target, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, Package, AlertCircle, Download, BarChart3, Target, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 export function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState('30days');
@@ -9,16 +9,33 @@ export function AnalyticsPage() {
   const [forecastData, setForecastData] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  // Summary counts that accumulate across ALL pages (fetched once on mount)
+  const [globalSummary, setGlobalSummary] = useState({ urgent: 0, highDemand: 0, avgConfidence: 0 });
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
 
   const scrollToForecast = () => {
-    const forecastSection = document.getElementById('demand-forecast-table');
-    if (forecastSection) {
-      forecastSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    document.getElementById('demand-forecast-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // Fetch a large page once on mount to compute accurate summary stats
+  useEffect(() => {
+    fetch(`/api/DemandForecasting?page=1&page_size=1000`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((body) => {
+        if (!body?.data) return;
+        const all = body.data;
+        const urgent = all.filter((i) => i.demand_occurs && (i.predicted_units ?? 0) > 0).length;
+        const highDemand = all.filter((i) => (i.predicted_units ?? 0) > 50).length;
+        const avgConf = all.length > 0
+          ? Math.round(all.reduce((a, i) => a + (i.confidence ?? 0), 0) / all.length * 100)
+          : 0;
+        setGlobalSummary({ urgent, highDemand, avgConfidence: avgConf });
+      })
+      .catch(() => {});
+  }, []);
+
+  // Paginated table fetch
   useEffect(() => {
     setLoading(true);
     fetch(`/api/DemandForecasting?page=${currentPage}&page_size=${itemsPerPage}`)
@@ -27,13 +44,13 @@ export function AnalyticsPage() {
         return res.json();
       })
       .then((body) => {
-        // Map API fields to the shape the table expects
         const mapped = (body.data || []).map((item) => ({
           id: String(item.productId),
           productName: item.productName,
           sku: item.sku,
           predictedDemand: item.predicted_units ?? 0,
-          confidence: Math.round((item.confidence ?? 0) * 100), // 0.7766 → 78
+          // API returns confidence as a decimal (e.g. 0.7766) → convert to percentage
+          confidence: Math.round((item.confidence ?? 0) * 100),
           trend: item.demand_occurs ? 'up' : (item.segment === 'zero' ? 'down' : 'stable'),
           segment: item.segment,
           recommendedAction: item.demand_occurs
@@ -43,8 +60,13 @@ export function AnalyticsPage() {
             : 'Monitor stock levels',
         }));
         setForecastData(mapped);
-        setTotalPages(body.totalPages && body.totalPages > 0 ? body.totalPages : 1);
-        setTotalCount(body.totalCount || 0);
+        // Compute totalPages defensively — some backends return 0 when there's 1 page of results
+        const count = body.totalCount || 0;
+        const pages = body.totalPages && body.totalPages > 0
+          ? body.totalPages
+          : Math.max(1, Math.ceil(count / itemsPerPage));
+        setTotalPages(pages);
+        setTotalCount(count);
         setLoading(false);
       })
       .catch((err) => {
@@ -52,10 +74,6 @@ export function AnalyticsPage() {
         setLoading(false);
       });
   }, [currentPage]);
-
-  // Derived summary counts from current page data
-  const urgentCount = forecastData.filter((i) => i.trend === 'up' && i.predictedDemand > 0).length;
-  const highDemandCount = forecastData.filter((i) => i.predictedDemand > 50).length;
 
   const getTrendIcon = (trend) => {
     if (trend === 'up') return <ArrowUpRight className="w-4 h-4 text-green-600" />;
@@ -101,7 +119,7 @@ export function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards — all use global counts, not current-page slice */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
         <div className="bg-white rounded-xl p-5 border border-gray-200">
           <div className="flex items-center justify-between mb-3">
@@ -121,7 +139,7 @@ export function AnalyticsPage() {
             </div>
             <span className="text-xs font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded-full">Urgent</span>
           </div>
-          <div className="text-2xl font-semibold text-gray-900 mb-1">{urgentCount}</div>
+          <div className="text-2xl font-semibold text-gray-900 mb-1">{globalSummary.urgent}</div>
           <div className="text-sm text-gray-600">Items Need Restock</div>
         </div>
 
@@ -132,7 +150,7 @@ export function AnalyticsPage() {
             </div>
             <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">Active</span>
           </div>
-          <div className="text-2xl font-semibold text-gray-900 mb-1">{highDemandCount}</div>
+          <div className="text-2xl font-semibold text-gray-900 mb-1">{globalSummary.highDemand}</div>
           <div className="text-sm text-gray-600">High Demand Items</div>
         </div>
 
@@ -144,9 +162,7 @@ export function AnalyticsPage() {
             <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full">On Track</span>
           </div>
           <div className="text-2xl font-semibold text-gray-900 mb-1">
-            {forecastData.length > 0
-              ? `${Math.round(forecastData.reduce((a, i) => a + i.confidence, 0) / forecastData.length)}%`
-              : '—'}
+            {globalSummary.avgConfidence > 0 ? `${globalSummary.avgConfidence}%` : '—'}
           </div>
           <div className="text-sm text-gray-600">Avg Forecast Confidence</div>
         </div>
@@ -254,7 +270,9 @@ export function AnalyticsPage() {
 
         {/* Pagination */}
         <div className="p-5 border-t border-gray-200 flex items-center justify-between">
-          <span className="text-sm text-gray-500">Page {currentPage} of {totalPages}</span>
+          <span className="text-sm text-gray-500">
+            Page {currentPage} of {totalPages} — {totalCount} total
+          </span>
           <div className="flex items-center gap-2">
             <button
               className="px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
@@ -266,7 +284,7 @@ export function AnalyticsPage() {
             <button
               className="px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
               onClick={() => setCurrentPage((p) => p + 1)}
-              disabled={currentPage === totalPages}
+              disabled={currentPage >= totalPages}
             >
               Next
             </button>
