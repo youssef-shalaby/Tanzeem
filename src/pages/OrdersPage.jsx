@@ -1,85 +1,111 @@
-import { useState } from "react";
-import { Search, SlidersHorizontal, DollarSign, Clock, CheckCircle } from "lucide-react";
-import { Link } from "react-router-dom";
-
-const orders = [
-  {
-    id: "ORD-3492",
-    date: "Oct 24, 2023",
-    time: "10:42 AM",
-    supplier: "Acme Corp",
-    total: 1250.0,
-    status: "Shipped",
-  },
-  {
-    id: "ORD-3491",
-    date: "Oct 23, 2023",
-    time: "02:15 PM",
-    supplier: "Globex Inc",
-    total: 450.0,
-    status: "Pending",
-  },
-  {
-    id: "ORD-3490",
-    date: "Oct 23, 2023",
-    time: "09:30 AM",
-    supplier: "Stark Ind",
-    total: 8900.0,
-    status: "Delivered",
-  },
-  {
-    id: "ORD-3489",
-    date: "Oct 22, 2023",
-    time: "11:05 AM",
-    supplier: "Wayne Corp",
-    total: 325.0,
-    status: "Cancelled",
-  },
-];
+import { useState, useEffect } from "react";
+import { Search, SlidersHorizontal, DollarSign, Clock, CheckCircle, Package } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export function OrdersPage() {
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const navigate = useNavigate();
 
-  const filteredOrders =
-    selectedStatus === "all"
-      ? orders
-      : orders.filter(
-          (order) => order.status.toLowerCase() === selectedStatus
-        );
+  const [ordersList, setOrdersList] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState({
+    pendingOrdersCount: 0,
+    deliveredOrdersCount: 0,
+    totalOrdersRevenue: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterId, setFilterId] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const pageSize = 10;
+
+  // Dashboard Stats
+  useEffect(() => {
+    fetch("/api/Order/mini_order_dashboard")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch dashboard.");
+        return res.json();
+      })
+      .then((data) => {
+        setDashboardStats({
+          pendingOrdersCount: data.pendingOrdersCount || 0,
+          deliveredOrdersCount: data.deliveredOrdersCount || 0,
+          totalOrdersRevenue: data.totalOrdersRevenue || 0,
+        });
+      })
+      .catch((err) => console.error("Error fetching dashboard stats:", err));
+  }, []);
+
+  // Orders List
+  useEffect(() => {
+    setLoading(true);
+
+    let url = `/api/Order?page=${currentPage}&page_size=${pageSize}`;
+    if (searchTerm) url += `&searchTerm=${encodeURIComponent(searchTerm)}`;
+    if (filterId !== "all") url += `&filterId=${filterId}`;
+
+    fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch orders.");
+        return res.json();
+      })
+      .then((body) => {
+        setOrdersList(body.data || []);
+        setTotalPages(body.totalPages && body.totalPages > 0 ? body.totalPages : 1);
+        setTotalCount(body.totalCount || 0);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [currentPage, searchTerm, filterId]);
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = (e) => {
+    setFilterId(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const getStatus = (status) => {
+    if (typeof status === "number") return status === 0 ? "Pending" : "Delivered";
+    if (!status) return "Pending";
+    const normalized = String(status).toLowerCase();
+    if (normalized.includes("deliver")) return "Delivered";
+    if (normalized.includes("cancel")) return "Cancelled";
+    return "Pending";
+  };
 
   const getStatusStyle = (status) => {
-    switch (status) {
-      case "Shipped":
-        return "bg-blue-100 text-blue-700";
-      case "Pending":
-        return "bg-yellow-100 text-yellow-700";
-      case "Delivered":
-        return "bg-green-100 text-green-700";
-      case "Cancelled":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-gray-100 text-gray-700";
+    switch (getStatus(status)) {
+      case "Pending": return "bg-yellow-100 text-yellow-700";
+      case "Delivered": return "bg-green-100 text-green-700";
+      case "Cancelled": return "bg-red-100 text-red-700";
+      default: return "bg-blue-100 text-blue-700";
     }
   };
 
   return (
     <div className="space-y-6">
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Orders</h1>
-
-        <Link
-          to="/orders/create"
+        <button
+          onClick={() => navigate("/orders/create")}
           className="px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors"
         >
           Create Order
-        </Link>
+        </button>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-
         <div className="bg-white rounded-xl p-6 border border-gray-200">
           <div className="flex items-start justify-between mb-3">
             <div className="text-sm text-gray-600">Total Revenue</div>
@@ -88,7 +114,10 @@ export function OrdersPage() {
             </div>
           </div>
           <div className="text-3xl font-semibold text-gray-900 mb-2">
-            $45,230
+            ${Number(dashboardStats.totalOrdersRevenue || 0).toLocaleString()}
+          </div>
+          <div className="flex items-center gap-1 text-sm text-green-600">
+            <span>↗</span><span>12%</span>
           </div>
         </div>
 
@@ -99,7 +128,12 @@ export function OrdersPage() {
               <Clock className="w-6 h-6 text-orange-600" />
             </div>
           </div>
-          <div className="text-3xl font-semibold text-gray-900 mb-2">12</div>
+          <div className="text-3xl font-semibold text-gray-900 mb-2">
+            {dashboardStats.pendingOrdersCount}
+          </div>
+          <div className="flex items-center gap-1 text-sm text-green-600">
+            <span>↗</span><span>2%</span>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl p-6 border border-gray-200">
@@ -110,113 +144,144 @@ export function OrdersPage() {
             </div>
           </div>
           <div className="text-3xl font-semibold text-gray-900 mb-2">
-            1,245
+            {dashboardStats.deliveredOrdersCount}
+          </div>
+          <div className="flex items-center gap-1 text-sm text-green-600">
+            <span>↗</span><span>5%</span>
           </div>
         </div>
-
       </div>
 
-      {/* Search + Filters */}
+      {/* Search and Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center gap-3">
-
           <div className="flex-1 relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
-
             <input
               type="text"
               placeholder="Search by Order ID, Supplier, or Date..."
-              className="w-full pl-11 pr-4 py-2.5 bg-[#f6f8fa] rounded-lg text-sm focus:outline-none"
+              value={searchTerm}
+              onChange={handleSearch}
+              className="w-full pl-11 pr-4 py-2.5 bg-[#f6f8fa] border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
             />
           </div>
-
           <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm bg-white"
+            value={filterId}
+            onChange={handleFilterChange}
+            className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
           >
             <option value="all">All</option>
-            <option value="shipped">Shipped</option>
-            <option value="pending">Pending</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="0">Pending</option>
+            <option value="1">Delivered</option>
           </select>
-
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-sm rounded-lg hover:bg-gray-50">
+          <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">
             <SlidersHorizontal className="w-[18px] h-[18px] text-gray-600" />
             More Filters
           </button>
-
         </div>
       </div>
 
       {/* Orders Table */}
       <div className="bg-white rounded-xl border border-gray-200">
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left px-6 py-4 text-xs text-gray-500 uppercase">Order ID</th>
-                <th className="text-left px-6 py-4 text-xs text-gray-500 uppercase">Date</th>
-                <th className="text-left px-6 py-4 text-xs text-gray-500 uppercase">Supplier</th>
-                <th className="text-left px-6 py-4 text-xs text-gray-500 uppercase">Total</th>
-                <th className="text-left px-6 py-4 text-xs text-gray-500 uppercase">Status</th>
-                <th className="text-left px-6 py-4 text-xs text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {filteredOrders.map((order) => (
-                <tr
-                  key={order.id}
-                  className="border-b border-gray-100 hover:bg-gray-50"
-                >
-
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {order.id}
-                  </td>
-
-                  <td className="px-6 py-4">
-                    <div className="text-sm">{order.date}</div>
-                    <div className="text-xs text-gray-500">{order.time}</div>
-                  </td>
-
-                  <td className="px-6 py-4 text-sm font-medium">
-                    {order.supplier}
-                  </td>
-
-                  <td className="px-6 py-4 text-sm font-medium">
-                    ${order.total.toFixed(2)}
-                  </td>
-
-                  <td className="px-6 py-4">
-                    <span
-                      className={`px-3 py-1 rounded-md text-xs font-medium ${getStatusStyle(
-                        order.status
-                      )}`}
-                    >
-                      {order.status}
-                    </span>
-                  </td>
-
-                  <td className="px-6 py-4">
-                    <Link
-                      to={`/orders/${order.id}`}
-                      className="px-4 py-2 border border-gray-200 text-sm rounded-lg hover:bg-gray-50"
-                    >
-                      View
-                    </Link>
-                  </td>
-
+        {loading ? (
+          <div className="p-10 text-center text-sm text-gray-500">Loading orders...</div>
+        ) : error ? (
+          <div className="p-10 text-center text-sm text-red-600">Error: {error}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Total Value</th>
+                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
+              </thead>
+              <tbody>
+                {ordersList.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-400">
+                      No orders found.
+                    </td>
+                  </tr>
+                ) : (
+                  ordersList.map((ord) => {
+                    const status = getStatus(ord.status);
+                    return (
+                      <tr key={ord.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          {ord.stringId || `#${ord.id}`}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">
+                            {new Date(ord.orderDate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{ord.supplierName}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          ${Number(ord.total || 0).toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex px-3 py-1 rounded-md text-xs font-medium ${getStatusStyle(ord.status)}`}>
+                            {status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => navigate(`/orders/${ord.id}`, { state: { order: ord } })}
+                            className="inline-flex items-center px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              Showing page {currentPage} of {totalPages} ({totalCount} orders)
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+                className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
+              >
+                ‹
+              </button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1.5 text-sm rounded-lg ${currentPage === page ? "bg-[#15aaad] text-white" : "text-gray-600 hover:bg-gray-100"}`}
+                >
+                  {page}
+                </button>
               ))}
-            </tbody>
-
-          </table>
-        </div>
-
+              {totalPages > 5 && <span className="px-2 text-gray-600">...</span>}
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+                className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,49 +1,65 @@
 import { ArrowLeft, CheckCircle, AlertTriangle, Package } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router';
-import { useState } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router';
+import { useState, useEffect } from 'react';
+
+const ISSUE_TYPE_MAP = { damaged: 0, missing: 1, incorrect: 2, defective: 3, other: 4 };
 
 export function ConfirmDeliveryPage() {
   const navigate = useNavigate();
   const { orderId } = useParams();
+  const location = useLocation();
 
-  // Mock order data - in real app, fetch based on orderId
-  const order = {
-    id: orderId || 'ORD-3492',
-    date: 'Oct 24, 2023',
-    deliveredDate: 'Oct 27, 2023',
-    supplier: {
-      name: 'Acme Corp',
-    },
-    items: [
-      { id: 1, product: 'Laptop Stand', sku: 'LS-001', orderedQty: 50, price: 15.00 },
-      { id: 2, product: 'Wireless Mouse', sku: 'WM-002', orderedQty: 100, price: 5.00 },
-    ],
-  };
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Initialize item details state
-  const [itemDetails, setItemDetails] = useState(
-    order.items.reduce((acc, item) => ({
-      ...acc,
-      [item.id]: {
-        damaged: 0,
-        missing: 0,
-        incorrect: 0,
-        defective: 0,
-        other: 0,
-        notes: ''
-      }
-    }), {})
-  );
-
+  const [itemDetails, setItemDetails] = useState({});
   const [generalNotes, setGeneralNotes] = useState('');
+  const [receivedDate, setReceivedDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  useEffect(() => {
+    const stateOrder = location.state?.order;
+    const stateItems = location.state?.items ?? stateOrder?.itemsConfirmResponseDtos;
+
+    // If navigation state already contains items, use them directly
+    if (stateItems?.length) {
+      const base = stateOrder || {};
+      setOrder({ ...base, itemsConfirmResponseDtos: stateItems });
+      initItemDetails(stateItems);
+      setLoading(false);
+      return;
+    }
+
+    // Otherwise fetch from View_Order_Confirm
+    fetch(`/api/Order/View_Order_Confirm/${orderId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load order.');
+        return res.json();
+      })
+      .then((data) => {
+        setOrder(data);
+        initItemDetails(data.itemsConfirmResponseDtos || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || 'Failed to fetch order details.');
+        setLoading(false);
+      });
+  }, [orderId]);
+
+  const initItemDetails = (itemList) => {
+    const initial = {};
+    itemList.forEach((item) => {
+      initial[item.productId] = { damaged: 0, missing: 0, incorrect: 0, defective: 0, other: 0, notes: '' };
+    });
+    setItemDetails(initial);
+  };
 
   const handleItemChange = (itemId, field, value) => {
     setItemDetails(prev => ({
       ...prev,
-      [itemId]: {
-        ...prev[itemId],
-        [field]: value
-      }
+      [itemId]: { ...prev[itemId], [field]: value }
     }));
   };
 
@@ -59,19 +75,22 @@ export function ConfirmDeliveryPage() {
   };
 
   const getTotalIssues = (itemId) => {
-    const breakdown = getIssueBreakdown(itemId);
-    return breakdown.damaged + breakdown.missing + breakdown.incorrect + breakdown.defective + breakdown.other;
+    const b = getIssueBreakdown(itemId);
+    return b.damaged + b.missing + b.incorrect + b.defective + b.other;
   };
 
-  const getReceivedGood = (itemId, orderedQty) => {
-    const totalIssues = getTotalIssues(itemId);
-    return orderedQty - totalIssues;
-  };
+  const getReceivedGood = (itemId, orderedQty) => orderedQty - getTotalIssues(itemId);
+
+  const getTotalDiscrepancy = () =>
+    order?.itemsConfirmResponseDtos?.reduce((total, item) => total + getTotalIssues(item.productId), 0) ?? 0;
+
+  const hasDiscrepancies = getTotalDiscrepancy() > 0;
+  const itemsWithIssues = order?.itemsConfirmResponseDtos?.filter(item => getTotalIssues(item.productId) > 0).length ?? 0;
 
   const handleConfirmDelivery = () => {
-    const hasUnexplainedIssues = order.items.some(item => {
-      const totalIssues = getTotalIssues(item.id);
-      const hasNotes = itemDetails[item.id]?.notes?.trim();
+    const hasUnexplainedIssues = order.itemsConfirmResponseDtos?.some(item => {
+      const totalIssues = getTotalIssues(item.productId);
+      const hasNotes = itemDetails[item.productId]?.notes?.trim();
       return totalIssues > 0 && !hasNotes;
     });
 
@@ -80,57 +99,38 @@ export function ConfirmDeliveryPage() {
       return;
     }
 
-    const issueReport = {
-      orderId: order.id,
-      items: order.items
-        .filter(item => getTotalIssues(item.id) > 0)
-        .map(item => {
-          const breakdown = getIssueBreakdown(item.id);
-          const issueTypes = [];
-          if (breakdown.damaged > 0) issueTypes.push({ type: 'damaged', quantity: breakdown.damaged });
-          if (breakdown.missing > 0) issueTypes.push({ type: 'missing', quantity: breakdown.missing });
-          if (breakdown.incorrect > 0) issueTypes.push({ type: 'incorrect', quantity: breakdown.incorrect });
-          if (breakdown.defective > 0) issueTypes.push({ type: 'defective', quantity: breakdown.defective });
-          if (breakdown.other > 0) issueTypes.push({ type: 'other', quantity: breakdown.other });
+    setSubmitting(true);
 
-          return {
-            ...item,
-            ordered: item.orderedQty,
-            received: getReceivedGood(item.id, item.orderedQty),
-            issueTypes,
-            notes: itemDetails[item.id]?.notes
-          };
-        }),
-      generalNotes,
-      stockUpdates: order.items.map(item => ({
-        productId: item.id,
-        sku: item.sku,
-        quantityToAdd: getReceivedGood(item.id, item.orderedQty)
-      }))
+    const payload = {
+      orderId: order.orderId ?? order.id ?? parseInt(orderId),
+      recievedDate: new Date(receivedDate).toISOString(),
+      notes: generalNotes,
+      itemsConfirmDtos: order.itemsConfirmResponseDtos?.map((item) => {
+        const d = itemDetails[item.productId] || {};
+        const itemsIssueDtos = Object.entries(ISSUE_TYPE_MAP)
+          .filter(([field]) => d[field] > 0)
+          .map(([field, issueType]) => ({ issueType, quantity: d[field] }));
+        return { productId: item.productId, notes: d.notes || '', itemsIssueDtos };
+      }),
     };
 
-    console.log('Processing delivery confirmation:', issueReport);
-
-    const hasIssues = issueReport.items.length > 0;
-    // eslint-disable-next-line react-hooks/purity
-    const issueNumber = Math.floor(Math.random() * 1000);
-    if (hasIssues) {
-      alert(`Stock updated successfully!\n\nDelivery issue #ISS-${issueNumber} has been created and logged for review.\n\nYou can view all delivery issues in the Delivery Issues page.`);
-    } else {
-      alert('Stock updated successfully! No issues reported.');
-    }
-
-    navigate(`/orders/${orderId}`);
+    fetch('/api/Order/ConfirmDelivery', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to confirm delivery.');
+        navigate(`/orders/${orderId}`);
+      })
+      .catch((err) => {
+        alert(err.message);
+        setSubmitting(false);
+      });
   };
 
-  const getTotalDiscrepancy = () => {
-    return order.items.reduce((total, item) => {
-      return total + getTotalIssues(item.id);
-    }, 0);
-  };
-
-  const hasDiscrepancies = getTotalDiscrepancy() > 0;
-  const itemsWithIssues = order.items.filter(item => getTotalIssues(item.id) > 0).length;
+  if (loading) return <div className="p-6 text-sm text-gray-500">Loading procurement snapshot details...</div>;
+  if (error || !order) return <div className="p-6 text-sm text-red-600">Failed to render: {error}</div>;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -145,9 +145,21 @@ export function ConfirmDeliveryPage() {
           </button>
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Confirm Delivery & Update Stock</h1>
-            <p className="text-sm text-gray-600 mt-1">Order {order.id} • Review and confirm received quantities</p>
+            <p className="text-sm text-gray-600 mt-1">Order {order.orderStringId} • Review and confirm received quantities</p>
           </div>
         </div>
+      </div>
+
+      {/* Delivery date */}
+      <div className="bg-white rounded-xl p-6 border border-gray-200">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Actual Delivery Date *</label>
+        <input
+          type="date"
+          value={receivedDate}
+          onChange={(e) => setReceivedDate(e.target.value)}
+          max={new Date().toISOString().split('T')[0]}
+          className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none w-full sm:w-64"
+        />
       </div>
 
       {/* Info Banner */}
@@ -184,194 +196,106 @@ export function ConfirmDeliveryPage() {
         </div>
       )}
 
-      {/* Order Information */}
-      <div className="bg-white rounded-xl p-6 border border-gray-200">
-        <h2 className="font-semibold text-gray-900 mb-4">Order Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600">Order ID</span>
-            <p className="font-medium text-gray-900 mt-1">{order.id}</p>
-          </div>
-          <div>
-            <span className="text-gray-600">Supplier</span>
-            <p className="font-medium text-gray-900 mt-1">{order.supplier.name}</p>
-          </div>
-          <div>
-            <span className="text-gray-600">Delivered Date</span>
-            <p className="font-medium text-gray-900 mt-1">{order.deliveredDate}</p>
-          </div>
+      {/* Item Cards */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <h2 className="font-semibold text-gray-900">Order Items</h2>
         </div>
-      </div>
-
-      {/* Items Review */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-900">Review Items & Report Issues</h2>
-          <p className="text-sm text-gray-600 mt-1">Confirm received quantities and specify problem quantities by type</p>
-        </div>
-
-        <div className="p-6 space-y-5">
-          {order.items.map((item) => {
-            const ordered = item.orderedQty;
-            const totalIssues = getTotalIssues(item.id);
-            const receivedGood = getReceivedGood(item.id, item.orderedQty);
-            const hasDifference = totalIssues > 0;
+        <div className="p-6 space-y-6">
+          {order.itemsConfirmResponseDtos?.map((item) => {
+            const totalIssues = getTotalIssues(item.productId);
+            const ordered = item.orderedQuantity;
+            const receivedGood = getReceivedGood(item.productId, ordered);
 
             return (
               <div
-                key={item.id}
-                className={`rounded-lg p-5 border-2 transition-colors ${
-                  hasDifference
-                    ? 'bg-orange-50 border-orange-200'
-                    : 'bg-gray-50 border-gray-200'
-                }`}
+                key={item.productId}
+                className={`p-5 rounded-xl border-2 ${totalIssues > 0 ? 'border-orange-200 bg-orange-50/30' : 'border-gray-200 bg-gray-50/50'}`}
               >
-                {/* Item Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-semibold text-gray-900">{item.product}</h3>
-                      {hasDifference && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-md">
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          {totalIssues > 0 ? `${totalIssues} short` : `${Math.abs(totalIssues)} extra`}
-                        </span>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="font-semibold text-gray-900">Product #{item.productId}</p>
+                    <p className="text-xs text-gray-500 font-mono mt-0.5">{item.sku || '—'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Ordered</p>
+                    <p className="text-lg font-semibold text-gray-900">{ordered} units</p>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Issue Breakdown {totalIssues > 0 && <span className="text-red-500">*</span>}
+                    </label>
+                    <div className="text-sm">
+                      <span className="text-gray-600">Total Issues: </span>
+                      <span className={`font-semibold ${totalIssues === 0 ? 'text-gray-900' : totalIssues <= ordered ? 'text-orange-600' : 'text-red-600'}`}>
+                        {totalIssues}
+                      </span>
+                      {totalIssues > ordered && (
+                        <span className="ml-2 text-red-600 text-xs">(Cannot exceed ordered quantity!)</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-4 mt-1">
-                      <span className="text-sm text-gray-600">SKU: {item.sku}</span>
-                      <span className="text-sm text-gray-600">Unit Price: ${item.price.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quantity Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-900 mb-2 block">Ordered Quantity</label>
-                    <div className="px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900">
-                      {item.orderedQty} units
-                    </div>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-900 mb-2 block">
-                      Received (Good) Quantity
-                    </label>
-                    <div className={`px-4 py-2.5 rounded-lg text-sm font-semibold ${
-                      receivedGood === ordered
-                        ? 'bg-gray-50 border border-gray-200 text-gray-700'
-                        : 'bg-green-50 border border-green-300 text-green-700'
-                    }`}>
-                      {receivedGood} units
-                      <span className="text-xs ml-2 font-normal opacity-75">(Auto-calculated)</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Issue Breakdown */}
-                <div className="pt-4 border-t border-gray-300 space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-sm font-medium text-gray-900">
-                        Issue Breakdown {totalIssues > 0 && <span className="text-red-500">*</span>}
-                      </label>
-                      <div className="text-sm">
-                        <span className="text-gray-600">Total Issues: </span>
-                        <span className={`font-semibold ${totalIssues === 0 ? 'text-gray-900' : totalIssues <= ordered ? 'text-orange-600' : 'text-red-600'}`}>
-                          {totalIssues}
-                        </span>
-                        {totalIssues > ordered && (
-                          <span className="ml-2 text-red-600 text-xs">
-                            (Cannot exceed ordered quantity!)
-                          </span>
-                        )}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {['damaged', 'missing', 'incorrect', 'defective', 'other'].map((field) => (
+                      <div key={field}>
+                        <label className="text-xs text-gray-600 mb-1.5 block capitalize">{field}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
+                          value={itemDetails[item.productId]?.[field] || ''}
+                          onChange={(e) => handleItemChange(item.productId, field, parseInt(e.target.value) || 0)}
+                        />
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {['damaged', 'missing', 'incorrect', 'defective', 'other'].map((field) => (
-                        <div key={field}>
-                          <label className="text-xs text-gray-600 mb-1.5 block capitalize">{field}</label>
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
-                            value={itemDetails[item.id]?.[field] || ''}
-                            onChange={(e) => handleItemChange(item.id, field, parseInt(e.target.value) || 0)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Visual breakdown summary */}
-                    {totalIssues > 0 && (
-                      <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
-                        <p className="text-xs font-medium text-gray-900 mb-2">Issue Summary:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {itemDetails[item.id]?.damaged > 0 && (
-                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700">
-                              Damaged: {itemDetails[item.id].damaged}
-                            </span>
-                          )}
-                          {itemDetails[item.id]?.missing > 0 && (
-                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-700">
-                              Missing: {itemDetails[item.id].missing}
-                            </span>
-                          )}
-                          {itemDetails[item.id]?.incorrect > 0 && (
-                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">
-                              Incorrect: {itemDetails[item.id].incorrect}
-                            </span>
-                          )}
-                          {itemDetails[item.id]?.defective > 0 && (
-                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-700">
-                              Defective: {itemDetails[item.id].defective}
-                            </span>
-                          )}
-                          {itemDetails[item.id]?.other > 0 && (
-                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                              Other: {itemDetails[item.id].other}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                    ))}
                   </div>
 
-                  {/* Notes - Only shown if there are issues */}
                   {totalIssues > 0 && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-900 mb-2 block">
-                        Notes <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        rows={3}
-                        placeholder="Explain the issues in detail... (e.g., 'Box packaging was damaged on arrival causing internal damage to 5 units')"
-                        className="w-full px-4 py-3 border border-orange-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white resize-none"
-                        value={itemDetails[item.id]?.notes || ''}
-                        onChange={(e) => handleItemChange(item.id, 'notes', e.target.value)}
-                      />
+                    <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
+                      <p className="text-xs font-medium text-gray-900 mb-2">Issue Summary:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {itemDetails[item.productId]?.damaged > 0 && <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700">Damaged: {itemDetails[item.productId].damaged}</span>}
+                        {itemDetails[item.productId]?.missing > 0 && <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-700">Missing: {itemDetails[item.productId].missing}</span>}
+                        {itemDetails[item.productId]?.incorrect > 0 && <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">Incorrect: {itemDetails[item.productId].incorrect}</span>}
+                        {itemDetails[item.productId]?.defective > 0 && <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Defective: {itemDetails[item.productId].defective}</span>}
+                        {itemDetails[item.productId]?.other > 0 && <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">Other: {itemDetails[item.productId].other}</span>}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Item Summary */}
-                <div className="mt-4 pt-4 border-t border-gray-300">
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Good Stock:</span>
-                      <p className="font-semibold text-green-600">{receivedGood} units</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Issues:</span>
-                      <p className="font-semibold text-orange-600">{totalIssues} units</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Total:</span>
-                      <p className="font-semibold text-gray-900">{receivedGood + totalIssues} / {ordered}</p>
-                    </div>
+                {totalIssues > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-900 mb-2 block">
+                      Notes <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Explain the issues in detail..."
+                      className="w-full px-4 py-3 border border-orange-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white resize-none"
+                      value={itemDetails[item.productId]?.notes || ''}
+                      onChange={(e) => handleItemChange(item.productId, 'notes', e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className="mt-4 pt-4 border-t border-gray-300 grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Good Stock:</span>
+                    <p className="font-semibold text-green-600">{receivedGood} units</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Issues:</span>
+                    <p className="font-semibold text-orange-600">{totalIssues} units</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Total:</span>
+                    <p className="font-semibold text-gray-900">{receivedGood + totalIssues} / {ordered}</p>
                   </div>
                 </div>
               </div>
@@ -380,41 +304,39 @@ export function ConfirmDeliveryPage() {
         </div>
       </div>
 
-      {/* General Notes Section */}
+      {/* General Notes */}
       {hasDiscrepancies && (
         <div className="bg-white rounded-xl p-6 border border-gray-200">
           <h2 className="font-semibold text-gray-900 mb-4">Additional Information</h2>
-          <div>
-            <label className="text-sm font-medium text-gray-900 mb-2 block">General Notes (Optional)</label>
-            <textarea
-              rows={4}
-              placeholder="Add any general notes about the delivery or issues..."
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 resize-none"
-              value={generalNotes}
-              onChange={(e) => setGeneralNotes(e.target.value)}
-            />
-          </div>
+          <label className="text-sm font-medium text-gray-900 mb-2 block">General Notes (Optional)</label>
+          <textarea
+            rows={4}
+            placeholder="Add any general notes about the delivery or issues..."
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 resize-none"
+            value={generalNotes}
+            onChange={(e) => setGeneralNotes(e.target.value)}
+          />
         </div>
       )}
 
-      {/* Summary Card */}
+      {/* Summary */}
       <div className="bg-white rounded-xl p-6 border border-gray-200">
         <h2 className="font-semibold text-gray-900 mb-4">Summary</h2>
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">Total Items</span>
-            <span className="font-medium text-gray-900">{order.items.length}</span>
+            <span className="font-medium text-gray-900">{order.itemsConfirmResponseDtos?.length}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">Total Ordered Units</span>
             <span className="font-medium text-gray-900">
-              {order.items.reduce((sum, item) => sum + item.orderedQty, 0)} units
+              {order.itemsConfirmResponseDtos?.reduce((sum, item) => sum + item.orderedQuantity, 0)} units
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">Total Received (Good) Units</span>
             <span className="font-medium text-green-600">
-              {order.items.reduce((sum, item) => sum + getReceivedGood(item.id, item.orderedQty), 0)} units
+              {order.itemsConfirmResponseDtos?.reduce((sum, item) => sum + getReceivedGood(item.productId, item.orderedQuantity), 0)} units
             </span>
           </div>
           {hasDiscrepancies && (
@@ -422,21 +344,19 @@ export function ConfirmDeliveryPage() {
               <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
                 <span className="text-orange-600 font-medium">Total Issues</span>
                 <span className="font-semibold text-orange-600">
-                  {order.items.reduce((sum, item) => sum + getTotalIssues(item.id), 0)} units
+                  {order.itemsConfirmResponseDtos?.reduce((sum, item) => sum + getTotalIssues(item.productId), 0)} units
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-orange-600 font-medium">Items with Issues</span>
-                <span className="font-semibold text-orange-600">
-                  {itemsWithIssues} of {order.items.length}
-                </span>
+                <span className="font-semibold text-orange-600">{itemsWithIssues} of {order.itemsConfirmResponseDtos?.length}</span>
               </div>
             </>
           )}
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* Actions */}
       <div className="flex items-center justify-end gap-3 pb-8">
         <button
           onClick={() => navigate(`/orders/${orderId}`)}
@@ -446,10 +366,11 @@ export function ConfirmDeliveryPage() {
         </button>
         <button
           onClick={handleConfirmDelivery}
-          className="flex items-center gap-2 px-6 py-2.5 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors"
+          disabled={submitting}
+          className="flex items-center gap-2 px-6 py-2.5 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-50"
         >
           <CheckCircle className="w-[18px] h-[18px]" />
-          Confirm & Update Stock
+          {submitting ? 'Confirming...' : 'Confirm & Update Stock'}
         </button>
       </div>
     </div>

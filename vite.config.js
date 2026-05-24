@@ -10,7 +10,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://tanzeem.runasp.net',
+        target: 'https://tanzeem.runasp.net',
         changeOrigin: true,
       }
     }
