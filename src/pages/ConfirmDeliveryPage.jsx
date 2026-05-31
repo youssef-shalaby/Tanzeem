@@ -101,8 +101,12 @@ export function ConfirmDeliveryPage() {
 
     setSubmitting(true);
 
+    const resolvedOrderId = order.orderId ?? order.id ?? parseInt(orderId);
+    console.log('[ConfirmDelivery] order object:', order);
+    console.log('[ConfirmDelivery] resolved orderId being sent:', resolvedOrderId);
+
     const payload = {
-      orderId: order.orderId ?? order.id ?? parseInt(orderId),
+      orderId: resolvedOrderId,
       recievedDate: new Date(receivedDate).toISOString(),
       notes: generalNotes,
       itemsConfirmDtos: order.itemsConfirmResponseDtos?.map((item) => {
@@ -119,11 +123,26 @@ export function ConfirmDeliveryPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to confirm delivery.');
+      .then(async (res) => {
+        if (!res.ok) {
+          // Read the actual server error instead of a generic message
+          let serverMessage = 'Failed to confirm delivery.';
+          try {
+            const contentType = res.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+              const json = await res.json();
+              serverMessage = json.message || json.title || JSON.stringify(json);
+            } else {
+              const text = await res.text();
+              if (text) serverMessage = text;
+            }
+          } catch (_) {}
+          throw new Error(serverMessage);
+        }
         navigate(`/orders/${orderId}`);
       })
       .catch((err) => {
+        // This now runs for BOTH network failures AND bad server responses
         alert(err.message);
         setSubmitting(false);
       });

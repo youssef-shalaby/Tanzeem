@@ -536,7 +536,6 @@ export function ViewOrderPage() {
     ),
   ];
 
-  console.log(confirmationData);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -668,14 +667,14 @@ export function ViewOrderPage() {
 
               {confirmationData.supplierId ? (
                 <Link
-                  to={`/suppliers/${confirmationData.supplierId}`}
+                  to={`/suppliers/view-supplier/${confirmationData.supplierId}`}
                   className="inline-flex items-center gap-1.5 text-[#15aaad] font-medium hover:underline"
                 >
                   {confirmationData.supplierName || "—"}
                   <ExternalLink className="w-3.5 h-3.5" />
                 </Link>
               ) : (
-                <span className="text-gray-900 font-medium inline-flex items-center gap-1.5">
+                <span className="text-gray-900 font-medium">
                   {confirmationData.supplierName || "—"}
                 </span>
               )}
