@@ -2,7 +2,7 @@ import {
   Store, Shield, Bell, Users, MapPin, ChevronDown, UserPlus, Edit2, Trash2,
   Key, Smartphone, Clock, AlertCircle, Mail, Check, Plus, Sparkles, Zap, Bot
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 // ─── Shared Toggle Component ───────────────────────────────────────────────
@@ -178,8 +178,57 @@ function AdminSettings() {
     { id: 2, device: 'Safari on MacBook Pro', location: 'Dubai, UAE', lastActive: '2 hours ago', status: 'active' },
     { id: 3, device: 'Mobile App on iPhone', location: 'Abu Dhabi, UAE', lastActive: '1 day ago', status: 'inactive' },
   ]);
-  const [alertSettings, setAlertSettings] = useState({ lowStockThreshold: '20', criticalStockThreshold: '5', expiryWarningDays: '30', deadStockDays: '90', emailNotifications: true, pushNotifications: true, smsNotifications: false });
-  const [aiSettings, setAiSettings] = useState({ demandForecastingEnabled: true, autoCategorization: true, smartReordering: false, priceOptimization: false, forecastPeriod: '30', confidenceThreshold: '75' });
+  // Alert Configurations — from API
+  const [alertSettings, setAlertSettings] = useState(null);
+  const [alertSaving, setAlertSaving] = useState(false);
+  const [alertSaveMsg, setAlertSaveMsg] = useState('');
+
+  useEffect(() => {
+    fetch('/api/AlertConfigurations')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setAlertSettings(data); })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveAlertSettings = () => {
+    if (!alertSettings) return;
+    setAlertSaving(true);
+    fetch('/api/AlertConfigurations', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(alertSettings),
+    })
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then(() => { setAlertSaveMsg('Saved!'); setTimeout(() => setAlertSaveMsg(''), 2000); })
+      .catch(() => { setAlertSaveMsg('Failed to save.'); setTimeout(() => setAlertSaveMsg(''), 3000); })
+      .finally(() => setAlertSaving(false));
+  };
+
+  // AI Configurations — from API
+  const [aiSettings, setAiSettings] = useState(null);
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiSaveMsg, setAiSaveMsg] = useState('');
+
+  useEffect(() => {
+    fetch('/api/AIConfigurations')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setAiSettings(data); })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveAiSettings = () => {
+    if (!aiSettings) return;
+    setAiSaving(true);
+    fetch('/api/AIConfigurations', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(aiSettings),
+    })
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then(() => { setAiSaveMsg('Saved!'); setTimeout(() => setAiSaveMsg(''), 2000); })
+      .catch(() => { setAiSaveMsg('Failed to save.'); setTimeout(() => setAiSaveMsg(''), 3000); })
+      .finally(() => setAiSaving(false));
+  };
 
   const tabs = [
     { id: 'store-info', icon: Store, label: 'Store Info' },
@@ -330,90 +379,94 @@ function AdminSettings() {
                 <p className="text-sm text-gray-600">Set up notifications and alert thresholds for inventory levels.</p>
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-200">
-                <div className="p-6 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center"><AlertCircle className="w-5 h-5 text-orange-600" /></div>
-                    <div><h3 className="text-lg font-semibold text-gray-900">Stock Level Alerts</h3><p className="text-sm text-gray-600 mt-1">Configure automatic alerts for low inventory levels</p></div>
+              {!alertSettings ? (
+                <div className="text-sm text-gray-500 p-6">Loading alert configurations...</div>
+              ) : (<>
+                {/* Thresholds */}
+                <div className="bg-white rounded-xl border border-gray-200">
+                  <div className="p-6 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center"><AlertCircle className="w-5 h-5 text-orange-600" /></div>
+                      <div><h3 className="text-lg font-semibold text-gray-900">Stock Level Thresholds</h3><p className="text-sm text-gray-600 mt-1">Configure automatic alerts for inventory levels</p></div>
+                    </div>
+                  </div>
+                  <div className="p-6 space-y-5">
+                    {[
+                      { key: 'lowStockThreshold',   label: 'Low Stock Threshold',   unit: 'units',            hint: 'Alert when stock falls below this quantity' },
+                      { key: 'daysBeforeExpiry',     label: 'Expiry Warning Period', unit: 'days before expiry', hint: 'Alert when products are nearing expiration date' },
+                      { key: 'daysWithoutMovement',  label: 'Dead Stock Threshold',  unit: 'days without movement', hint: 'Alert when products have no movement for this period' },
+                    ].map(({ key, label, unit, hint }) => (
+                      <div key={key}>
+                        <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">{label}</label>
+                        <div className="flex items-center gap-4">
+                          <input type="number" value={alertSettings[key] ?? ''} onChange={(e) => setAlertSettings({ ...alertSettings, [key]: parseInt(e.target.value) || 0 })} className="flex-1 px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]" />
+                          <span className="text-sm text-gray-600 whitespace-nowrap">{unit}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-2">{hint}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="p-6 space-y-5">
-                  {[
-                    { key: 'lowStockThreshold', label: 'Low Stock Threshold', unit: 'units', hint: 'Alert when stock falls below this quantity' },
-                    { key: 'criticalStockThreshold', label: 'Critical Stock Threshold', unit: 'units', hint: 'Urgent alert for critically low stock' },
-                    { key: 'expiryWarningDays', label: 'Expiry Warning Period', unit: 'days before expiry', hint: 'Alert when products are nearing expiration date' },
-                    { key: 'deadStockDays', label: 'Dead Stock Threshold', unit: 'days without movement', hint: 'Alert when products have no movement for this period' },
-                  ].map(({ key, label, unit, hint }) => (
-                    <div key={key}>
-                      <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">{label}</label>
-                      <div className="flex items-center gap-4">
-                        <input type="number" value={alertSettings[key]} onChange={(e) => setAlertSettings({ ...alertSettings, [key]: e.target.value })} className="flex-1 px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]" />
-                        <span className="text-sm text-gray-600">{unit}</span>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-2">{hint}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
-              <div className="bg-white rounded-xl border border-gray-200">
-                <div className="p-6 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><Bell className="w-5 h-5 text-blue-600" /></div>
-                    <div><h3 className="text-lg font-semibold text-gray-900">Notification Channels</h3><p className="text-sm text-gray-600 mt-1">Choose how you want to receive alerts</p></div>
+                {/* Notification Channels */}
+                <div className="bg-white rounded-xl border border-gray-200">
+                  <div className="p-6 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><Bell className="w-5 h-5 text-blue-600" /></div>
+                      <div><h3 className="text-lg font-semibold text-gray-900">Notification Channels</h3><p className="text-sm text-gray-600 mt-1">Choose how you want to receive alerts</p></div>
+                    </div>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    {[
+                      { key: 'isActive_InAppNotifiation', icon: Bell, iconBg: 'bg-purple-100', iconColor: 'text-purple-600', label: 'In-App Notifications', desc: 'Alerts inside the dashboard' },
+                      { key: 'isActive_EmailNotifiation', icon: Mail, iconBg: 'bg-green-100',  iconColor: 'text-green-600',  label: 'Email Notifications',   desc: 'Receive alerts via email' },
+                    ].map(({ key, icon: Icon, iconBg, iconColor, label, desc }) => (
+                      <div key={key} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full ${iconBg} flex items-center justify-center`}><Icon className={`w-5 h-5 ${iconColor}`} /></div>
+                          <div><div className="text-sm font-medium text-gray-900">{label}</div><div className="text-xs text-gray-600 mt-1">{desc}</div></div>
+                        </div>
+                        <Toggle checked={!!alertSettings[key]} onChange={(e) => setAlertSettings({ ...alertSettings, [key]: e.target.checked })} />
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="p-6 space-y-4">
-                  {[
-                    { key: 'emailNotifications', icon: Mail, iconBg: 'bg-green-100', iconColor: 'text-green-600', label: 'Email Notifications', desc: 'Receive alerts via email' },
-                    { key: 'pushNotifications', icon: Bell, iconBg: 'bg-purple-100', iconColor: 'text-purple-600', label: 'Push Notifications', desc: 'In-app and browser notifications' },
-                    { key: 'smsNotifications', icon: Smartphone, iconBg: 'bg-orange-100', iconColor: 'text-orange-600', label: 'SMS Notifications', desc: 'Critical alerts via text message' },
-                  ].map(({ key, icon: Icon, iconBg, iconColor, label, desc }) => (
-                    <div key={key} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full ${iconBg} flex items-center justify-center`}><Icon className={`w-5 h-5 ${iconColor}`} /></div>
-                        <div><div className="text-sm font-medium text-gray-900">{label}</div><div className="text-xs text-gray-600 mt-1">{desc}</div></div>
-                      </div>
-                      <Toggle checked={alertSettings[key]} onChange={(e) => setAlertSettings({ ...alertSettings, [key]: e.target.checked })} />
-                    </div>
-                  ))}
-                </div>
-              </div>
 
-              <div className="bg-white rounded-xl border border-gray-200">
-                <div className="p-6 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center"><Check className="w-5 h-5 text-indigo-600" /></div>
-                    <div><h3 className="text-lg font-semibold text-gray-900">Alert Preferences</h3><p className="text-sm text-gray-600 mt-1">Customize what alerts you want to receive</p></div>
+                {/* Alert Type Toggles */}
+                <div className="bg-white rounded-xl border border-gray-200">
+                  <div className="p-6 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center"><Check className="w-5 h-5 text-indigo-600" /></div>
+                      <div><h3 className="text-lg font-semibold text-gray-900">Alert Types</h3><p className="text-sm text-gray-600 mt-1">Enable or disable specific alert categories</p></div>
+                    </div>
+                  </div>
+                  <div className="p-6 space-y-3">
+                    {[
+                      { key: 'isActive_LowAlert',         label: 'Low Stock Alerts',       desc: 'Get notified when items fall below threshold' },
+                      { key: 'isActive_OutAlert',          label: 'Out of Stock Alerts',    desc: 'Urgent notification when stock reaches zero' },
+                      { key: 'isActive_ExpiryAlert',       label: 'Expiry Date Warnings',   desc: 'Alert before products expire' },
+                      { key: 'isActive_DeadAlert',         label: 'Dead Stock Alerts',      desc: 'Items with no movement for extended period' },
+                      { key: 'isActive_NewOrderAlert',     label: 'New Order Alerts',       desc: 'Notify when new orders are placed' },
+                      { key: 'isActive_OrderUpdateAlert',  label: 'Order Update Alerts',    desc: 'Track order fulfillment progress' },
+                    ].map(({ key, label, desc }) => (
+                      <div key={key} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-900">{label}</div>
+                          <div className="text-xs text-gray-600 mt-1">{desc}</div>
+                        </div>
+                        <Toggle checked={!!alertSettings[key]} onChange={(e) => setAlertSettings({ ...alertSettings, [key]: e.target.checked })} />
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="p-6 space-y-3">
-                  {[
-                    { label: 'Low Stock Alerts', description: 'Get notified when items fall below threshold', enabled: true },
-                    { label: 'Critical Stock Alerts', description: 'Urgent notifications for very low stock', enabled: true },
-                    { label: 'Expiry Date Warnings', description: 'Alert before products expire', enabled: true },
-                    { label: 'Dead Stock Alerts', description: 'Notify when items have no movement for extended period', enabled: true },
-                    { label: 'New Order Notifications', description: 'Notify when new orders are placed', enabled: true },
-                    { label: 'Order Status Updates', description: 'Track order fulfillment progress', enabled: false },
-                    { label: 'Supplier Updates', description: 'Changes to supplier information', enabled: false },
-                    { label: 'Weekly Summary Report', description: 'Weekly inventory digest email', enabled: true },
-                    { label: 'Monthly Analytics', description: 'Monthly performance reports', enabled: true },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">{item.label}</div>
-                        <div className="text-xs text-gray-600 mt-1">{item.description}</div>
-                      </div>
-                      <Toggle checked={item.enabled} onChange={() => {}} />
-                    </div>
-                  ))}
-                </div>
-              </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4">
-                <button className="px-6 py-2.5 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">Reset to Default</button>
-                <button className="px-6 py-2.5 bg-[#15aaad] text-white text-sm font-medium rounded-lg hover:bg-[#0d8082] transition-colors">Save Alert Settings</button>
-              </div>
+                <div className="flex items-center justify-end gap-3 pt-4">
+                  {alertSaveMsg && <span className={`text-sm font-medium ${alertSaveMsg === 'Saved!' ? 'text-green-600' : 'text-red-600'}`}>{alertSaveMsg}</span>}
+                  <button onClick={handleSaveAlertSettings} disabled={alertSaving} className="px-6 py-2.5 bg-[#15aaad] text-white text-sm font-medium rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-50">
+                    {alertSaving ? 'Saving...' : 'Save Alert Settings'}
+                  </button>
+                </div>
+              </>)}
             </div>
           )}
 
@@ -497,68 +550,44 @@ function AdminSettings() {
                 <h2 className="text-2xl font-semibold text-gray-900 mb-2">AI Features</h2>
                 <p className="text-sm text-gray-600">Configure AI-powered features for demand forecasting and intelligent automation.</p>
               </div>
+
               <div className="bg-white rounded-xl p-6 border border-gray-200">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-[#15aaad]/10 flex items-center justify-center flex-shrink-0"><Sparkles className="w-6 h-6 text-[#15aaad]" /></div>
-                  <div><h3 className="text-lg font-semibold text-gray-900 mb-2">AI-Powered Inventory Intelligence</h3><p className="text-sm text-gray-600">Leverage machine learning to predict demand patterns, automate product categorization, and optimize your inventory management.</p></div>
+                  <div><h3 className="text-lg font-semibold text-gray-900 mb-2">AI-Powered Inventory Intelligence</h3><p className="text-sm text-gray-600">Leverage machine learning to predict demand patterns and automate product categorization.</p></div>
                 </div>
               </div>
-              <div className="bg-white rounded-xl border border-gray-200">
-                <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center"><Bot className="w-5 h-5 text-purple-600" /></div>
-                    <div><h3 className="text-lg font-semibold text-gray-900">Demand Forecasting</h3><p className="text-sm text-gray-600 mt-1">AI-powered predictions for inventory planning</p></div>
+
+              {!aiSettings ? (
+                <div className="text-sm text-gray-500 p-6">Loading AI configurations...</div>
+              ) : (<>
+                <div className="bg-white rounded-xl border border-gray-200">
+                  <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center"><Bot className="w-5 h-5 text-purple-600" /></div>
+                      <div><h3 className="text-lg font-semibold text-gray-900">Demand Forecasting</h3><p className="text-sm text-gray-600 mt-1">AI-powered predictions for inventory planning</p></div>
+                    </div>
+                    <Toggle checked={!!aiSettings.demandForecasting} onChange={(e) => setAiSettings({ ...aiSettings, demandForecasting: e.target.checked })} />
                   </div>
-                  <Toggle checked={aiSettings.demandForecastingEnabled} onChange={(e) => setAiSettings({ ...aiSettings, demandForecastingEnabled: e.target.checked })} />
                 </div>
-                {aiSettings.demandForecastingEnabled && (
-                  <div className="p-6 space-y-5">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">Forecast Period (Days)</label>
-                      <select value={aiSettings.forecastPeriod} onChange={(e) => setAiSettings({ ...aiSettings, forecastPeriod: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]">
-                        <option value="7">7 Days</option><option value="30">30 Days</option><option value="60">60 Days</option><option value="90">90 Days</option>
-                      </select>
+
+                <div className="bg-white rounded-xl border border-gray-200">
+                  <div className="p-6 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><Zap className="w-5 h-5 text-blue-600" /></div>
+                      <div><h3 className="text-lg font-semibold text-gray-900">Auto Categorization</h3><p className="text-sm text-gray-600 mt-1">Automatically categorize new products using AI</p></div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">Minimum Confidence Threshold</label>
-                      <div className="flex items-center gap-4">
-                        <input type="range" min="50" max="99" value={aiSettings.confidenceThreshold} onChange={(e) => setAiSettings({ ...aiSettings, confidenceThreshold: e.target.value })} className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#15aaad]" />
-                        <span className="text-sm font-semibold text-gray-900 w-12 text-right">{aiSettings.confidenceThreshold}%</span>
-                      </div>
-                    </div>
+                    <Toggle checked={!!aiSettings.autoCategorization} onChange={(e) => setAiSettings({ ...aiSettings, autoCategorization: e.target.checked })} />
                   </div>
-                )}
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200">
-                <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><Zap className="w-5 h-5 text-blue-600" /></div>
-                    <div><h3 className="text-lg font-semibold text-gray-900">Auto Categorization</h3><p className="text-sm text-gray-600 mt-1">Automatically categorize products using AI</p></div>
-                  </div>
-                  <Toggle checked={aiSettings.autoCategorization} onChange={(e) => setAiSettings({ ...aiSettings, autoCategorization: e.target.checked })} />
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {[
-                  { key: 'smartReordering', icon: Sparkles, iconBg: 'bg-green-100', iconColor: 'text-green-600', title: 'Smart Reordering', subtitle: 'Auto-suggest reorder quantities', desc: 'AI analyzes demand patterns to suggest optimal reorder quantities and timing.' },
-                  { key: 'priceOptimization', icon: Sparkles, iconBg: 'bg-orange-100', iconColor: 'text-orange-600', title: 'Price Optimization', subtitle: 'AI-driven pricing recommendations', desc: 'Get smart pricing suggestions based on market trends and inventory levels.' },
-                ].map(({ key, icon: Icon, iconBg, iconColor, title, subtitle, desc }) => (
-                  <div key={key} className="bg-white rounded-xl border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full ${iconBg} flex items-center justify-center`}><Icon className={`w-5 h-5 ${iconColor}`} /></div>
-                        <div><h4 className="font-semibold text-gray-900">{title}</h4><p className="text-xs text-gray-600 mt-0.5">{subtitle}</p></div>
-                      </div>
-                      <Toggle checked={aiSettings[key]} onChange={(e) => setAiSettings({ ...aiSettings, [key]: e.target.checked })} />
-                    </div>
-                    <p className="text-sm text-gray-600">{desc}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center justify-end gap-3 pt-4">
-                <button className="px-6 py-2.5 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">Reset to Defaults</button>
-                <button className="px-6 py-2.5 bg-[#15aaad] text-white text-sm font-medium rounded-lg hover:bg-[#0d8082] transition-colors">Save AI Settings</button>
-              </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4">
+                  {aiSaveMsg && <span className={`text-sm font-medium ${aiSaveMsg === 'Saved!' ? 'text-green-600' : 'text-red-600'}`}>{aiSaveMsg}</span>}
+                  <button onClick={handleSaveAiSettings} disabled={aiSaving} className="px-6 py-2.5 bg-[#15aaad] text-white text-sm font-medium rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-50">
+                    {aiSaving ? 'Saving...' : 'Save AI Settings'}
+                  </button>
+                </div>
+              </>)}
             </div>
           )}
         </div>
@@ -640,7 +669,13 @@ function ManagerSettings() {
     { id: 3, device: 'Mobile App on iPhone', location: 'Abu Dhabi, UAE', lastActive: '1 day ago', status: 'inactive' },
   ]);
   const [alertSettings, setAlertSettings] = useState({ lowStockThreshold: '20', criticalStockThreshold: '5', expiryWarningDays: '30', emailNotifications: true, pushNotifications: true, smsNotifications: false });
-  const [aiSettings] = useState({ demandForecastingEnabled: true, autoCategorization: true, smartReordering: false, priceOptimization: false, forecastPeriod: '30', confidenceThreshold: '75' });
+  const [aiSettings, setAiSettings] = useState(null);
+  useEffect(() => {
+    fetch('/api/AIConfigurations')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setAiSettings(data); })
+      .catch(() => {});
+  }, []);
 
   const tabs = [
     { id: 'store-info', icon: Store, label: 'Store Info' },
@@ -751,11 +786,11 @@ function ManagerSettings() {
               <div className="bg-white rounded-xl border border-gray-200">
                 <div className="p-6 border-b border-gray-200"><h3 className="text-lg font-semibold text-gray-900">Active AI Features</h3><p className="text-sm text-gray-600 mt-1">Current AI-powered automation status</p></div>
                 <div className="p-6 space-y-4">
-                  {[
-                    { label: 'Demand Forecasting', enabled: aiSettings.demandForecastingEnabled, desc: 'Predict future inventory needs' },
+                  {!aiSettings ? (
+                    <div className="text-sm text-gray-400">Loading...</div>
+                  ) : [
+                    { label: 'Demand Forecasting', enabled: aiSettings.demandForecasting, desc: 'Predict future inventory needs' },
                     { label: 'Auto-Categorization', enabled: aiSettings.autoCategorization, desc: 'Automatically categorize new products' },
-                    { label: 'Smart Reordering', enabled: aiSettings.smartReordering, desc: 'Intelligent restocking recommendations' },
-                    { label: 'Price Optimization', enabled: aiSettings.priceOptimization, desc: 'Dynamic pricing suggestions' },
                   ].map((feature) => (
                     <div key={feature.label} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
                       <div><div className="text-sm font-medium text-gray-900">{feature.label}</div><div className="text-xs text-gray-600 mt-0.5">{feature.desc}</div></div>

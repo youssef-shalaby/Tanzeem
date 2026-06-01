@@ -1,95 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Bell, User, Shield } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { NotificationPanel } from './NotificationPanel';
 
-const mockNotifications = [
-  {
-    id: 1,
-    type: 'critical',
-    title: 'Critical Stock Level',
-    message: 'Office Chair - Ergonomic (SKU: OC-884) has reached critical stock level. Only 3 units remaining.',
-    time: '5 minutes ago',
-    read: false,
-  },
-  {
-    id: 2,
-    type: 'low-stock',
-    title: 'Low Stock Alert',
-    message: 'Wireless Mouse (SKU: WM-445) is running low. Current stock: 12 units.',
-    time: '1 hour ago',
-    read: false,
-  },
-  {
-    id: 3,
-    type: 'order',
-    title: 'New Order Received',
-    message: 'Order #ORD-3495 from Acme Corp has been received and is pending processing.',
-    time: '2 hours ago',
-    read: false,
-  },
-  {
-    id: 4,
-    type: 'delivery',
-    title: 'Delivery Scheduled',
-    message: 'Order #ORD-3492 is scheduled for delivery today at 3:00 PM.',
-    time: '3 hours ago',
-    read: true,
-  },
-  {
-    id: 5,
-    type: 'success',
-    title: 'Stock Added Successfully',
-    message: '50 units of Office Chair - Ergonomic have been added to inventory.',
-    time: '5 hours ago',
-    read: true,
-  },
-];
-
 export function Header() {
+  const navigate = useNavigate();
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const roleSection = 'admin'; // change manually if needed
 
   const getRoleColor = () => {
     switch (roleSection) {
-      case 'admin':
-        return 'bg-purple-600';
-      case 'manager':
-        return 'bg-blue-600';
-      case 'staff':
-        return 'bg-green-600';
-      default:
-        return 'bg-gray-600';
+      case 'admin':   return 'bg-purple-600';
+      case 'manager': return 'bg-blue-600';
+      case 'staff':   return 'bg-green-600';
+      default:        return 'bg-gray-600';
     }
   };
 
   const getRoleLabel = () => {
     switch (roleSection) {
-      case 'admin':
-        return 'Admin';
-      case 'manager':
-        return 'Manager';
-      case 'staff':
-        return 'Staff';
-      default:
-        return roleSection;
+      case 'admin':   return 'Admin';
+      case 'manager': return 'Manager';
+      case 'staff':   return 'Staff';
+      default:        return roleSection;
     }
   };
 
-  const handleMarkAsRead = (id) => {
-    setNotifications(
-      notifications.map((n) =>
-        n.id === id ? { ...n, read: true } : n
-      )
-    );
+  const fetchUnreadCount = () => {
+    fetch('/api/Notification?Page=1&Page_Size=100')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data?.data) return;
+        const count = data.data.filter((n) => !n.isRead).length;
+        setUnreadCount(count);
+      })
+      .catch(() => {});
   };
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
-  };
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  useEffect(() => {
+    fetchUnreadCount();
+  }, []);
 
   return (
     <>
@@ -109,9 +61,7 @@ export function Header() {
           <div className="flex items-center gap-3 ml-6">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
               <Shield className="w-4 h-4 text-gray-500" />
-              <span
-                className={`text-xs font-semibold text-white px-2 py-0.5 rounded ${getRoleColor()}`}
-              >
+              <span className={`text-xs font-semibold text-white px-2 py-0.5 rounded ${getRoleColor()}`}>
                 {getRoleLabel()}
               </span>
             </div>
@@ -121,18 +71,20 @@ export function Header() {
               className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors relative"
             >
               <Bell className="w-[18px] h-[18px] text-gray-700" />
-
               {unreadCount > 0 && (
                 <>
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#15aaad] rounded-full"></span>
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#15aaad] rounded-full" />
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#15aaad] text-white text-[10px] font-semibold rounded-full flex items-center justify-center">
-                    {unreadCount}
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 </>
               )}
             </button>
 
-            <button className="w-9 h-9 rounded-lg bg-[#15aaad] flex items-center justify-center">
+            <button
+              onClick={() => navigate('/profile')}
+              className="w-9 h-9 rounded-lg bg-[#15aaad] flex items-center justify-center hover:bg-[#0d8082] transition-colors"
+            >
               <User className="w-[18px] h-[18px] text-white" />
             </button>
           </div>
@@ -142,9 +94,7 @@ export function Header() {
       <NotificationPanel
         isOpen={isNotificationPanelOpen}
         onClose={() => setIsNotificationPanelOpen(false)}
-        notifications={notifications}
-        onMarkAsRead={handleMarkAsRead}
-        onMarkAllAsRead={handleMarkAllAsRead}
+        onUnreadCountChange={fetchUnreadCount}
       />
     </>
   );

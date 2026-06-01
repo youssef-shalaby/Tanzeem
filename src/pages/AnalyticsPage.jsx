@@ -9,33 +9,83 @@ export function AnalyticsPage() {
   const [forecastData, setForecastData] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  // Summary counts that accumulate across ALL pages (fetched once on mount)
-  const [globalSummary, setGlobalSummary] = useState({ urgent: 0, highDemand: 0, avgConfidence: 0 });
+  const [miniDashboard, setMiniDashboard] = useState({
+    totalProductForecasted: 0,
+    itemsNeedRestock: 0,
+    highDemandItems: 0,
+    averageForecastConfidence: 0,
+  });
+  const [topCategories, setTopCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
+
+  const CATEGORY_COLORS = [
+    'bg-[#15aaad]',
+    'bg-blue-500',
+    'bg-purple-500',
+    'bg-orange-500',
+    'bg-pink-500',
+    'bg-green-500',
+    'bg-red-500',
+    'bg-yellow-500',
+    'bg-indigo-500',
+    'bg-teal-500',
+  ];
 
   const scrollToForecast = () => {
     document.getElementById('demand-forecast-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Fetch a large page once on mount to compute accurate summary stats
+  // Fetch mini dashboard summary stats from the dedicated endpoint
   useEffect(() => {
-    fetch(`/api/DemandForecasting?page=1&page_size=1000`)
+    fetch('/api/DemandForecasting/Get_mini_dashboard')
       .then((res) => res.ok ? res.json() : null)
       .then((body) => {
-        if (!body?.data) return;
-        const all = body.data;
-        const urgent = all.filter((i) => i.demand_occurs && (i.predicted_units ?? 0) > 0).length;
-        const highDemand = all.filter((i) => (i.predicted_units ?? 0) > 50).length;
-        const avgConf = all.length > 0
-          ? Math.round(all.reduce((a, i) => a + (i.confidence ?? 0), 0) / all.length * 100)
-          : 0;
-        setGlobalSummary({ urgent, highDemand, avgConfidence: avgConf });
+        if (!body) return;
+        setMiniDashboard({
+          totalProductForecasted: body.totalProductForecasted ?? 0,
+          itemsNeedRestock: body.itemsNeedRestock ?? 0,
+          highDemandItems: body.highDemandItems ?? 0,
+          averageForecastConfidence: body.averageForecastConfidence ?? 0,
+        });
       })
       .catch(() => {});
   }, []);
 
-  // Paginated table fetch
+  // Fetch top categories from the dedicated endpoint
+  useEffect(() => {
+    fetch('/api/DemandForecasting/Get_Top_Categories_By_Forecast')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+
+        // Filter out placeholder entries (categoryName === 'string') and deduplicate by name
+        const seen = new Set();
+        const cleaned = data.filter((c) => {
+          if (!c.categoryName || c.categoryName === 'string') return false;
+          if (seen.has(c.categoryName)) return false;
+          seen.add(c.categoryName);
+          return true;
+        });
+
+        // Compute bar widths: if all counts are 0 distribute equally, otherwise scale to max
+        const maxCount = Math.max(...cleaned.map((c) => c.categoryCount ?? 0));
+        const mapped = cleaned.map((c, i) => ({
+          category: c.categoryName,
+          count: c.categoryCount ?? 0,
+          // When counts are all zero show equal bars at 60% to indicate data is present but not counted yet
+          percentage: maxCount > 0
+            ? Math.round(((c.categoryCount ?? 0) / maxCount) * 90) + 10
+            : 60,
+          color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+        }));
+
+        setTopCategories(mapped);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Paginated table fetch — PascalCase params for ASP.NET Core backend
   useEffect(() => {
     setLoading(true);
     fetch(`/api/DemandForecasting?page=${currentPage}&page_size=${itemsPerPage}`)
@@ -59,10 +109,14 @@ export function AnalyticsPage() {
             ? 'No demand expected'
             : 'Monitor stock levels',
         }));
+        if (mapped.length === 0 && (body.totalCount ?? 0) > 0) {
+          console.warn('[AnalyticsPage] data[] is empty but totalCount > 0. Check query param names. Raw body:', JSON.stringify(body));
+        }
         setForecastData(mapped);
-        // Compute totalPages defensively — some backends return 0 when there's 1 page of results
-        const count = body.totalCount || 0;
-        const pages = body.totalPages && body.totalPages > 0
+
+        const count = body.totalCount ?? 0;
+        // Guard against negative/zero/overflow totalPages from the backend
+        const pages = body.totalPages > 0
           ? body.totalPages
           : Math.max(1, Math.ceil(count / itemsPerPage));
         setTotalPages(pages);
@@ -119,7 +173,7 @@ export function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Summary Cards — all use global counts, not current-page slice */}
+      {/* Summary Cards — sourced from Get_mini_dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
         <div className="bg-white rounded-xl p-5 border border-gray-200">
           <div className="flex items-center justify-between mb-3">
@@ -128,7 +182,7 @@ export function AnalyticsPage() {
             </div>
             <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">AI</span>
           </div>
-          <div className="text-2xl font-semibold text-gray-900 mb-1">{totalCount}</div>
+          <div className="text-2xl font-semibold text-gray-900 mb-1">{miniDashboard.totalProductForecasted}</div>
           <div className="text-sm text-gray-600">Total Products Forecasted</div>
         </div>
 
@@ -139,7 +193,7 @@ export function AnalyticsPage() {
             </div>
             <span className="text-xs font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded-full">Urgent</span>
           </div>
-          <div className="text-2xl font-semibold text-gray-900 mb-1">{globalSummary.urgent}</div>
+          <div className="text-2xl font-semibold text-gray-900 mb-1">{miniDashboard.itemsNeedRestock}</div>
           <div className="text-sm text-gray-600">Items Need Restock</div>
         </div>
 
@@ -150,7 +204,7 @@ export function AnalyticsPage() {
             </div>
             <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">Active</span>
           </div>
-          <div className="text-2xl font-semibold text-gray-900 mb-1">{globalSummary.highDemand}</div>
+          <div className="text-2xl font-semibold text-gray-900 mb-1">{miniDashboard.highDemandItems}</div>
           <div className="text-sm text-gray-600">High Demand Items</div>
         </div>
 
@@ -162,7 +216,9 @@ export function AnalyticsPage() {
             <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full">On Track</span>
           </div>
           <div className="text-2xl font-semibold text-gray-900 mb-1">
-            {globalSummary.avgConfidence > 0 ? `${globalSummary.avgConfidence}%` : '—'}
+            {miniDashboard.averageForecastConfidence > 0
+              ? `${miniDashboard.averageForecastConfidence}%`
+              : '—'}
           </div>
           <div className="text-sm text-gray-600">Avg Forecast Confidence</div>
         </div>
@@ -335,32 +391,34 @@ export function AnalyticsPage() {
           </div>
         </div>
 
+        {/* Top Categories — live from Get_Top_Categories_By_Forecast */}
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="p-5 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Top Categories by Forecast</h3>
           </div>
           <div className="p-6">
-            <div className="space-y-5">
-              {[
-                { category: 'Electronics', demand: 850, percentage: 85, color: 'bg-[#15aaad]' },
-                { category: 'Furniture', demand: 520, percentage: 65, color: 'bg-blue-500' },
-                { category: 'Stationery', demand: 420, percentage: 52, color: 'bg-purple-500' },
-                { category: 'Office Equipment', demand: 310, percentage: 38, color: 'bg-orange-500' },
-              ].map((cat, index) => (
-                <div key={index}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm font-medium text-gray-900">{cat.category}</div>
-                    <div className="text-sm text-gray-600">{cat.demand} units</div>
+            {topCategories.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">No category data available.</p>
+            ) : (
+              <div className="space-y-5">
+                {topCategories.map((cat, index) => (
+                  <div key={index}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium text-gray-900">{cat.category}</div>
+                      <div className="text-sm text-gray-600">
+                        {cat.count > 0 ? `${cat.count} units` : 'Pending data'}
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className={`${cat.color} h-2.5 rounded-full transition-all`}
+                        style={{ width: `${cat.percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div
-                      className={`${cat.color} h-2.5 rounded-full transition-all`}
-                      style={{ width: `${cat.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
