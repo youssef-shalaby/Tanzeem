@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate, useLocation, useParams } from 'react-router';
 
 function getToken() {
   try {
@@ -14,51 +14,72 @@ const EMPTY_FORM = {
   productName: '',
   sku: '',
   category: '',
-  price: '',
+  sellingPrice: '',
+  costPrice: '',
   stockLevel: '',
   reorderLevel: '',
   expiryDate: '',
+  barcode: '',
   description: '',
   status: 'Active',
 };
 
+function productToForm(p) {
+  return {
+    productName: p.name || '',
+    sku: p.sku || '',
+    category: p.category || '',
+    sellingPrice: String(p.sellingPrice ?? p.price ?? ''),
+    costPrice: String(p.costPrice ?? ''),
+    stockLevel: String(p.stock ?? p.stockLevel ?? ''),
+    reorderLevel: String(p.reorderLevel ?? ''),
+    expiryDate: p.expiryDate && p.expiryDate !== 'N/A' && p.expiryDate !== '—'
+      ? new Date(p.expiryDate).toISOString().split('T')[0]
+      : '',
+    barcode: p.barcode && p.barcode !== '—' ? p.barcode : '',
+    description: p.description || '',
+    status: p.status || 'Active',
+  };
+}
+
 export function EditProductPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id } = useParams();
 
-  const product = location.state?.product || null;
-
-  const [formData, setFormData] = useState(() => {
-    if (!product) return EMPTY_FORM;
-    return {
-      productName: product.name || '',
-      sku: product.sku || '',
-      category: product.category || '',
-      price: String(product.price ?? ''),
-      stockLevel: String(product.stockLevel ?? ''),
-      reorderLevel: String(product.reorderLevel ?? ''),
-      expiryDate: product.expiryDate && product.expiryDate !== 'N/A'
-        ? new Date(product.expiryDate).toISOString().split('T')[0]
-        : '',
-      description: product.description || '',
-      status: product.status || 'Active',
-    };
-  });
-
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
-  if (!product) return (
-    <div className="p-6 text-center">
-      <p className="text-gray-500 mb-4">Product data not found. Please go back and try again.</p>
-      <button
-        onClick={() => navigate('/products')}
-        className="px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors"
-      >
-        Back to Products
-      </button>
-    </div>
-  );
+  // Fetch product by id — use router state if available to avoid extra round-trip
+  useEffect(() => {
+    const stateProduct = location.state?.product;
+    if (stateProduct) {
+      setFormData(productToForm(stateProduct));
+      setLoading(false);
+      return;
+    }
+
+    if (!id) { setLoading(false); return; }
+
+    fetch(`/api/Products/Get-Product/${id}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        const raw = data?.data ?? data;
+        setFormData(productToForm(raw));
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [id]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -69,27 +90,27 @@ export function EditProductPage() {
     setSaving(true);
     setSaveError(null);
 
+    // Matches the Swagger PUT payload exactly
     const payload = {
       name: formData.productName,
       sku: formData.sku,
       category: formData.category,
-      sellingPrice: parseFloat(formData.price) || 0,
       stock: parseInt(formData.stockLevel, 10) || 0,
-      reorderLevel: parseInt(formData.reorderLevel, 10) || 0,
-      expiryDate: formData.expiryDate || null,
+      costPrice: parseFloat(formData.costPrice) || 0,
+      sellingPrice: parseFloat(formData.sellingPrice) || 0,
+      expiryDate: formData.expiryDate ? new Date(formData.expiryDate).toISOString() : null,
+      barcode: formData.barcode || '',
       description: formData.description,
+      reorderLevel: parseInt(formData.reorderLevel, 10) || 0,
       status: formData.status,
     };
 
-    const token = getToken();
-
     try {
-      // ⚠️ Verify the exact PUT endpoint path in Swagger — adjust if different
-      const res = await fetch(`/api/Products/Update-Product/${formData.sku}`, {
+      const res = await fetch(`/api/Products/Update-Product/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
         },
         body: JSON.stringify(payload),
       });
@@ -107,6 +128,24 @@ export function EditProductPage() {
       setSaving(false);
     }
   };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-96 text-sm text-gray-500">
+      Loading product...
+    </div>
+  );
+
+  if (!id) return (
+    <div className="p-6 text-center">
+      <p className="text-gray-500 mb-4">Product not found. Please go back and try again.</p>
+      <button
+        onClick={() => navigate('/products')}
+        className="px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors"
+      >
+        Back to Products
+      </button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -172,24 +211,27 @@ export function EditProductPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Category <span className="text-red-500">*</span>
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={formData.category}
                     onChange={(e) => handleChange('category', e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    placeholder="Enter category"
                     required
-                  >
-                    <option value="">Select category</option>
-                    <option value="Electronics">Electronics</option>
-                    <option value="Accessories">Accessories</option>
-                    <option value="Office Supplies">Office Supplies</option>
-                    <option value="Furniture">Furniture</option>
-                    <option value="Food & Beverage">Food & Beverage</option>
-                    <option value="Health & Beauty">Health & Beauty</option>
-                    <option value="Beverages">Beverages</option>
-                    <option value="Stationery">Stationery</option>
-                    <option value="Home Appliances">Home Appliances</option>
-                    <option value="Footwear">Footwear</option>
-                  </select>
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Barcode
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.barcode}
+                    onChange={(e) => handleChange('barcode', e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    placeholder="Enter barcode"
+                  />
                 </div>
 
                 <div>
@@ -222,19 +264,34 @@ export function EditProductPage() {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Pricing</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="md:col-span-2">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Unit Price <span className="text-red-500">*</span>
+                    Selling Price <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
-                    value={formData.price}
-                    onChange={(e) => handleChange('price', e.target.value)}
+                    value={formData.sellingPrice}
+                    onChange={(e) => handleChange('sellingPrice', e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
                     placeholder="0.00"
                     required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cost Price
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.costPrice}
+                    onChange={(e) => handleChange('costPrice', e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    placeholder="0.00"
                   />
                 </div>
               </div>
