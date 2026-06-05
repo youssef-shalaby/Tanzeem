@@ -11,6 +11,14 @@ const ISSUE_TYPE_LABELS = {
   4: 'Incorrect',
 };
 
+
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
 export function DeliveryIssuesPage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,7 +32,12 @@ export function DeliveryIssuesPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/DeliveryIssues?page=${currentPage}&page_size=${itemsPerPage}`)
+    fetch(`/api/DeliveryIssues?page=${currentPage}&page_size=${itemsPerPage}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch delivery issues');
         return res.json();

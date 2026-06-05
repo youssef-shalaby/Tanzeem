@@ -2,6 +2,24 @@ import { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
+
+function authFetch(url) {
+  const token = getToken();
+  return fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  }).then((r) => r.json());
+}
+
 export function CreateOrderPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,14 +46,11 @@ export function CreateOrderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Always pass page_size — omitting it causes the backend to default to 0 and return nothing
-    fetch('/api/Supplier/lookup')
-      .then((res) => res.json())
+    authFetch('/api/Supplier/lookup')
       .then((data) => setSuppliersDropdown(data || []))
       .catch((err) => console.error('Failed to load suppliers:', err));
 
-    fetch('/api/Products/Get-Products-Dropdown-Menu')
-      .then((res) => res.json())
+    authFetch('/api/Products/Get-Products-Dropdown-Menu')
       .then((data) => setProductsDropdown(data || []))
       .catch((err) => console.error('Failed to load products:', err));
   }, []);
@@ -86,6 +101,8 @@ export function CreateOrderPage() {
 
     setIsSubmitting(true);
 
+    const token = getToken();
+
     const payload = {
       supplierId: parseInt(formData.supplierId),
       orderDate: new Date(formData.orderDate).toISOString(),
@@ -105,7 +122,10 @@ export function CreateOrderPage() {
 
     fetch('/api/Order', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(payload),
     })
       .then((res) => {

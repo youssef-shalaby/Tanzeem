@@ -2,6 +2,22 @@ import { X, Package, TruckIcon, Clock, Skull } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
+
+function authHeaders() {
+  const token = getToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 function getNotificationMeta(type) {
   switch (type) {
     case 1:  return { Icon: Skull,     color: 'text-orange-600', bg: 'bg-orange-100' };
@@ -31,7 +47,7 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    fetch('/api/Notification?Page=1&Page_Size=20')
+    fetch('/api/Notification?Page=1&Page_Size=20', { headers: authHeaders() })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data?.data) setNotifications(data.data);
@@ -41,7 +57,10 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
   }, [isOpen]);
 
   const handleMarkAsRead = (id) => {
-    fetch(`/api/Notification/mark-as-read/${id}`, { method: 'PATCH' })
+    fetch(`/api/Notification/mark-as-read/${id}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+    })
       .then((r) => r.ok ? r.json() : null)
       .then(() => {
         setNotifications((prev) =>
@@ -55,7 +74,7 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
   const handleMarkAllAsRead = () => {
     fetch('/api/Notification/mark-all-read', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({}),
     })
       .then((r) => r.text().then((t) => {

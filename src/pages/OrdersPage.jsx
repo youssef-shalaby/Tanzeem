@@ -8,6 +8,14 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
 export function OrdersPage() {
   const navigate = useNavigate();
 
@@ -37,7 +45,12 @@ export function OrdersPage() {
 
   // Dashboard Stats
   useEffect(() => {
-    fetch("/api/Order/mini_order_dashboard")
+    fetch("/api/Order/mini_order_dashboard", {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -70,7 +83,12 @@ export function OrdersPage() {
       url += `&sortId=${sortId}`;
     }
 
-    fetch(url)
+    fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => {
         if (!res.ok)
           throw new Error("Failed to fetch orders.");
@@ -98,7 +116,12 @@ export function OrdersPage() {
 
   // Delivery Issues Fetch
   useEffect(() => {
-    fetch("/api/DeliveryIssues?page=1&page_size=1000")
+    fetch("/api/DeliveryIssues?page=1&page_size=1000", {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data) return;

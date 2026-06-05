@@ -34,6 +34,24 @@ const CATEGORY_COLORS = [
   "#6b7280",
 ];
 
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
+
+function authFetch(url) {
+  const token = getToken();
+  return fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  }).then((r) => r.json());
+}
+
 export function DashboardPage() {
   const [boxes, setBoxes] = useState(null);
   const [topItems, setTopItems] = useState([]);
@@ -44,11 +62,11 @@ export function DashboardPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/Dashboard/get_four_boxes").then((r) => r.json()),
-      fetch("/api/Dashboard/get_top_moving_items").then((r) => r.json()),
-      fetch("/api/Dashboard/get_category_distribution").then((r) => r.json()),
-      fetch("/api/Dashboard/get_bar_chart_IN-OUT").then((r) => r.json()),
-      fetch("/api/Dashboard/get_line_chart_stock_value").then((r) => r.json()),
+      authFetch("/api/Dashboard/get_four_boxes"),
+      authFetch("/api/Dashboard/get_top_moving_items"),
+      authFetch("/api/Dashboard/get_category_distribution"),
+      authFetch("/api/Dashboard/get_bar_chart_IN-OUT"),
+      authFetch("/api/Dashboard/get_line_chart_stock_value"),
     ])
       .then(([boxesData, topData, catData, barChartData, lineChartData]) => {
         setBoxes(boxesData);

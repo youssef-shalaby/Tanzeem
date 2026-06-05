@@ -51,6 +51,14 @@ function priorityFilterStyle(priority, active) {
   return 'bg-gray-100 text-gray-600 hover:bg-gray-200';
 }
 
+
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
 export function AlertsPage() {
   const navigate = useNavigate();
 
@@ -68,7 +76,12 @@ export function AlertsPage() {
 
   // Fetch dashboard counts
   useEffect(() => {
-    fetch('/api/Alert/mini_Alert_dashboard')
+    fetch('/api/Alert/mini_Alert_dashboard', {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data) setDashboard(data); })
       .catch(() => {});
@@ -82,7 +95,12 @@ export function AlertsPage() {
       Page_Size: itemsPerPage,
     });
 
-    fetch(`/api/Alert?${params}`)
+    fetch(`/api/Alert?${params}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((r) => {
         if (!r.ok) throw new Error('Failed to fetch alerts');
         return r.json();

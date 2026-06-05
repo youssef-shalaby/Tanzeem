@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
 
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
+
 export function EditSupplierPage() {
   const navigate = useNavigate();
   const { supplierId } = useParams();
@@ -18,7 +26,7 @@ export function EditSupplierPage() {
     country: '',
     tax_Id: '',
     notes: '',
-    supplierStatus: '0',
+    supplierStatus: '1', // 1 = Active, 0 = Inactive
   });
 
   const [loading, setLoading] = useState(true);
@@ -29,7 +37,12 @@ export function EditSupplierPage() {
   useEffect(() => {
     setLoading(true);
 
-    fetch(`/api/Supplier/${supplierId}`)
+    fetch(`/api/Supplier/${supplierId}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => {
         if (res.status === 404) {
           setNotFound(true);
@@ -79,7 +92,10 @@ export function EditSupplierPage() {
     try {
       const res = await fetch(`/api/Supplier/${supplierId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+        'Content-Type': 'application/json',
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
         body: JSON.stringify({
           ...formData,
           supplierStatus: parseInt(formData.supplierStatus),

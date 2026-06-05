@@ -3,6 +3,14 @@
 import { useEffect, useState } from 'react';
 import { TrendingUp, Package, AlertCircle, Download, BarChart3, Target, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
+
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
 export function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState('30days');
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,7 +46,12 @@ export function AnalyticsPage() {
 
   // Fetch mini dashboard summary stats from the dedicated endpoint
   useEffect(() => {
-    fetch('/api/DemandForecasting/Get_mini_dashboard')
+    fetch('/api/DemandForecasting/Get_mini_dashboard', {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => res.ok ? res.json() : null)
       .then((body) => {
         if (!body) return;
@@ -54,7 +67,12 @@ export function AnalyticsPage() {
 
   // Fetch top categories from the dedicated endpoint
   useEffect(() => {
-    fetch('/api/DemandForecasting/Get_Top_Categories_By_Forecast')
+    fetch('/api/DemandForecasting/Get_Top_Categories_By_Forecast', {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (!Array.isArray(data)) return;
@@ -88,7 +106,12 @@ export function AnalyticsPage() {
   // Paginated table fetch — PascalCase params for ASP.NET Core backend
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/DemandForecasting?page=${currentPage}&page_size=${itemsPerPage}`)
+    fetch(`/api/DemandForecasting?page=${currentPage}&page_size=${itemsPerPage}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch forecast data');
         return res.json();

@@ -74,6 +74,14 @@ function CopyButton({ value }) {
   );
 }
 
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
+
 // ------- Main Page -------
 export function ViewSupplierPage() {
   const navigate = useNavigate();
@@ -86,7 +94,12 @@ export function ViewSupplierPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/Supplier/${supplierId}`)
+    fetch(`/api/Supplier/${supplierId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch supplier');
         return res.json();

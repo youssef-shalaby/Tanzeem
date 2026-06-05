@@ -4,6 +4,22 @@ import { useState, useEffect } from 'react';
 
 const ISSUE_TYPE_MAP = { damaged: 0, missing: 1, incorrect: 2, defective: 3, other: 4 };
 
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
+
+function authHeaders() {
+  const token = getToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 export function ConfirmDeliveryPage() {
   const navigate = useNavigate();
   const { orderId } = useParams();
@@ -22,7 +38,6 @@ export function ConfirmDeliveryPage() {
     const stateOrder = location.state?.order;
     const stateItems = location.state?.items ?? stateOrder?.itemsConfirmResponseDtos;
 
-    // If navigation state already contains items, use them directly
     if (stateItems?.length) {
       const base = stateOrder || {};
       setOrder({ ...base, itemsConfirmResponseDtos: stateItems });
@@ -31,8 +46,7 @@ export function ConfirmDeliveryPage() {
       return;
     }
 
-    // Otherwise fetch from View_Order_Confirm
-    fetch(`/api/Order/View_Order_Confirm/${orderId}`)
+    fetch(`/api/Order/View_Order_Confirm/${orderId}`, { headers: authHeaders() })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load order.');
         return res.json();
@@ -102,8 +116,6 @@ export function ConfirmDeliveryPage() {
     setSubmitting(true);
 
     const resolvedOrderId = order.orderId ?? order.id ?? parseInt(orderId);
-    console.log('[ConfirmDelivery] order object:', order);
-    console.log('[ConfirmDelivery] resolved orderId being sent:', resolvedOrderId);
 
     const payload = {
       orderId: resolvedOrderId,
@@ -120,12 +132,11 @@ export function ConfirmDeliveryPage() {
 
     fetch('/api/Order/ConfirmDelivery', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify(payload),
     })
       .then(async (res) => {
         if (!res.ok) {
-          // Read the actual server error instead of a generic message
           let serverMessage = 'Failed to confirm delivery.';
           try {
             const contentType = res.headers.get('content-type') || '';
@@ -142,7 +153,6 @@ export function ConfirmDeliveryPage() {
         navigate(`/orders/${orderId}`);
       })
       .catch((err) => {
-        // This now runs for BOTH network failures AND bad server responses
         alert(err.message);
         setSubmitting(false);
       });

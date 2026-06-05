@@ -37,6 +37,7 @@ export function ProductsPage() {
   const [filterId, setFilterId] = useState("all");
   const [sortId, setSortId] = useState("");
 
+  const [categories, setCategories] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -95,6 +96,18 @@ export function ProductsPage() {
         }));
 
         setProductsList(normalizedProducts);
+
+        // Derive unique categories from the full unfiltered product list
+        // only when no category filter is active (so we always have the full list)
+        if (filterId === "all") {
+          const unique = [...new Map(
+            rawArray
+              .filter((p) => p.categoryId && p.category)
+              .map((p) => [p.categoryId, { id: p.categoryId, name: p.category }])
+          ).values()];
+          setCategories(unique);
+        }
+
         setLoading(false);
       })
       .catch((err) => {
@@ -221,8 +234,11 @@ export function ProductsPage() {
             className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
           >
             <option value="all">All Categories</option>
-            <option value="1">Category 1</option>
-            <option value="2">Category 2</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
           </select>
 
           {/* Sort */}
@@ -235,12 +251,9 @@ export function ProductsPage() {
             className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
           >
             <option value="">Default Sort</option>
-            <option value="0">Name A → Z</option>
-            <option value="1">Name Z → A</option>
-            <option value="2">Price ↓ (Highest)</option>
-            <option value="3">Price ↑ (Lowest)</option>
-            <option value="4">Stock ↓ (Most)</option>
-            <option value="5">Stock ↑ (Least)</option>
+            <option value="1">Name A → Z</option>
+            <option value="2">Price (Selling)</option>
+            <option value="3">Quantity (Stock)</option>
           </select>
         </div>
       </div>

@@ -16,6 +16,14 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams, useLocation, Link } from "react-router";
 
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Cancel Confirmation Modal ────────────────────────────────────────────────
 function CancelModal({ orderId, orderIdDisplay, onClose, onCancelled }) {
   const [cancelling, setCancelling] = useState(false);
@@ -25,7 +33,13 @@ function CancelModal({ orderId, orderIdDisplay, onClose, onCancelled }) {
     setCancelling(true);
     setError("");
     try {
-      const res = await fetch(`/api/Order/${orderId}`, { method: "DELETE" });
+      const res = await fetch(`/api/Order/${orderId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    });
       if (!res.ok) throw new Error("Failed to cancel order.");
       onCancelled();
     } catch (err) {
@@ -149,7 +163,10 @@ function EditModal({ order, items: initialItems, onClose, onSaved }) {
 
       const res = await fetch(`/api/Order/${order.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
@@ -370,7 +387,12 @@ export function ViewOrderPage() {
     setLoading(true);
     const stateOrder = location.state?.order;
 
-    fetch(`/api/Order/${orderId}`)
+    fetch(`/api/Order/${orderId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch order details.");
         return res.json();
@@ -399,7 +421,12 @@ export function ViewOrderPage() {
 
   // Fetch delivery issues for this order
   useEffect(() => {
-    fetch(`/api/DeliveryIssues?page=1&page_size=100`)
+    fetch(`/api/DeliveryIssues?page=1&page_size=100`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data) return;
@@ -565,7 +592,7 @@ export function ViewOrderPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate("/orders")}
+            onClick={() => navigate(-1)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />

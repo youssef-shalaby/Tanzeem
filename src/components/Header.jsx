@@ -1,17 +1,27 @@
 import { useState, useEffect } from 'react';
 import { Search, Bell, User, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { useAuth } from '../contexts/AuthContext';
 import { NotificationPanel } from './NotificationPanel';
+
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
 
 export function Header() {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const roleSection = 'admin'; // change manually if needed
+  const role = currentUser?.role || 'staff';
 
   const getRoleColor = () => {
-    switch (roleSection) {
+    switch (role) {
       case 'admin':   return 'bg-purple-600';
       case 'manager': return 'bg-blue-600';
       case 'staff':   return 'bg-green-600';
@@ -20,25 +30,30 @@ export function Header() {
   };
 
   const getRoleLabel = () => {
-    switch (roleSection) {
+    switch (role) {
       case 'admin':   return 'Admin';
       case 'manager': return 'Manager';
       case 'staff':   return 'Staff';
-      default:        return roleSection;
+      default:        return role;
     }
   };
 
-const fetchUnreadCount = () => {
-  fetch('/api/Notification?Page=1&Page_Size=100')
-    .then((r) => r.ok ? r.json() : null)
-    .then((data) => {
-      if (!data?.data) return;
-      const count = data.data.filter((n) => !n.isRead).length;
-      console.log('fetchUnreadCount result:', count, data.data.map(n => ({ id: n.id, isRead: n.isRead })));
-      setUnreadCount(count);
+  const fetchUnreadCount = () => {
+    const token = getToken();
+    fetch('/api/Notification?Page=1&Page_Size=100', {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     })
-    .catch(() => {});
-};
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data?.data) return;
+        const count = data.data.filter((n) => !n.isRead).length;
+        setUnreadCount(count);
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     fetchUnreadCount();

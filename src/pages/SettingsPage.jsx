@@ -184,7 +184,12 @@ function AdminSettings() {
   const [alertSaveMsg, setAlertSaveMsg] = useState('');
 
   useEffect(() => {
-    fetch('/api/AlertConfigurations')
+    fetch('/api/AlertConfigurations', {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data) setAlertSettings(data); })
       .catch(() => {});
@@ -195,7 +200,10 @@ function AdminSettings() {
     setAlertSaving(true);
     fetch('/api/AlertConfigurations', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
       body: JSON.stringify(alertSettings),
     })
       .then((r) => r.ok ? r.json() : Promise.reject())
@@ -210,7 +218,12 @@ function AdminSettings() {
   const [aiSaveMsg, setAiSaveMsg] = useState('');
 
   useEffect(() => {
-    fetch('/api/AIConfigurations')
+    fetch('/api/AIConfigurations', {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data) setAiSettings(data); })
       .catch(() => {});
@@ -221,7 +234,10 @@ function AdminSettings() {
     setAiSaving(true);
     fetch('/api/AIConfigurations', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
       body: JSON.stringify(aiSettings),
     })
       .then((r) => r.ok ? r.json() : Promise.reject())
@@ -671,7 +687,12 @@ function ManagerSettings() {
   const [alertSettings, setAlertSettings] = useState({ lowStockThreshold: '20', criticalStockThreshold: '5', expiryWarningDays: '30', emailNotifications: true, pushNotifications: true, smsNotifications: false });
   const [aiSettings, setAiSettings] = useState(null);
   useEffect(() => {
-    fetch('/api/AIConfigurations')
+    fetch('/api/AIConfigurations', {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data) setAiSettings(data); })
       .catch(() => {});
@@ -884,6 +905,14 @@ function StaffSettings() {
 }
 
 // ─── Main Export ───────────────────────────────────────────────────────────
+
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
 export function SettingsPage() {
   const { currentUser } = useAuth();
   const role = currentUser?.role?.toLowerCase() ?? 'staff';

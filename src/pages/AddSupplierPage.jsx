@@ -2,6 +2,14 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useNavigate } from "react-router";
 
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
+
 export function AddSupplierPage() {
   const navigate = useNavigate();
 
@@ -19,7 +27,7 @@ export function AddSupplierPage() {
     contactPersonName: "",
     tax_Id: "",
     notes: "",
-    supplierStatus: 0, // 0 maps to Active based on backend schema enum
+    supplierStatus: 0, // 0 = Active, 1 = Inactive
   });
 
   const handleChange = (e) => {
@@ -43,6 +51,7 @@ export function AddSupplierPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
         },
         body: JSON.stringify(formData),
       });
@@ -77,7 +86,7 @@ export function AddSupplierPage() {
 
         <button
           type="button"
-          onClick={() => navigate("/suppliers")}
+          onClick={() => navigate(-1)}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <X className="w-5 h-5 text-gray-600" />
@@ -135,12 +144,12 @@ export function AddSupplierPage() {
 
               <select
                 name="supplierStatus"
-                value={formData.supplierStatus}
+                value={String(formData.supplierStatus)}
                 onChange={handleChange}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
               >
-                <option value={0}>Active</option>
-                <option value={1}>InActive</option>
+                <option value="1">Active</option>
+                <option value="0">Inactive</option>
               </select>
             </div>
 
@@ -325,7 +334,7 @@ export function AddSupplierPage() {
 
           <button
             type="button"
-            onClick={() => navigate("/suppliers")}
+            onClick={() => navigate(-1)}
             className="px-6 py-2.5 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
           >
             Cancel

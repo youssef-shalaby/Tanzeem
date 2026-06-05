@@ -73,6 +73,14 @@ function mapSupplier(supplier) {
   };
 }
 
+
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
 export function SuppliersPage() {
   const navigate = useNavigate();
 
@@ -110,7 +118,12 @@ export function SuppliersPage() {
       params.append('searchTerm', searchQuery);
     }
 
-    fetch(`/api/Supplier?${params.toString()}`)
+    fetch(`/api/Supplier?${params.toString()}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch suppliers');
         return res.json();
