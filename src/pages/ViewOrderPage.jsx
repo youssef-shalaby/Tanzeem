@@ -12,6 +12,7 @@ import {
   Minus,
   AlertTriangle,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import { useNavigate, useParams, useLocation, Link } from "react-router";
 
@@ -577,25 +578,47 @@ export function ViewOrderPage() {
           </div>
         </div>
 
-        {/* Only show Edit/Cancel for Pending orders */}
-        {isPending && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowEditModal(true)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Pencil className="w-4 h-4" />
-              Edit
-            </button>
-            <button
-              onClick={() => setShowCancelModal(true)}
-              className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 text-sm rounded-lg hover:bg-red-50 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              Cancel Order
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Only show Edit/Cancel for Pending orders */}
+          {isPending && (
+            <>
+              <button
+                onClick={() => setShowEditModal(true)}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <Pencil className="w-4 h-4" />
+                Edit
+              </button>
+              <button
+                onClick={() => setShowCancelModal(true)}
+                className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 text-sm rounded-lg hover:bg-red-50 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Cancel Order
+              </button>
+            </>
+          )}
+          <button
+            onClick={() =>
+              navigate("/orders/create", {
+                state: {
+                  reorder: {
+                    supplierId: confirmationData.supplierId,
+                    items: items.map((i) => ({
+                      productId: i.productId,
+                      quantity: i.quantity,
+                      price: i.price,
+                    })),
+                  },
+                },
+              })
+            }
+            className="flex items-center gap-2 px-4 py-2 border border-[#15aaad] text-[#15aaad] text-sm rounded-lg hover:bg-[#15aaad]/10 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Reorder
+          </button>
+        </div>
       </div>
 
       {/* Delivery Issues Banner — shown when order is Delivered and has issues */}

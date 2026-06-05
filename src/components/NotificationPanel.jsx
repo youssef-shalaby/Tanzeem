@@ -1,16 +1,13 @@
-import { X, Package, AlertTriangle, TruckIcon, Clock, CheckCircle, Skull } from 'lucide-react';
+import { X, Package, TruckIcon, Clock, Skull } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 
-// ─── Enums ────────────────────────────────────────────────────────────────────
-// type: 1=DeadStock, 2=Expiry, 4=Order/Delivery
-
 function getNotificationMeta(type) {
   switch (type) {
-    case 1:  return { Icon: Skull,         color: 'text-orange-600', bg: 'bg-orange-100' };
-    case 2:  return { Icon: Clock,         color: 'text-yellow-600', bg: 'bg-yellow-100' };
-    case 4:  return { Icon: TruckIcon,     color: 'text-blue-600',   bg: 'bg-blue-100'   };
-    default: return { Icon: Package,       color: 'text-gray-600',   bg: 'bg-gray-100'   };
+    case 1:  return { Icon: Skull,     color: 'text-orange-600', bg: 'bg-orange-100' };
+    case 2:  return { Icon: Clock,     color: 'text-yellow-600', bg: 'bg-yellow-100' };
+    case 4:  return { Icon: TruckIcon, color: 'text-blue-600',   bg: 'bg-blue-100'   };
+    default: return { Icon: Package,   color: 'text-gray-600',   bg: 'bg-gray-100'   };
   }
 }
 
@@ -26,7 +23,7 @@ function formatTime(createdAt) {
   return `${days}d ago`;
 }
 
-export function NotificationPanel({ isOpen, onClose, unreadCount, onUnreadCountChange }) {
+export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMarkAllRead }) {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -50,24 +47,31 @@ export function NotificationPanel({ isOpen, onClose, unreadCount, onUnreadCountC
         setNotifications((prev) =>
           prev.map((n) => n.id === id ? { ...n, isRead: true } : n)
         );
-        onUnreadCountChange?.();
+        setTimeout(() => onUnreadCountChange?.(), 300);
       })
       .catch(() => {});
   };
 
   const handleMarkAllAsRead = () => {
-    fetch('/api/Notification/mark-all-read', { method: 'PATCH' })
-      .then((r) => r.ok ? r.json() : null)
+    fetch('/api/Notification/mark-all-read', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+      .then((r) => r.text().then((t) => {
+        if (!r.ok) throw new Error(`${r.status}: ${t}`);
+        return t ? JSON.parse(t) : null;
+      }))
       .then(() => {
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-        onUnreadCountChange?.();
+        onMarkAllRead?.();
+        setTimeout(() => onUnreadCountChange?.(), 300);
       })
-      .catch(() => {});
+      .catch((err) => console.error('mark-all-read failed:', err));
   };
 
   const handleClick = (notification) => {
     handleMarkAsRead(notification.id);
-    // Navigate based on message content
     const orderMatch = notification.message?.match(/order\s+(?:Id:)?\s*(\d+)/i);
     if (orderMatch) {
       navigate(`/orders/${orderMatch[1]}`);

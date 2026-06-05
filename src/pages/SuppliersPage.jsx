@@ -15,8 +15,8 @@ import { CSVUploadModal } from '../ui/CSVUploadModal';
 import { CSVReviewModal } from '../ui/CSVReviewModal';
 
 // Enum: supplierStatus
-// 0 → Active
-// 1 → Inactive
+// 0 → Inactive
+// 1 → Active
 
 // Enum: badge
 // "TopPerformer" → Top Performer
@@ -25,7 +25,7 @@ import { CSVReviewModal } from '../ui/CSVReviewModal';
 // "AtRisk"       → At Risk  (API returns "At Risk" with space too — handle both)
 
 function mapStatus(supplierStatus) {
-  return supplierStatus === 0 ? 'Active' : 'Inactive';
+  return supplierStatus === 1 ? 'Active' : 'Inactive';
 }
 
 function mapBadgeLabel(badge) {

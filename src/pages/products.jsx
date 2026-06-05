@@ -3,7 +3,6 @@ import {
   Plus,
   Search,
   Upload,
-  Filter,
   MoreVertical,
   ChevronLeft,
   ChevronRight,
@@ -19,22 +18,31 @@ import { DeleteProductModal } from "../ui/DeleteProductModal";
 
 const ITEMS_PER_PAGE = 8;
 
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
+
 export function ProductsPage() {
   const navigate = useNavigate();
 
   const [productsList, setProductsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterId, setFilterId] = useState("all");
+  const [sortId, setSortId] = useState("");
+
   const [currentPage, setCurrentPage] = useState(1);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [importedData, setImportedData] = useState([]);
-  const [deleteModal, setDeleteModal] = useState({
-    isOpen: false,
-    product: null,
-  });
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, product: null });
 
   // ================================
   // FETCH PRODUCTS FROM DATABASE
@@ -43,25 +51,34 @@ export function ProductsPage() {
     setLoading(true);
     setError(null);
 
-    fetch("/api/Products/Get-Products")
+    let url = "/api/Products/Get-Products";
+    const params = new URLSearchParams();
+
+    if (searchQuery) params.append("searchTerm", searchQuery);
+    if (filterId !== "all") params.append("filterId", filterId);
+    if (sortId !== "") params.append("sortId", sortId);
+
+    const query = params.toString();
+    if (query) url += `?${query}`;
+
+    fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Server returned status: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`Server returned status: ${res.status}`);
         return res.json();
       })
       .then((data) => {
-        // Fallback safety if API unexpectedly doesn't return an array
-        const rawArray = Array.isArray(data) ? data : [];
+        const rawArray = Array.isArray(data) ? data : (data?.data || []);
 
-        // Safe normalization parsing to protect against null values
         const normalizedProducts = rawArray.map((product, index) => ({
-          // Generate a safe fallback ID using array index if backend 'id' is missing
           id: product.id || index + 1,
           name: product.name || "Unnamed Product",
           sku: product.sku || "—",
           category: product.category || "Uncategorized",
-          // Explicit null/undefined check to handle "stock": null safely
           stockLevel:
             product.stock !== null && product.stock !== undefined
               ? product.stock
@@ -85,7 +102,7 @@ export function ProductsPage() {
         setError(err.message || "Failed to process product data.");
         setLoading(false);
       });
-  }, []);
+  }, [searchQuery, filterId, sortId]);
 
   // ================================
   // CSV IMPORT
@@ -103,8 +120,7 @@ export function ProductsPage() {
       sku: item.sku,
       category: item.category,
       stockLevel:
-        parseInt(item.stocklevel || item.stockLevel || item.stock || "0", 10) ||
-        0,
+        parseInt(item.stocklevel || item.stockLevel || item.stock || "0", 10) || 0,
       price: parseFloat(item.price || item.sellingPrice || "0") || 0,
       expiryDate: item.expirydate || item.expiryDate || "N/A",
       status: "Active",
@@ -118,43 +134,22 @@ export function ProductsPage() {
   // DELETE
   // ================================
   const handleDeleteConfirm = () => {
-    setProductsList((prev) =>
-      prev.filter((p) => p.id !== deleteModal.product.id),
-    );
-
-    setDeleteModal({
-      isOpen: false,
-      product: null,
-    });
+    setProductsList((prev) => prev.filter((p) => p.id !== deleteModal.product.id));
+    setDeleteModal({ isOpen: false, product: null });
   };
 
   // ================================
-  // SEARCH FILTER
+  // CLIENT-SIDE PAGINATION
   // ================================
-  const filteredProducts = useMemo(() => {
-    return productsList.filter((p) => {
-      const query = searchQuery.toLowerCase();
-      return (
-        p.name?.toLowerCase().includes(query) ||
-        p.sku?.toLowerCase().includes(query) ||
-        p.category?.toLowerCase().includes(query)
-      );
-    });
-  }, [productsList, searchQuery]);
+  const totalPages = Math.ceil(productsList.length / ITEMS_PER_PAGE);
 
-  // ================================
-  // PAGINATION CALCULATIONS
-  // ================================
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
-
-  const paginatedProducts = filteredProducts.slice(
+  const paginatedProducts = productsList.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
 
-  const start =
-    filteredProducts.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
-  const end = Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length);
+  const start = productsList.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const end = Math.min(currentPage * ITEMS_PER_PAGE, productsList.length);
 
   return (
     <div className="space-y-6">
@@ -198,33 +193,60 @@ export function ProductsPage() {
         </div>
       </div>
 
+      {/* SEARCH + FILTER + SORT */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="flex items-center gap-3">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by name, SKU, or category..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full pl-11 pr-4 py-2.5 bg-[#f6f8fa] border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
+            />
+          </div>
+
+          {/* Filter */}
+          <select
+            value={filterId}
+            onChange={(e) => {
+              setFilterId(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
+          >
+            <option value="all">All Categories</option>
+            <option value="1">Category 1</option>
+            <option value="2">Category 2</option>
+          </select>
+
+          {/* Sort */}
+          <select
+            value={sortId}
+            onChange={(e) => {
+              setSortId(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
+          >
+            <option value="">Default Sort</option>
+            <option value="0">Name A → Z</option>
+            <option value="1">Name Z → A</option>
+            <option value="2">Price ↓ (Highest)</option>
+            <option value="3">Price ↑ (Lowest)</option>
+            <option value="4">Stock ↓ (Most)</option>
+            <option value="5">Stock ↑ (Least)</option>
+          </select>
+        </div>
+      </div>
+
       {/* TABLE CARD */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-visible">
-        {/* SEARCH & FILTER */}
-        <div className="p-5 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full pl-11 pr-4 py-2.5 bg-[#f6f8fa] border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
-              />
-            </div>
-
-            <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-              <Filter className="w-[18px] h-[18px] text-gray-600" />
-              Filter
-            </button>
-          </div>
-        </div>
-
-        {/* DATA CONTAINER */}
         <div className="space-y-4 p-6">
           {loading ? (
             <div className="py-16 text-center text-sm text-gray-500">
@@ -294,11 +316,7 @@ export function ProductsPage() {
                           <div className="relative">
                             <button
                               onClick={() =>
-                                setOpenDropdown(
-                                  openDropdown === product.id
-                                    ? null
-                                    : product.id,
-                                )
+                                setOpenDropdown(openDropdown === product.id ? null : product.id)
                               }
                               className="p-1 hover:bg-gray-100 rounded transition-colors"
                             >
@@ -315,9 +333,7 @@ export function ProductsPage() {
                                   <button
                                     onClick={() => {
                                       setOpenDropdown(null);
-                                      navigate(
-                                        `/products/view-product/${product.id}`,
-                                      );
+                                      navigate(`/products/view-product/${product.sku}`, { state: { product } });
                                     }}
                                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                                   >
@@ -328,9 +344,7 @@ export function ProductsPage() {
                                   <button
                                     onClick={() => {
                                       setOpenDropdown(null);
-                                      navigate(
-                                        `/products/edit-product/${product.id}`,
-                                      );
+                                      navigate(`/products/edit-product/${product.id}`);
                                     }}
                                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                                   >
@@ -362,7 +376,7 @@ export function ProductsPage() {
                           colSpan={7}
                           className="px-6 py-12 text-center text-sm text-gray-500"
                         >
-                          No products found matching your filters.
+                          No products found.
                         </td>
                       </tr>
                     )}
@@ -370,11 +384,10 @@ export function ProductsPage() {
                 </table>
               </div>
 
-              {/* PAGINATION INTERFACE */}
+              {/* PAGINATION */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                 <p className="text-sm text-gray-600">
-                  Showing {start} to {end} of{" "}
-                  {filteredProducts.length.toLocaleString()} products
+                  Showing {start} to {end} of {productsList.length.toLocaleString()} products
                 </p>
 
                 <div className="flex items-center gap-2">
@@ -386,10 +399,7 @@ export function ProductsPage() {
                     <ChevronLeft className="w-4 h-4 text-gray-600" />
                   </button>
 
-                  {Array.from(
-                    { length: Math.min(totalPages, 3) },
-                    (_, i) => i + 1,
-                  ).map((page) => (
+                  {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
@@ -403,16 +413,12 @@ export function ProductsPage() {
                     </button>
                   ))}
 
-                  {totalPages > 3 && (
-                    <span className="px-2 text-gray-600">...</span>
-                  )}
+                  {totalPages > 3 && <span className="px-2 text-gray-600">...</span>}
                   {totalPages > 3 && (
                     <button
                       onClick={() => setCurrentPage(totalPages)}
                       className={`px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors ${
-                        currentPage === totalPages
-                          ? "bg-[#15aaad] text-white border-[#15aaad]"
-                          : ""
+                        currentPage === totalPages ? "bg-[#15aaad] text-white border-[#15aaad]" : ""
                       }`}
                     >
                       {totalPages}
@@ -420,9 +426,7 @@ export function ProductsPage() {
                   )}
 
                   <button
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(totalPages, p + 1))
-                    }
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages || totalPages === 0}
                     className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
@@ -435,7 +439,7 @@ export function ProductsPage() {
         </div>
       </div>
 
-      {/* CSV MODALS & ACTIONS */}
+      {/* MODALS */}
       <CSVUploadModal
         isOpen={csvModalOpen}
         onClose={() => setCsvModalOpen(false)}

@@ -1,33 +1,37 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 
 export function CreateOrderPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const reorder = location.state?.reorder;
 
   const [suppliersDropdown, setSuppliersDropdown] = useState([]);
   const [productsDropdown, setProductsDropdown] = useState([]);
 
   const [formData, setFormData] = useState({
-    supplierId: '',
-    orderDate: '',
+    supplierId: reorder?.supplierId ?? '',
+    orderDate: new Date().toISOString().slice(0, 10),
     expectedDeliveryDate: '',
     notes: '',
     shippingCost: 0,
     taxes: 0,
   });
 
-  const [orderItems, setOrderItems] = useState([
-    { id: Date.now(), productId: '', quantity: 1, price: 0 },
-  ]);
+  const [orderItems, setOrderItems] = useState(
+    reorder?.items?.length
+      ? reorder.items.map((item) => ({ id: Date.now() + Math.random(), ...item }))
+      : [{ id: Date.now(), productId: '', quantity: 1, price: 0 }]
+  );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     // Always pass page_size — omitting it causes the backend to default to 0 and return nothing
-    fetch('/api/Supplier?page=1&page_size=100')
+    fetch('/api/Supplier/lookup')
       .then((res) => res.json())
-      .then((body) => setSuppliersDropdown(body.data || []))
+      .then((data) => setSuppliersDropdown(data || []))
       .catch((err) => console.error('Failed to load suppliers:', err));
 
     fetch('/api/Products/Get-Products-Dropdown-Menu')
@@ -144,7 +148,7 @@ export function CreateOrderPage() {
                     <option value="">Select supplier...</option>
                     {suppliersDropdown.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.supplierName || s.name}
+                        {s.name}
                       </option>
                     ))}
                   </select>
@@ -157,6 +161,7 @@ export function CreateOrderPage() {
                     name="orderDate"
                     value={formData.orderDate}
                     onChange={handleChange}
+                    onFocus={(e) => e.target.showPicker?.()}
                     required
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#15aaad]"
                   />
@@ -169,6 +174,7 @@ export function CreateOrderPage() {
                     name="expectedDeliveryDate"
                     value={formData.expectedDeliveryDate}
                     onChange={handleChange}
+                    onFocus={(e) => e.target.showPicker?.()}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#15aaad]"
                   />
                 </div>
@@ -218,6 +224,7 @@ export function CreateOrderPage() {
                         min="1"
                         value={item.quantity}
                         onChange={(e) => updateOrderItem(item.id, 'quantity', e.target.value)}
+                        onFocus={(e) => e.target.select()}
                         required
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                       />
@@ -231,6 +238,7 @@ export function CreateOrderPage() {
                         step="0.01"
                         value={item.price}
                         onChange={(e) => updateOrderItem(item.id, 'price', e.target.value)}
+                        onFocus={(e) => e.target.select()}
                         required
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                       />
@@ -284,6 +292,7 @@ export function CreateOrderPage() {
                     min="0"
                     value={formData.shippingCost}
                     onChange={handleChange}
+                    onFocus={(e) => e.target.select()}
                     className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-right"
                   />
                 </div>
@@ -296,6 +305,7 @@ export function CreateOrderPage() {
                     min="0"
                     value={formData.taxes}
                     onChange={handleChange}
+                    onFocus={(e) => e.target.select()}
                     className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-right"
                   />
                 </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { AuthButton, AuthHeader, AuthInput, AuthLayout } from "../components/AuthLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { loginUser } from "../services/authApi";
@@ -11,6 +11,7 @@ export function SigninPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const updateField = (field) => (event) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
@@ -31,7 +32,7 @@ export function SigninPage() {
         email: form.email,
         password: form.password,
       });
-      setSession(response, form.email);
+      setSession(response); // ✅ removed stale email arg — AuthContext handles everything
       navigate("/welcome", { replace: true, state: { name: form.email } });
     } catch (loginError) {
       setError(loginError.message);
@@ -55,13 +56,19 @@ export function SigninPage() {
           <span className="mb-2.5 block text-base font-medium leading-6 text-[#111]">Password</span>
           <div className="flex items-center rounded-xl bg-[#f5f5f5] px-5 py-3.5 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#15aaad]/35 xl:py-4">
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Enter your password"
               value={form.password}
               onChange={updateField("password")}
               className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[#111] outline-none placeholder:text-[#6b6b6b]"
             />
-            <EyeOff className="h-5 w-5 text-[#6b6b6b]" />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="ml-2 text-[#6b6b6b] hover:text-[#111]"
+            >
+              {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+            </button>
           </div>
         </label>
         {error && <p className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p>}

@@ -28,16 +28,17 @@ export function Header() {
     }
   };
 
-  const fetchUnreadCount = () => {
-    fetch('/api/Notification?Page=1&Page_Size=100')
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (!data?.data) return;
-        const count = data.data.filter((n) => !n.isRead).length;
-        setUnreadCount(count);
-      })
-      .catch(() => {});
-  };
+const fetchUnreadCount = () => {
+  fetch('/api/Notification?Page=1&Page_Size=100')
+    .then((r) => r.ok ? r.json() : null)
+    .then((data) => {
+      if (!data?.data) return;
+      const count = data.data.filter((n) => !n.isRead).length;
+      console.log('fetchUnreadCount result:', count, data.data.map(n => ({ id: n.id, isRead: n.isRead })));
+      setUnreadCount(count);
+    })
+    .catch(() => {});
+};
 
   useEffect(() => {
     fetchUnreadCount();
@@ -95,6 +96,7 @@ export function Header() {
         isOpen={isNotificationPanelOpen}
         onClose={() => setIsNotificationPanelOpen(false)}
         onUnreadCountChange={fetchUnreadCount}
+        onMarkAllRead={() => setUnreadCount(0)}
       />
     </>
   );

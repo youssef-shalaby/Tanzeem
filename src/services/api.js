@@ -16,11 +16,23 @@ export function getApiErrorMessage(data, fallback) {
   return data?.message || data?.title || data?.error || fallback;
 }
 
+function getStoredToken() {
+  try {
+    const stored = localStorage.getItem("tanzeem_auth");
+    return stored ? JSON.parse(stored)?.token : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function apiRequest(path, options = {}) {
+  const token = getStoredToken();
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}), // ✅ attach token
       ...options.headers,
     },
   });

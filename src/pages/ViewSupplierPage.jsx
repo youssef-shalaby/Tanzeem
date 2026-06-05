@@ -21,11 +21,11 @@ import { useState, useEffect } from 'react';
 import { DeleteSupplierModal } from '../ui/DeleteSupplierModal';
 
 // ------- Enums -------
-// supplierStatus: 0 = Active, 1 = Inactive
+// supplierStatus: 0 = Inactive, 1 = Active
 // badge: "TopPerformer" | "Standard" | "ReliablePartner" | "AtRisk" | "At Risk" | "Average"
 
 function mapStatus(supplierStatus) {
-  return supplierStatus === 0 ? 'Active' : 'Inactive';
+  return supplierStatus === 1 ? 'Active' : 'Inactive';
 }
 
 function mapBadgeLabel(badge) {

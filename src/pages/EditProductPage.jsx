@@ -1,6 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
+
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
 
 const EMPTY_FORM = {
   productName: '',
@@ -16,42 +24,41 @@ const EMPTY_FORM = {
 
 export function EditProductPage() {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const location = useLocation();
 
-  const [formData, setFormData] = useState(EMPTY_FORM);
-  const [loading, setLoading] = useState(true);
+  const product = location.state?.product || null;
+
+  const [formData, setFormData] = useState(() => {
+    if (!product) return EMPTY_FORM;
+    return {
+      productName: product.name || '',
+      sku: product.sku || '',
+      category: product.category || '',
+      price: String(product.price ?? ''),
+      stockLevel: String(product.stockLevel ?? ''),
+      reorderLevel: String(product.reorderLevel ?? ''),
+      expiryDate: product.expiryDate && product.expiryDate !== 'N/A'
+        ? new Date(product.expiryDate).toISOString().split('T')[0]
+        : '',
+      description: product.description || '',
+      status: product.status || 'Active',
+    };
+  });
+
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
   const [saveError, setSaveError] = useState(null);
 
-  // Load product from API on mount
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/Products/Get-Product/${id}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`Failed to load product (status ${res.status})`);
-        return res.json();
-      })
-      .then((data) => {
-        setFormData({
-          productName: data.name || '',
-          sku: data.sku || '',
-          category: data.category || '',
-          price: String(data.sellingPrice ?? data.price ?? ''),
-          stockLevel: String(data.stock ?? data.stockLevel ?? ''),
-          reorderLevel: String(data.reorderLevel ?? ''),
-          // API may return ISO string — strip time portion for the date input
-          expiryDate: data.expiryDate ? data.expiryDate.split('T')[0] : '',
-          description: data.description || '',
-          status: data.status || 'Active',
-        });
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, [id]);
+  if (!product) return (
+    <div className="p-6 text-center">
+      <p className="text-gray-500 mb-4">Product data not found. Please go back and try again.</p>
+      <button
+        onClick={() => navigate('/products')}
+        className="px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors"
+      >
+        Back to Products
+      </button>
+    </div>
+  );
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -62,8 +69,6 @@ export function EditProductPage() {
     setSaving(true);
     setSaveError(null);
 
-    // Build the payload — adjust field names to match what your backend PUT expects.
-    // Using the same field names as the GET response where possible.
     const payload = {
       name: formData.productName,
       sku: formData.sku,
@@ -76,11 +81,16 @@ export function EditProductPage() {
       status: formData.status,
     };
 
+    const token = getToken();
+
     try {
-      // ⚠️  Verify the exact PUT endpoint path in Swagger — adjust if different
-      const res = await fetch(`/api/Products/Update-Product/${id}`, {
+      // ⚠️ Verify the exact PUT endpoint path in Swagger — adjust if different
+      const res = await fetch(`/api/Products/Update-Product/${formData.sku}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
@@ -91,15 +101,12 @@ export function EditProductPage() {
         throw new Error(msg);
       }
 
-      navigate(-1);
+      navigate('/products');
     } catch (err) {
       setSaveError(err.message);
       setSaving(false);
     }
   };
-
-  if (loading) return <div className="p-6 text-gray-500">Loading product...</div>;
-  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
 
   return (
     <div className="space-y-6">
@@ -128,6 +135,7 @@ export function EditProductPage() {
       <form onSubmit={handleSubmit}>
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="p-6 space-y-6">
+
             {/* Basic Information */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
@@ -177,6 +185,10 @@ export function EditProductPage() {
                     <option value="Furniture">Furniture</option>
                     <option value="Food & Beverage">Food & Beverage</option>
                     <option value="Health & Beauty">Health & Beauty</option>
+                    <option value="Beverages">Beverages</option>
+                    <option value="Stationery">Stationery</option>
+                    <option value="Home Appliances">Home Appliances</option>
+                    <option value="Footwear">Footwear</option>
                   </select>
                 </div>
 

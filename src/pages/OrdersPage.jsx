@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Search,
-  SlidersHorizontal,
   DollarSign,
   Clock,
   CheckCircle,
@@ -25,6 +24,7 @@ export function OrdersPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterId, setFilterId] = useState("all");
+  const [sortId, setSortId] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -66,6 +66,10 @@ export function OrdersPage() {
       url += `&filterId=${filterId}`;
     }
 
+    if (sortId !== "") {
+      url += `&sortId=${sortId}`;
+    }
+
     fetch(url)
       .then((res) => {
         if (!res.ok)
@@ -90,7 +94,7 @@ export function OrdersPage() {
         setError(err.message);
         setLoading(false);
       });
-  }, [currentPage, searchTerm, filterId]);
+  }, [currentPage, searchTerm, filterId, sortId]);
 
   // Delivery Issues Fetch
   useEffect(() => {
@@ -295,16 +299,30 @@ export function OrdersPage() {
             }}
             className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
           >
-            <option value="all">All</option>
+            <option value="all">All Statuses</option>
             <option value="0">Pending</option>
             <option value="1">Delivered</option>
           </select>
 
-          {/* More Filters */}
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-            <SlidersHorizontal className="w-[18px] h-[18px] text-gray-600" />
-            More Filters
-          </button>
+          {/* Sort */}
+          <select
+            value={sortId}
+            onChange={(e) => {
+              setSortId(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
+          >
+            <option value="">Default Sort</option>
+            <option value="0">Receive Date ↑ (Nearest)</option>
+            <option value="1">Receive Date ↓ (Farthest)</option>
+            <option value="2">Order Date ↑ (Nearest)</option>
+            <option value="3">Order Date ↓ (Farthest)</option>
+            <option value="4">Supplier A → Z</option>
+            <option value="5">Supplier Z → A</option>
+            <option value="6">Total ↓ (Highest)</option>
+            <option value="7">Total ↑ (Lowest)</option>
+          </select>
         </div>
       </div>
 
