@@ -1,30 +1,197 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { X, Search, Plus, FileText } from 'lucide-react';
+import { X, Search, Plus, FileText, Loader2 } from 'lucide-react';
+
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem('tanzeem_auth'))?.token || null;
+  } catch {
+    return null;
+  }
+}
+
+// Maps to TransactionSource enum on the backend
+const SOURCE_REASON_MAP = {
+  'Received from Supplier': 7,  // Supplier = 7
+  'Production': 8,               // Production = 8
+  'Customer Return': 9,          // Return = 9
+  'Found/Recovered': 10,         // Recovered = 10
+  'Transfer from Other Location': 11, // FromAnotherBranch = 11
+  'Inventory Adjustment': 12,    // Adjustment = 12
+};
+
+function parseDate(dateStr) {
+  const [month, day, year] = dateStr.split('/');
+  return new Date(`${year}-${month}-${day}T00:00:00.000Z`).toISOString();
+}
+
+function createEmptySlot() {
+  return {
+    id: Date.now() + Math.random(),
+    // product fields (null until selected)
+    productName: '',
+    sku: '',
+    barcode: '',
+    unitPrice: 0,
+    quantity: 1,
+    totalPrice: 0,
+    source: 'Received from Supplier',
+    // full product fields for payload
+    category: '',
+    stock: 0,
+    costPrice: 0,
+    sellingPrice: 0,
+    expiryDate: null,
+    description: '',
+    reorderLevel: 0,
+    status: 'Active',
+    batchNumber: '',
+    productSelected: false,
+  };
+}
+
+// Per-item search dropdown component
+function ProductSearchInput({ item, onProductSelect }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const debounceRef = useRef(null);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSearch = (value) => {
+    setQuery(value);
+    setShowDropdown(true);
+    clearTimeout(debounceRef.current);
+    if (!value.trim()) {
+      setResults([]);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const token = getToken();
+        const res = await fetch(`/api/Products/Get-Products-Dropdown-Menu?search=${encodeURIComponent(value)}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+        if (!res.ok) throw new Error('Failed to fetch products');
+        const data = await res.json();
+        console.log('Products API response:', JSON.stringify(data, null, 2));
+        setResults(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Products API error:', err);
+        setResults([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300);
+  };
+
+  const handleSelect = (product) => {
+    onProductSelect(item.id, product);
+    setQuery(`${product.name} (SKU: ${product.sku})`);
+    setShowDropdown(false);
+    setResults([]);
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <label className="text-sm font-medium text-gray-900 mb-2 block">Product</label>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search by name, SKU, or barcode..."
+          value={query}
+          onChange={(e) => handleSearch(e.target.value)}
+          onFocus={() => query && setShowDropdown(true)}
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+        />
+        {isLoading && (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+        )}
+      </div>
+      {showDropdown && (results.length > 0 || isLoading) && (
+        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+          {isLoading && results.length === 0 ? (
+            <div className="px-4 py-3 text-sm text-gray-500">Searching...</div>
+          ) : results.length === 0 ? (
+            <div className="px-4 py-3 text-sm text-gray-500">No products found</div>
+          ) : (
+            results.map((product) => (
+              <button
+                key={product.id ?? product.sku}
+                onClick={() => handleSelect(product)}
+                className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
+              >
+                <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  SKU: {product.sku}
+                  {product.barcode && ` · Barcode: ${product.barcode}`}
+                  {product.costPrice != null && ` · $${Number(product.costPrice).toFixed(2)}`}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Addstockpage() {
   const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState('01/22/2026');
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
+  });
   const [supplierReference, setSupplierReference] = useState('');
   const [notes, setNotes] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  const [stockItems, setStockItems] = useState([
-    {
-      id: 1,
-      productName: 'Office Chair - Ergonomic',
-      sku: 'OC-884',
-      barcode: '8809123456789',
-      unitPrice: 149.00,
-      quantity: 50,
-      totalPrice: 7450.00,
-      source: 'Received from Supplier',
-    }
-  ]);
+  // Start with one empty slot
+  const [stockItems, setStockItems] = useState([createEmptySlot()]);
+
+  const handleProductSelect = (slotId, product) => {
+    setStockItems(prev => prev.map(item =>
+      item.id === slotId ? {
+        ...item,
+        productName: product.name ?? '',
+        sku: product.sku ?? '',
+        barcode: product.barcode ?? '',
+        unitPrice: product.costPrice ?? 0,
+        totalPrice: (product.costPrice ?? 0) * item.quantity,
+        category: product.category ?? '',
+        stock: product.stock ?? 0,
+        costPrice: product.costPrice ?? 0,
+        sellingPrice: product.sellingPrice ?? 0,
+        expiryDate: product.expiryDate ?? null,
+        description: product.description ?? '',
+        reorderLevel: product.reorderLevel ?? 0,
+        status: product.status ?? 'Active',
+        productSelected: true,
+      } : item
+    ));
+  };
 
   const handleQuantityChange = (id, newQuantity) => {
     if (newQuantity >= 0) {
-      setStockItems(stockItems.map(item =>
+      setStockItems(prev => prev.map(item =>
         item.id === id
           ? { ...item, quantity: newQuantity, totalPrice: newQuantity * item.unitPrice }
           : item
@@ -33,72 +200,103 @@ export function Addstockpage() {
   };
 
   const handleSourceChange = (id, newSource) => {
-    setStockItems(stockItems.map(item =>
+    setStockItems(prev => prev.map(item =>
       item.id === id ? { ...item, source: newSource } : item
     ));
   };
 
   const handleRemoveItem = (id) => {
     if (stockItems.length > 1) {
-      setStockItems(stockItems.filter(item => item.id !== id));
+      setStockItems(prev => prev.filter(item => item.id !== id));
     }
   };
 
-  const handleAddItem = () => {
-    const newItem = {
-      id: Date.now(),
-      productName: 'New Product',
-      sku: 'SKU-000',
-      barcode: '0000000000000',
-      unitPrice: 0.00,
-      quantity: 1,
-      totalPrice: 0.00,
-      source: 'Received from Supplier',
-    };
-    setStockItems([...stockItems, newItem]);
+  const handleAddSlot = () => {
+    setStockItems(prev => [...prev, createEmptySlot()]);
   };
 
   const grandTotal = stockItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  const allSelected = stockItems.every(item => item.productSelected);
+
+  const handleConfirm = async () => {
+    if (!allSelected) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(false);
+
+    const primarySource = stockItems[0]?.source || 'Received from Supplier';
+    const sourceReasonCode = SOURCE_REASON_MAP[primarySource] ?? 7;
+
+    const payload = {
+      id: crypto.randomUUID(),
+      type: 1,
+      createdAt: parseDate(selectedDate),
+      status: 4,
+      value: grandTotal,
+      totalTransactedItems: stockItems.reduce((sum, item) => sum + item.quantity, 0),
+      sourceReason: sourceReasonCode,
+      referenceNumber: supplierReference || '',
+      notes: notes || '',
+      preformedBy: '',
+      transactionItemDtos: stockItems.map(item => ({
+        quantityOfTransactedItem: item.quantity,
+        unitPrice: item.costPrice,
+        batchNumber: item.batchNumber || '',
+        product: {
+          name: item.productName,
+          sku: item.sku,
+          category: item.category || '',
+          stock: item.stock || 0,
+          costPrice: item.costPrice,
+          sellingPrice: item.sellingPrice || 0,
+          expiryDate: item.expiryDate || new Date().toISOString(),
+          barcode: item.barcode,
+          description: item.description || '',
+          reorderLevel: item.reorderLevel || 0,
+          status: item.status || 'Active',
+        }
+      }))
+    };
+
+    try {
+      const token = getToken();
+      const response = await fetch('/api/Transaction/Transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `Request failed with status ${response.status}`);
+      }
+
+      setSubmitSuccess(true);
+      setTimeout(() => navigate('/inventory'), 1500);
+    } catch (err) {
+      setSubmitError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Add Stock</h1>
-          <p className="text-sm text-gray-600 mt-1">Scan or search for items to replenish inventory from suppliers or returns.</p>
+          <p className="text-sm text-gray-600 mt-1">Search for products to replenish inventory from suppliers or returns.</p>
         </div>
-        <button
-          onClick={() => navigate('/inventory')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
+        <button onClick={() => navigate('/inventory')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <X className="w-5 h-5 text-gray-600" />
         </button>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="space-y-6">
-          {/* Search Product */}
-          <div>
-            <label className="text-sm font-medium text-gray-900 mb-2 block">Search Product</label>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search by name/SKU/barcode to add items..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 border-2 border-[#15aaad] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
-                />
-              </div>
-              <button
-                onClick={handleAddItem}
-                className="p-2.5 bg-[#15aaad] text-white rounded-lg hover:bg-[#0d8082] transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
 
           {/* Items List */}
           <div className="space-y-6">
@@ -106,10 +304,7 @@ export function Addstockpage() {
               <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">
                 Items to Add ({stockItems.length})
               </div>
-              <button
-                onClick={handleAddItem}
-                className="text-sm text-[#15aaad] hover:text-[#0d8082] font-medium flex items-center gap-1"
-              >
+              <button onClick={handleAddSlot} className="text-sm text-[#15aaad] hover:text-[#0d8082] font-medium flex items-center gap-1">
                 <Plus className="w-4 h-4" />
                 Add Another Item
               </button>
@@ -131,108 +326,79 @@ export function Addstockpage() {
                     Item #{index + 1}
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-900 mb-2 block">Product Name</label>
-                    <input
-                      type="text"
-                      value={`${item.productName} (SKU: ${item.sku})`}
-                      readOnly
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900"
-                    />
-                  </div>
+                  {/* Product Search */}
+                  <ProductSearchInput item={item} onProductSelect={handleProductSelect} />
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-900 mb-2 block">Barcode</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={item.barcode}
-                          readOnly
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900"
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">#</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-900 mb-2 block">Unit Price</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                        <input
-                          type="text"
-                          value={item.unitPrice.toFixed(2)}
-                          readOnly
-                          className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-900 mb-2 block">Quantity to Add</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 0)}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
-                        />
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col">
-                          <button
-                            onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                            className="px-1 py-0.5 text-gray-400 hover:text-gray-600"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                            className="px-1 py-0.5 text-gray-400 hover:text-gray-600"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
+                  {/* Product details — only shown after selection */}
+                  {item.productSelected && (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-gray-900 mb-2 block">Barcode</label>
+                          <div className="relative">
+                            <input type="text" value={item.barcode} readOnly className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">#</span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-900 mb-2 block">Unit Price (Cost)</label>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                            <input type="text" value={item.unitPrice.toFixed(2)} readOnly className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-900 mb-2 block">Total Price</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                        <input
-                          type="text"
-                          value={item.totalPrice.toFixed(2)}
-                          readOnly
-                          className="w-full pl-8 pr-20 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900"
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400">Calculated</span>
-                      </div>
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-900 mb-2 block">Source</label>
-                    <div className="relative">
-                      <select
-                        value={item.source}
-                        onChange={(e) => handleSourceChange(item.id, e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 appearance-none focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
-                      >
-                        <option>Received from Supplier</option>
-                        <option>Customer Return</option>
-                        <option>Production</option>
-                        <option>Found/Recovered</option>
-                        <option>Transfer from Other Location</option>
-                        <option>Inventory Adjustment</option>
-                      </select>
-                      <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-gray-900 mb-2 block">Quantity to Add</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 0)}
+                              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
+                            />
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col">
+                              <button onClick={() => handleQuantityChange(item.id, item.quantity + 1)} className="px-1 py-0.5 text-gray-400 hover:text-gray-600">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+                              </button>
+                              <button onClick={() => handleQuantityChange(item.id, item.quantity - 1)} className="px-1 py-0.5 text-gray-400 hover:text-gray-600">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-900 mb-2 block">Total Price</label>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                            <input type="text" value={item.totalPrice.toFixed(2)} readOnly className="w-full pl-8 pr-20 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400">Calculated</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-900 mb-2 block">Source</label>
+                        <div className="relative">
+                          <select
+                            value={item.source}
+                            onChange={(e) => handleSourceChange(item.id, e.target.value)}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 appearance-none focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
+                          >
+                            <option>Received from Supplier</option>
+                            <option>Customer Return</option>
+                            <option>Production</option>
+                            <option>Found/Recovered</option>
+                            <option>Transfer from Other Location</option>
+                            <option>Inventory Adjustment</option>
+                          </select>
+                          <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
@@ -269,9 +435,7 @@ export function Addstockpage() {
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
                 />
-                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
               </div>
             </div>
             <div>
@@ -297,6 +461,18 @@ export function Addstockpage() {
               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
             />
           </div>
+
+          {/* Error / Success feedback */}
+          {submitError && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
+          {submitSuccess && (
+            <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+              Stock added successfully! Redirecting...
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}
@@ -304,9 +480,14 @@ export function Addstockpage() {
           <Link to="/products" className="px-6 py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
             Cancel
           </Link>
-          <button className="flex items-center gap-2 px-6 py-2.5 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors">
-            <FileText className="w-[18px] h-[18px]" />
-            Confirm Stock Addition
+          <button
+            onClick={handleConfirm}
+            disabled={isSubmitting || !allSelected}
+            title={!allSelected ? 'Please select a product for all items' : ''}
+            className="flex items-center gap-2 px-6 py-2.5 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? <Loader2 className="w-[18px] h-[18px] animate-spin" /> : <FileText className="w-[18px] h-[18px]" />}
+            {isSubmitting ? 'Submitting...' : 'Confirm Stock Addition'}
           </button>
         </div>
       </div>

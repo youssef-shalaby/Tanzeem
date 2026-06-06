@@ -2,12 +2,20 @@ import { ArrowLeft, AlertTriangle, Package, Calendar, User, FileText } from 'luc
 import { useNavigate, useParams } from 'react-router';
 import { useState, useEffect } from 'react';
 
+function getToken() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
+  } catch {
+    return null;
+  }
+}
+
 const ISSUE_TYPE_LABELS = {
-  0: 'Other',
-  1: 'Damaged',
-  2: 'Missing',
-  3: 'Defective',
-  4: 'Incorrect',
+  0: 'Damaged',
+  1: 'Missing',
+  2: 'Defective',
+  3: 'Incorrect',
+  4: 'Other',
 };
 
 const ISSUE_TYPE_STYLES = {
@@ -28,7 +36,12 @@ export function ViewDeliveryIssuePage() {
   const [resolutionNotes, setResolutionNotes] = useState('');
 
   useEffect(() => {
-    fetch(`/api/DeliveryIssues/${issueId}`)
+    fetch(`/api/DeliveryIssues/${issueId}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch issue');
         return res.json();

@@ -272,7 +272,7 @@ export function ProductsPage() {
           ) : (
             <>
               <div className="overflow-visible min-h-[550px]">
-                <table className="w-full min-w-[700px] table-fixed">
+                <table className="w-full min-w-[900px]">
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -294,6 +294,12 @@ export function ProductsPage() {
                         Expiry Date
                       </th>
                       <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Reorder Level
+                      </th>
+                      <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -312,7 +318,7 @@ export function ProductsPage() {
                           {product.sku}
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600 whitespace-nowrap">
                             {product.category}
                           </span>
                         </td>
@@ -324,6 +330,18 @@ export function ProductsPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {product.expiryDate}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {product.reorderLevel}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            product.status === 'Active' ? 'bg-green-100 text-green-700' :
+                            product.status === 'Inactive' ? 'bg-gray-100 text-gray-600' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {product.status}
+                          </span>
                         </td>
                         <td className="px-6 py-4 text-sm">
                           <div className="relative">

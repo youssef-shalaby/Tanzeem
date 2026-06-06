@@ -137,15 +137,26 @@ export function AlertsPage() {
 
   // ─── Action handler ─────────────────────────────────────────────────────────
   const handleAction = (alert) => {
-    const meta = getAlertMeta(alert);
-    if (meta.category === 'orders') {
-      // Extract order number from description e.g. "Order #25 is waiting..."
-      const match = alert.alertDescription?.match(/#(\d+)/);
-      if (match) navigate(`/orders/${match[1]}`);
-    } else if (meta.category === 'dead-stock' && alert.productId) {
-      navigate(`/products/${alert.productId}`);
-    }
-  };
+  const meta = getAlertMeta(alert);
+
+  if (meta.category === 'orders') {
+    // "View Order" — extract order ID from description e.g. "Order #25 is waiting..."
+    const match = alert.alertDescription?.match(/#(\d+)/);
+    if (match) navigate(`/orders/${match[1]}`);
+
+  } else if (meta.category === 'dead-stock' && alert.productId) {
+    // "View Product"
+    navigate(`/products/view-product/${alert.productId}`);
+
+  } else if (meta.category === 'stock') {
+    // "Reorder Now" — go to product page if productId exists
+    if (alert.productId) navigate(`/products/view-product/${alert.productId}`);
+
+  } else if (meta.category === 'expiry') {
+    // "Review" — go to product page for now (update when expiry page is ready)
+    if (alert.productId) navigate(`/products/view-product/${alert.productId}`);
+  }
+};
 
   return (
     <div className="space-y-6">

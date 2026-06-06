@@ -356,12 +356,13 @@ function EditModal({ order, items: initialItems, onClose, onSaved }) {
 
 // ─── Issue Type Labels ────────────────────────────────────────────────────────
 const ISSUE_TYPE_LABELS = {
-  0: "Other",
-  1: "Damaged",
-  2: "Missing",
-  3: "Defective",
-  4: "Incorrect",
+  0: 'Damaged',
+  1: 'Missing',
+  2: 'Defective',
+  3: 'Incorrect',
+  4: 'Other',
 };
+
 const ISSUE_TYPE_STYLES = {
   Other: "bg-gray-100 text-gray-700",
   Damaged: "bg-red-100 text-red-700",

@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react';
 
 // issueType numbers → labels  (0 = Other/Unknown as a safe fallback for unmapped backend values)
 const ISSUE_TYPE_LABELS = {
-  0: 'Other',
-  1: 'Damaged',
-  2: 'Missing',
-  3: 'Defective',
-  4: 'Incorrect',
+  0: 'Damaged',
+  1: 'Missing',
+  2: 'Defective',
+  3: 'Incorrect',
+  4: 'Other',
 };
 
 
