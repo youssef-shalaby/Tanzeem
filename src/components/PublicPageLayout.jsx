@@ -32,7 +32,7 @@ export function PublicNav() {
     <header className="relative z-20 px-6 py-8 md:px-8">
       <div className="mx-auto flex max-w-[1376px] items-center justify-between gap-6">
         <Link to="/" className="flex items-center">
-          <img src="/logo.svg" alt="Tanzeem" className="h-[35px] w-auto" />
+          <img src="/TanzeemDark.svg" alt="Tanzeem" className="h-[45px] w-auto" />
         </Link>
 
         <nav className="hidden items-center gap-[62px] text-[17px] font-medium tracking-normal text-black lg:flex">
