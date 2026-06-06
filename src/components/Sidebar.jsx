@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation } from "react-router";
 import {
   LayoutDashboard,
   Package,
@@ -10,36 +10,38 @@ import {
   Bell,
   AlertTriangle,
   TrendingUp,
-} from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext'; // adjust path as needed
-import { permissions } from '../config/permissions'; // adjust path as needed
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
-// Map each nav item to the permission required to see it
+// feature key must match the keys in FEATURE_PROBES in AuthContext.
+// No feature key = always visible (backend never blocks it for any role).
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard',        path: '/dashboard',        permission: 'view_dashboard' },
-  { icon: Package,         label: 'Inventory',        path: '/inventory',        permission: 'view_products' },
-  { icon: Box,             label: 'Products',         path: '/products',         permission: 'view_products' },
-  { icon: Bell,            label: 'Alerts',           path: '/alerts',           permission: 'view_alerts' },
-  { icon: ShoppingCart,    label: 'Orders',           path: '/orders',           permission: 'view_orders' },
-  { icon: Users,           label: 'Suppliers',        path: '/suppliers',        permission: 'view_suppliers' },
-  { icon: TrendingUp,      label: 'Analytics',        path: '/analytics',        permission: 'view_analytics' },
-  { icon: AlertTriangle,   label: 'Delivery Issues',  path: '/delivery-issues',  permission: 'view_delivery_issues' },
+  { icon: LayoutDashboard, label: "Dashboard",       path: "/dashboard",       feature: "dashboard" },
+  { icon: Package,         label: "Inventory",       path: "/inventory" },
+  { icon: Box,             label: "Products",        path: "/products" },
+  { icon: Bell,            label: "Alerts",          path: "/alerts",          feature: "alerts" },
+  { icon: ShoppingCart,    label: "Orders",          path: "/orders",          feature: "orders" },
+  { icon: Users,           label: "Suppliers",       path: "/suppliers",       feature: "suppliers" },
+  { icon: TrendingUp,      label: "Analytics",       path: "/analytics",       feature: "analytics" },
+  { icon: AlertTriangle,   label: "Delivery Issues", path: "/delivery-issues", feature: "delivery-issues" },
 ];
 
 const bottomMenuItems = [
-  { icon: Settings, label: 'Settings', path: '/settings', permission: 'view_settings' },
-  { icon: User,     label: 'Profile',  path: '/profile',  permission: 'view_profile' },
+  { icon: Settings, label: "Settings", path: "/settings" },
+  { icon: User,     label: "Profile",  path: "/profile" },
 ];
 
 export function Sidebar() {
   const location = useLocation();
-  const { currentUser } = useAuth(); // expects user.role to be 'admin' | 'manager' | 'staff'
+  const { isFeatureAllowed } = useAuth();
 
-  const userPermissions = permissions[currentUser?.role] ?? [];
-  const hasPermission = (permission) => userPermissions.includes(permission);
+  const visibleMenu = menuItems.filter(
+    (item) => !item.feature || isFeatureAllowed(item.feature)
+  );
 
-  const visibleMenuItems = menuItems.filter((item) => hasPermission(item.permission));
-  const visibleBottomItems = bottomMenuItems.filter((item) => hasPermission(item.permission));
+  const visibleBottom = bottomMenuItems.filter(
+    (item) => !item.feature || isFeatureAllowed(item.feature)
+  );
 
   return (
     <div className="w-[240px] bg-[#1a1d1f] flex flex-col min-h-screen">
@@ -52,7 +54,7 @@ export function Sidebar() {
 
       {/* Main Navigation */}
       <nav className="flex-1 px-3 space-y-1">
-        {visibleMenuItems.map((item) => {
+        {visibleMenu.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
 
@@ -62,8 +64,8 @@ export function Sidebar() {
               to={item.path}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-sm ${
                 isActive
-                  ? 'bg-[#15aaad] text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? "bg-[#15aaad] text-white"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
               }`}
             >
               <Icon className="w-[18px] h-[18px]" />
@@ -75,7 +77,7 @@ export function Sidebar() {
 
       {/* Bottom Navigation */}
       <div className="px-3 pb-4 space-y-1">
-        {visibleBottomItems.map((item) => {
+        {visibleBottom.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
 
@@ -85,8 +87,8 @@ export function Sidebar() {
               to={item.path}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-sm ${
                 isActive
-                  ? 'bg-[#15aaad] text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? "bg-[#15aaad] text-white"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
               }`}
             >
               <Icon className="w-[18px] h-[18px]" />

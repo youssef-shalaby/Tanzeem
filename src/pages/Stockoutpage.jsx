@@ -104,8 +104,7 @@ function ProductSearchInput({ item, onProductSelect }) {
       setIsLoading(true);
       try {
         const token = getToken();
-        const res = await fetch(`/api/Products/Get-Products-Dropdown-Menu?search=${encodeURIComponent(value)}`, {
-          headers: {
+        const res = await fetch(`/api/Products/Get-Products-Dropdown-Menu?searchQuery=${encodeURIComponent(value)}`, {          headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },

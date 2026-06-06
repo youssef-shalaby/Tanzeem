@@ -1,24 +1,8 @@
-import { useState, useEffect } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router';
-
-function getToken() {
-  try {
-    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
-  } catch {
-    return null;
-  }
-}
-
-function authFetch(url) {
-  const token = getToken();
-  return fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  }).then((r) => r.json());
-}
+import { useState, useEffect } from "react";
+import { X, Plus, Trash2 } from "lucide-react";
+import { useNavigate, useLocation } from "react-router";
+import { apiRequest, ForbiddenError } from "../services/api";
+import UnauthorizedPage from "./UnauthorizedPage";
 
 export function CreateOrderPage() {
   const navigate = useNavigate();
@@ -27,12 +11,13 @@ export function CreateOrderPage() {
 
   const [suppliersDropdown, setSuppliersDropdown] = useState([]);
   const [productsDropdown, setProductsDropdown] = useState([]);
+  const [isForbidden, setIsForbidden] = useState(false);
 
   const [formData, setFormData] = useState({
-    supplierId: reorder?.supplierId ?? '',
+    supplierId: reorder?.supplierId ?? "",
     orderDate: new Date().toISOString().slice(0, 10),
-    expectedDeliveryDate: '',
-    notes: '',
+    expectedDeliveryDate: "",
+    notes: "",
     shippingCost: 0,
     taxes: 0,
   });
@@ -40,31 +25,41 @@ export function CreateOrderPage() {
   const [orderItems, setOrderItems] = useState(
     reorder?.items?.length
       ? reorder.items.map((item) => ({ id: Date.now() + Math.random(), ...item }))
-      : [{ id: Date.now(), productId: '', quantity: 1, price: 0 }]
+      : [{ id: Date.now(), productId: "", quantity: 1, price: 0 }]
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    authFetch('/api/Supplier/lookup')
-      .then((data) => setSuppliersDropdown(data || []))
-      .catch((err) => console.error('Failed to load suppliers:', err));
-
-    authFetch('/api/Products/Get-Products-Dropdown-Menu')
-      .then((data) => setProductsDropdown(data || []))
-      .catch((err) => console.error('Failed to load products:', err));
+    Promise.all([
+      apiRequest("/api/Supplier/lookup"),
+      apiRequest("/api/Products/Get-Products-Dropdown-Menu"),
+    ])
+      .then(([suppliers, products]) => {
+        setSuppliersDropdown(suppliers || []);
+        setProductsDropdown(products || []);
+      })
+      .catch((err) => {
+        if (err instanceof ForbiddenError) {
+          setIsForbidden(true);
+        } else {
+          console.error("Failed to load dropdowns:", err);
+        }
+      });
   }, []);
+
+  if (isForbidden) return <UnauthorizedPage />;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'shippingCost' || name === 'taxes' ? parseFloat(value) || 0 : value,
+      [name]: name === "shippingCost" || name === "taxes" ? parseFloat(value) || 0 : value,
     }));
   };
 
   const addOrderItem = () => {
-    setOrderItems((prev) => [...prev, { id: Date.now(), productId: '', quantity: 1, price: 0 }]);
+    setOrderItems((prev) => [...prev, { id: Date.now(), productId: "", quantity: 1, price: 0 }]);
   };
 
   const removeOrderItem = (id) => {
@@ -79,7 +74,7 @@ export function CreateOrderPage() {
         item.id === id
           ? {
               ...item,
-              [field]: field === 'productId' ? parseInt(value) || '' : parseFloat(value) || 0,
+              [field]: field === "productId" ? parseInt(value) || "" : parseFloat(value) || 0,
             }
           : item
       )
@@ -92,16 +87,14 @@ export function CreateOrderPage() {
   const calculateTotal = () =>
     calculateSubtotal() + formData.shippingCost + formData.taxes;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.supplierId) {
-      alert('Please select a supplier.');
+      alert("Please select a supplier.");
       return;
     }
 
     setIsSubmitting(true);
-
-    const token = getToken();
 
     const payload = {
       supplierId: parseInt(formData.supplierId),
@@ -120,29 +113,27 @@ export function CreateOrderPage() {
       })),
     };
 
-    fetch('/api/Order', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(payload),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to create order.');
-        navigate('/orders');
-      })
-      .catch((err) => {
-        alert(err.message);
-        setIsSubmitting(false);
+    try {
+      await apiRequest("/api/Order", {
+        method: "POST",
+        body: JSON.stringify(payload),
       });
+      navigate("/orders");
+    } catch (err) {
+      if (err instanceof ForbiddenError) {
+        setIsForbidden(true);
+      } else {
+        alert(err.message || "Failed to create order.");
+        setIsSubmitting(false);
+      }
+    }
   };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Create Purchase Order</h1>
-        <button onClick={() => navigate('/orders')} className="p-2 hover:bg-gray-100 rounded-lg">
+        <button onClick={() => navigate("/orders")} className="p-2 hover:bg-gray-100 rounded-lg">
           <X className="w-5 h-5 text-gray-600" />
         </button>
       </div>
@@ -224,7 +215,7 @@ export function CreateOrderPage() {
                       <label className="block text-xs font-medium text-gray-600 mb-1">Product</label>
                       <select
                         value={item.productId}
-                        onChange={(e) => updateOrderItem(item.id, 'productId', e.target.value)}
+                        onChange={(e) => updateOrderItem(item.id, "productId", e.target.value)}
                         required
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
                       >
@@ -243,7 +234,7 @@ export function CreateOrderPage() {
                         type="number"
                         min="1"
                         value={item.quantity}
-                        onChange={(e) => updateOrderItem(item.id, 'quantity', e.target.value)}
+                        onChange={(e) => updateOrderItem(item.id, "quantity", e.target.value)}
                         onFocus={(e) => e.target.select()}
                         required
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
@@ -257,7 +248,7 @@ export function CreateOrderPage() {
                         min="0"
                         step="0.01"
                         value={item.price}
-                        onChange={(e) => updateOrderItem(item.id, 'price', e.target.value)}
+                        onChange={(e) => updateOrderItem(item.id, "price", e.target.value)}
                         onFocus={(e) => e.target.select()}
                         required
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
@@ -341,7 +332,7 @@ export function CreateOrderPage() {
                 disabled={isSubmitting}
                 className="w-full py-3 bg-[#15aaad] text-white text-sm font-medium rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-50"
               >
-                {isSubmitting ? 'Submitting...' : 'Create Order'}
+                {isSubmitting ? "Submitting..." : "Create Order"}
               </button>
             </div>
           </div>

@@ -24,6 +24,8 @@ import {
   Legend,
 } from "recharts";
 import { Link } from "react-router";
+import { apiRequest, ForbiddenError } from "../services/api";
+import UnauthorizedPage from "./UnauthorizedPage";
 
 const CATEGORY_COLORS = [
   "#15aaad",
@@ -34,24 +36,6 @@ const CATEGORY_COLORS = [
   "#6b7280",
 ];
 
-function getToken() {
-  try {
-    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
-  } catch {
-    return null;
-  }
-}
-
-function authFetch(url) {
-  const token = getToken();
-  return fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  }).then((r) => r.json());
-}
-
 export function DashboardPage() {
   const [boxes, setBoxes] = useState(null);
   const [topItems, setTopItems] = useState([]);
@@ -59,14 +43,15 @@ export function DashboardPage() {
   const [barData, setBarData] = useState([]);
   const [lineData, setLineData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isForbidden, setIsForbidden] = useState(false);
 
   useEffect(() => {
     Promise.all([
-      authFetch("/api/Dashboard/get_four_boxes"),
-      authFetch("/api/Dashboard/get_top_moving_items"),
-      authFetch("/api/Dashboard/get_category_distribution"),
-      authFetch("/api/Dashboard/get_bar_chart_IN-OUT"),
-      authFetch("/api/Dashboard/get_line_chart_stock_value"),
+      apiRequest("/api/Dashboard/get_four_boxes"),
+      apiRequest("/api/Dashboard/get_top_moving_items"),
+      apiRequest("/api/Dashboard/get_category_distribution"),
+      apiRequest("/api/Dashboard/get_bar_chart_IN-OUT"),
+      apiRequest("/api/Dashboard/get_line_chart_stock_value"),
     ])
       .then(([boxesData, topData, catData, barChartData, lineChartData]) => {
         setBoxes(boxesData);
@@ -83,10 +68,14 @@ export function DashboardPage() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Dashboard fetch error:", err);
+        if (err instanceof ForbiddenError) {
+          setIsForbidden(true);
+        }
         setLoading(false);
       });
   }, []);
+
+  if (isForbidden) return <UnauthorizedPage />;
 
   const stats = boxes
     ? [

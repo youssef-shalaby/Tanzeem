@@ -1,25 +1,22 @@
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { permissions } from '../config/permissions';
+import { Navigate } from "react-router";
+import { useAuth } from "../contexts/AuthContext";
+import UnauthorizedPage from "../pages/UnauthorizedPage";
 
-export default function ProtectedRoute({
-  children,
-  requiredPermission,
-}) {
-  const { currentUser } = useAuth();
+/**
+ * Checks authentication first, then optionally checks a feature gate.
+ * The feature gate uses the probed results from AuthContext — no API call needed here.
+ */
+export default function ProtectedRoute({ children, feature }) {
+  const { currentUser, isFeatureAllowed, allowedFeatures } = useAuth();
 
   if (!currentUser) {
     return <Navigate to="/signin" replace />;
   }
 
-  const userPermissions =
-    permissions[currentUser.role] || [];
-
-  const hasPermission =
-    userPermissions.includes(requiredPermission);
-
-  if (!hasPermission) {
-    return <Navigate to="/unauthorized" replace />;
+  // If a feature is specified and probing is done (allowedFeatures !== null),
+  // block immediately before the page renders anything
+  if (feature && allowedFeatures !== null && !isFeatureAllowed(feature)) {
+    return <UnauthorizedPage />;
   }
 
   return children;

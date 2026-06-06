@@ -79,254 +79,57 @@ export function AppRoutes() {
       <Route path="/welcome" element={<WelcomePage />} />
 
       {/* Dashboard */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute requiredPermission="view_dashboard">
-            <DashboardPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/dashboard" element={<ProtectedRoute feature="dashboard"><DashboardPage /></ProtectedRoute>} />
 
       {/* Products */}
-      <Route
-        path="/products"
-        element={
-          <ProtectedRoute requiredPermission="view_products">
-            <ProductsPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/products/view-product/:id"
-        element={
-          <ProtectedRoute requiredPermission="view_products">
-            <ViewProductPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/products/edit-product/:id"
-        element={
-          <ProtectedRoute requiredPermission="edit_products">
-            <EditProductPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
+      <Route path="/products/view-product/:id" element={<ProtectedRoute><ViewProductPage /></ProtectedRoute>} />
+      <Route path="/products/edit-product/:id" element={<ProtectedRoute><EditProductPage /></ProtectedRoute>} />
 
       {/* Inventory */}
-      <Route
-        path="/add-item"
-        element={
-          <ProtectedRoute requiredPermission="edit_products">
-            <AddItemPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/add-stock"
-        element={
-          <ProtectedRoute requiredPermission="edit_products">
-            <Addstockpage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/stock-out"
-        element={
-          <ProtectedRoute requiredPermission="edit_products">
-            <Stockoutpage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/inventory"
-        element={
-          <ProtectedRoute requiredPermission="view_products">
-            <Inventory />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/add-item" element={<ProtectedRoute><AddItemPage /></ProtectedRoute>} />
+      <Route path="/add-stock" element={<ProtectedRoute><Addstockpage /></ProtectedRoute>} />
+      <Route path="/stock-out" element={<ProtectedRoute><Stockoutpage /></ProtectedRoute>} />
+      <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
 
       {/* Transactions */}
-      <Route
-        path="/transactions"
-        element={
-          <ProtectedRoute requiredPermission="view_transactions">
-            <TransactionsPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/transactions/:transactionId"
-        element={
-          <ProtectedRoute requiredPermission="view_transactions">
-            <ViewTransactionPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/stock-out-log"
-        element={
-          <ProtectedRoute requiredPermission="view_transactions">
-            <StockOutLogPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/stock-in-logs"
-        element={
-          <ProtectedRoute requiredPermission="view_transactions">
-            <StockInlogs />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/transactions" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />
+      <Route path="/transactions/:transactionId" element={<ProtectedRoute><ViewTransactionPage /></ProtectedRoute>} />
+      <Route path="/stock-out-log" element={<ProtectedRoute><StockOutLogPage /></ProtectedRoute>} />
+      <Route path="/stock-in-logs" element={<ProtectedRoute><StockInlogs /></ProtectedRoute>} />
 
       {/* Orders */}
-      <Route
-        path="/orders"
-        element={
-          <ProtectedRoute requiredPermission="view_orders">
-            <OrdersPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/orders/create"
-        element={
-          <ProtectedRoute requiredPermission="manage_orders">
-            <CreateOrderPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/orders/:orderId"
-        element={
-          <ProtectedRoute requiredPermission="view_orders">
-            <ViewOrderPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/orders/:orderId/confirm-delivery"
-        element={
-          <ProtectedRoute requiredPermission="manage_orders">
-            <ConfirmDeliveryPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/orders" element={<ProtectedRoute feature="orders"><OrdersPage /></ProtectedRoute>} />
+      <Route path="/orders/create" element={<ProtectedRoute feature="orders"><CreateOrderPage /></ProtectedRoute>} />
+      <Route path="/orders/:orderId" element={<ProtectedRoute feature="orders"><ViewOrderPage /></ProtectedRoute>} />
+      <Route path="/orders/:orderId/confirm-delivery" element={<ProtectedRoute feature="orders"><ConfirmDeliveryPage /></ProtectedRoute>} />
 
       {/* Suppliers */}
-      <Route
-        path="/suppliers"
-        element={
-          <ProtectedRoute requiredPermission="view_suppliers">
-            <SuppliersPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/suppliers/view-supplier/:supplierId"
-        element={
-          <ProtectedRoute requiredPermission="view_suppliers">
-            <ViewSupplierPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/suppliers/edit-supplier/:supplierId"
-        element={
-          <ProtectedRoute requiredPermission="manage_suppliers">
-            <EditSupplierPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/suppliers/add"
-        element={
-          <ProtectedRoute requiredPermission="manage_suppliers">
-            <AddSupplierPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/suppliers" element={<ProtectedRoute feature="suppliers"><SuppliersPage /></ProtectedRoute>} />
+      <Route path="/suppliers/view-supplier/:supplierId" element={<ProtectedRoute feature="suppliers"><ViewSupplierPage /></ProtectedRoute>} />
+      <Route path="/suppliers/edit-supplier/:supplierId" element={<ProtectedRoute feature="suppliers"><EditSupplierPage /></ProtectedRoute>} />
+      <Route path="/suppliers/add" element={<ProtectedRoute feature="suppliers"><AddSupplierPage /></ProtectedRoute>} />
 
       {/* Alerts */}
-      <Route
-        path="/alerts"
-        element={
-          <ProtectedRoute requiredPermission="view_alerts">
-            <AlertsPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/alerts" element={<ProtectedRoute feature="alerts"><AlertsPage /></ProtectedRoute>} />
 
       {/* Analytics */}
-      <Route
-        path="/analytics"
-        element={
-          <ProtectedRoute requiredPermission="view_analytics">
-            <AnalyticsPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/analytics" element={<ProtectedRoute feature="analytics"><AnalyticsPage /></ProtectedRoute>} />
 
       {/* Delivery Issues */}
-      <Route
-        path="/delivery-issues"
-        element={
-          <ProtectedRoute requiredPermission="view_orders">
-            <DeliveryIssuesPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/delivery-issues/:issueId"
-        element={
-          <ProtectedRoute requiredPermission="view_orders">
-            <ViewDeliveryIssuePage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/delivery-issues" element={<ProtectedRoute feature="delivery-issues"><DeliveryIssuesPage /></ProtectedRoute>} />
+      <Route path="/delivery-issues/:issueId" element={<ProtectedRoute feature="delivery-issues"><ViewDeliveryIssuePage /></ProtectedRoute>} />
 
       {/* Settings */}
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute requiredPermission="view_settings">
-            <SettingsPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
 
       {/* Profile */}
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute requiredPermission="view_profile">
-            <ProfilePage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
       {/* Unauthorized */}
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-      {/* Redirect */}
+      {/* Fallback */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

@@ -1,5 +1,13 @@
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
+// Thrown specifically on 403 so callers can distinguish it from other errors
+export class ForbiddenError extends Error {
+  constructor() {
+    super("You don't have permission to access this resource.");
+    this.name = "ForbiddenError";
+  }
+}
+
 export async function parseApiResponse(response) {
   const text = await response.text();
   if (!text) return null;
@@ -32,10 +40,15 @@ export async function apiRequest(path, options = {}) {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}), // ✅ attach token
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
+
+  // Throw a specific error for 403 so pages can show the right UI
+  if (response.status === 403) {
+    throw new ForbiddenError();
+  }
 
   const data = await parseApiResponse(response);
 
