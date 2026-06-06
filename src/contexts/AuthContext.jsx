@@ -5,14 +5,12 @@ const AuthContext = createContext(null);
 
 const STORAGE_KEY = "tanzeem_auth";
 
-// Each sidebar feature and its probe endpoint.
-// On load we fire all of them and record which ones the backend allows (non-403).
 const FEATURE_PROBES = [
-  { feature: "dashboard",       path: "/api/Dashboard/get_four_boxes" },
-  { feature: "alerts",          path: "/api/Alert/mini_Alert_dashboard" },
-  { feature: "analytics",       path: "/api/DemandForecasting/Get_mini_dashboard" },
-  { feature: "orders",          path: "/api/Order?page=1&page_size=1" },
-  { feature: "suppliers",       path: "/api/Supplier?page=1&page_size=1" },
+  { feature: "dashboard", path: "/api/Dashboard/get_four_boxes" },
+  { feature: "alerts", path: "/api/Alert/mini_Alert_dashboard" },
+  { feature: "analytics", path: "/api/DemandForecasting/Get_mini_dashboard" },
+  { feature: "orders", path: "/api/Order?page=1&page_size=1" },
+  { feature: "suppliers", path: "/api/Supplier?page=1&page_size=1" },
   { feature: "delivery-issues", path: "/api/DeliveryIssues?page=1&page_size=1" },
 ];
 
@@ -50,10 +48,23 @@ function decodeJWT(token) {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     return {
-      id: payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || "current-user",
-      name: payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || "User",
-      email: payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] || "",
-      role: normalizeRole(payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]),
+      id:
+        payload[
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+        ] || "current-user",
+      name:
+        payload[
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+        ] || "User",
+      email:
+        payload[
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
+        ] || "",
+      role: normalizeRole(
+        payload[
+          "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+        ]
+      ),
       companyId: payload["CompanyId"] || null,
       branchId: payload["BranchId"] || null,
     };
@@ -77,17 +88,14 @@ function normalizeUser(data) {
   };
 }
 
-// Fire all probes and return a Set of allowed feature keys
 async function probeFeatures() {
   const results = await Promise.allSettled(
     FEATURE_PROBES.map(({ path }) => apiRequest(path))
   );
 
   const allowed = new Set();
+
   results.forEach((result, i) => {
-    // fulfilled = backend returned something (200/other non-403)
-    // rejected with ForbiddenError = blocked
-    // rejected with other error = network/server error, assume allowed to avoid locking people out
     if (result.status === "fulfilled") {
       allowed.add(FEATURE_PROBES[i].feature);
     } else if (result.reason?.name !== "ForbiddenError") {
@@ -103,35 +111,19 @@ async function probeFeatures() {
 export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState(() => {
     const stored = readStoredAuth();
+
     return {
       currentUser: stored?.currentUser || null,
       token: stored?.token || null,
       backendResponse: stored?.backendResponse || null,
-      allowedFeatures: stored?.allowedFeatures
-        ? new Set(stored.allowedFeatures)
-        : null, // null = not probed yet
+      allowedFeatures: null,
     };
   });
 
-  // On app load, if already logged in but haven't probed yet, probe now
   useEffect(() => {
-    if (authState.currentUser && authState.allowedFeatures === null) {
+    if (authState.currentUser) {
       probeFeatures().then((allowed) => {
-        setAuthState((prev) => {
-          const next = {
-            ...prev,
-            allowedFeatures: allowed,
-          };
-          // Persist allowed features (as array, Sets aren't JSON-serializable)
-          const stored = readStoredAuth();
-          if (stored) {
-            localStorage.setItem(
-              STORAGE_KEY,
-              JSON.stringify({ ...stored, allowedFeatures: [...allowed] })
-            );
-          }
-          return next;
-        });
+        setAuthState((prev) => ({ ...prev, allowedFeatures: allowed }));
       });
     }
   }, []);
@@ -141,39 +133,34 @@ export function AuthProvider({ children }) {
     const token = typeof data === "string" ? data : extractToken(data);
     const currentUser = token ? decodeJWT(token) : normalizeUser(data);
 
-    // Probe features right after login so sidebar and routes are ready immediately
+    const nextState = { currentUser, token, backendResponse: data };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+
     const allowedFeatures = await probeFeatures();
 
-    const nextState = {
-      currentUser,
-      token,
-      backendResponse: data,
-      allowedFeatures,
-    };
+    setAuthState({ ...nextState, allowedFeatures });
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ ...nextState, allowedFeatures: [...allowedFeatures] })
-    );
-    setAuthState(nextState);
-
-    return nextState;
+    return { ...nextState, allowedFeatures };
   };
 
   const setCurrentUser = (currentUser) => {
     const nextState = { ...authState, currentUser };
+
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        ...nextState,
-        allowedFeatures: [...(authState.allowedFeatures || [])],
+        currentUser,
+        token: authState.token,
+        backendResponse: authState.backendResponse,
       })
     );
+
     setAuthState(nextState);
   };
 
   const logout = () => {
     localStorage.removeItem(STORAGE_KEY);
+
     setAuthState({
       currentUser: null,
       token: null,
@@ -183,7 +170,6 @@ export function AuthProvider({ children }) {
   };
 
   const isFeatureAllowed = (feature) => {
-    // While probing, default to allowed to avoid flicker on unrestricted features
     if (authState.allowedFeatures === null) return true;
     return authState.allowedFeatures.has(feature);
   };
