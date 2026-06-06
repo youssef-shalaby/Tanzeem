@@ -22,11 +22,10 @@ const REASON_CODE_MAP = {
   'Internal Use': 8,             // Production = 8
 };
 
-// Normalize API response — handles both camelCase and PascalCase field names
-// The dropdown endpoint only returns: id, name, sku, price
+// Normalize API response — handles camelCase, PascalCase, and sparse dropdown shape
+// Dropdown endpoint only returns: id, name, sku, price
 function norm(product) {
   const p = product;
-  // 'price' is what the dropdown endpoint returns — used as both cost and selling price
   const price = p.price ?? p.Price ?? 0;
   return {
     id:           p.id           ?? p.Id           ?? 0,
@@ -167,7 +166,7 @@ function ProductSearchInput({ item, onProductSelect }) {
                   <div className="text-xs text-gray-500 mt-0.5">
                     SKU: {p.sku}
                     {p.barcode && ` · Barcode: ${p.barcode}`}
-                    {p.stock != null && ` · In stock: ${p.stock}`}
+                    {p.stock > 0 && ` · In stock: ${p.stock}`}
                   </div>
                 </button>
               );
@@ -391,14 +390,13 @@ export function Stockoutpage() {
                               value={item.quantity}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                handleQuantityChange(item.id, val === '' ? '' : Math.max(1, parseInt(val) || 1));
+                                handleQuantityChange(item.id, val === '' ? '' : Math.abs(parseInt(val)) || '');
                               }}
-                              onBlur={(e) => {
-                                if (e.target.value === '' || parseInt(e.target.value) < 1) {
-                                  handleQuantityChange(item.id, 1);
-                                }
+                              onBlur={() => {
+                                const val = parseInt(item.quantity);
+                                if (!val || val < 1) handleQuantityChange(item.id, 1);
                               }}
-                              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
+                              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col">
                               <button type="button" onClick={() => handleQuantityChange(item.id, (parseInt(item.quantity) || 1) + 1)} className="px-1 py-0.5 text-gray-400 hover:text-gray-600">
