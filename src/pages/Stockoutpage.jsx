@@ -22,6 +22,30 @@ const REASON_CODE_MAP = {
   'Internal Use': 8,             // Production = 8
 };
 
+// Normalize API response — handles both camelCase and PascalCase field names
+// The dropdown endpoint only returns: id, name, sku, price
+function norm(product) {
+  const p = product;
+  // 'price' is what the dropdown endpoint returns — used as both cost and selling price
+  const price = p.price ?? p.Price ?? 0;
+  return {
+    id:           p.id           ?? p.Id           ?? 0,
+    name:         p.name         ?? p.Name         ?? '',
+    sku:          p.sku          ?? p.Sku          ?? p.SKU          ?? '',
+    barcode:      p.barcode      ?? p.Barcode      ?? '',
+    costPrice:    p.costPrice    ?? p.CostPrice    ?? p.cost_price   ?? price,
+    sellingPrice: p.sellingPrice ?? p.SellingPrice ?? p.selling_price ?? price,
+    categoryId:   p.categoryId   ?? p.CategoryId   ?? 0,
+    category:     p.category     ?? p.Category     ?? '',
+    stock:        p.stock        ?? p.Stock        ?? 0,
+    expiryDate:   p.expiryDate   ?? p.ExpiryDate   ?? null,
+    description:  p.description  ?? p.Description  ?? '',
+    reorderLevel: p.reorderLevel ?? p.ReorderLevel ?? 0,
+    status:       p.status       ?? p.Status       ?? 'Active',
+    batchNumber:  p.batchNumber  ?? p.BatchNumber  ?? '',
+  };
+}
+
 function parseDate(dateStr) {
   const [month, day, year] = dateStr.split('/');
   return new Date(`${year}-${month}-${day}T00:00:00.000Z`).toISOString();
@@ -100,8 +124,9 @@ function ProductSearchInput({ item, onProductSelect }) {
   };
 
   const handleSelect = (product) => {
-    onProductSelect(item.id, product);
-    setQuery(`${product.name} (SKU: ${product.sku})`);
+    const p = norm(product);
+    onProductSelect(item.id, p);
+    setQuery(`${p.name} (SKU: ${p.sku})`);
     setShowDropdown(false);
     setResults([]);
   };
@@ -130,20 +155,23 @@ function ProductSearchInput({ item, onProductSelect }) {
           ) : results.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-500">No products found</div>
           ) : (
-            results.map((product) => (
-              <button
-                key={product.id ?? product.sku}
-                onClick={() => handleSelect(product)}
-                className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
-              >
-                <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  SKU: {product.sku}
-                  {product.barcode && ` · Barcode: ${product.barcode}`}
-                  {product.stock != null && ` · In stock: ${product.stock}`}
-                </div>
-              </button>
-            ))
+            results.map((product) => {
+              const p = norm(product);
+              return (
+                <button
+                  key={p.id || p.sku}
+                  onClick={() => handleSelect(product)}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
+                >
+                  <div className="text-sm font-medium text-gray-900">{p.name}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    SKU: {p.sku}
+                    {p.barcode && ` · Barcode: ${p.barcode}`}
+                    {p.stock != null && ` · In stock: ${p.stock}`}
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       )}
@@ -166,35 +194,37 @@ export function Stockoutpage() {
   const [stockOutItems, setStockOutItems] = useState([createEmptySlot()]);
 
   const handleProductSelect = (slotId, product) => {
+    const p = norm(product);
     setStockOutItems(prev => prev.map(item =>
       item.id === slotId ? {
         ...item,
-        productName: product.name ?? '',
-        sku: product.sku ?? '',
-        barcode: product.barcode ?? '',
-        unitPrice: product.sellingPrice ?? product.costPrice ?? 0,
-        totalPrice: (product.sellingPrice ?? product.costPrice ?? 0) * item.quantity,
-        category: product.category ?? '',
-        stock: product.stock ?? 0,
-        costPrice: product.costPrice ?? 0,
-        sellingPrice: product.sellingPrice ?? 0,
-        expiryDate: product.expiryDate ?? null,
-        description: product.description ?? '',
-        reorderLevel: product.reorderLevel ?? 0,
-        status: product.status ?? 'Active',
+        productName:     p.name,
+        sku:             p.sku,
+        barcode:         p.barcode,
+        unitPrice:       p.sellingPrice || p.costPrice,
+        totalPrice:      (p.sellingPrice || p.costPrice) * item.quantity,
+        productId:       p.id,
+        categoryId:      p.categoryId,
+        category:        p.category,
+        stock:           p.stock,
+        costPrice:       p.costPrice,
+        sellingPrice:    p.sellingPrice,
+        expiryDate:      p.expiryDate,
+        description:     p.description,
+        reorderLevel:    p.reorderLevel,
+        status:          p.status,
+        batchNumber:     p.batchNumber,
         productSelected: true,
       } : item
     ));
   };
 
   const handleQuantityChange = (id, newQuantity) => {
-    if (newQuantity >= 0) {
-      setStockOutItems(prev => prev.map(item =>
-        item.id === id
-          ? { ...item, quantity: newQuantity, totalPrice: newQuantity * item.unitPrice }
-          : item
-      ));
-    }
+    setStockOutItems(prev => prev.map(item =>
+      item.id === id
+        ? { ...item, quantity: newQuantity, totalPrice: (parseInt(newQuantity) || 0) * item.unitPrice }
+        : item
+    ));
   };
 
   const handleReasonChange = (id, newReason) => {
@@ -226,24 +256,27 @@ export function Stockoutpage() {
     const sourceReasonCode = REASON_CODE_MAP[primaryReason] ?? 13;
 
     const payload = {
-      id: crypto.randomUUID(),
+      id: 0,
+      transactionId: crypto.randomUUID(),
       type: 2,
       createdAt: parseDate(selectedDate),
       status: 4,
       value: grandTotal,
-      totalTransactedItems: stockOutItems.reduce((sum, item) => sum + item.quantity, 0),
+      totalTransactedItems: stockOutItems.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0),
       sourceReason: sourceReasonCode,
       referenceNumber: '',
       notes: notes || '',
       preformedBy: '',
       transactionItemDtos: stockOutItems.map(item => ({
-        quantityOfTransactedItem: item.quantity,
+        quantityOfTransactedItem: parseInt(item.quantity) || 1,
         unitPrice: item.unitPrice,
         batchNumber: item.batchNumber || '',
         product: {
+          id: item.productId || 0,
           name: item.productName,
           sku: item.sku,
           category: item.category || '',
+          categoryId: item.categoryId || 0,
           stock: item.stock || 0,
           costPrice: item.costPrice,
           sellingPrice: item.sellingPrice || 0,
@@ -258,7 +291,7 @@ export function Stockoutpage() {
 
     try {
       const token = getToken();
-      const response = await fetch('/api/Transaction/Transactions', {
+      const response = await fetch('/api/Transaction/Create-Transaction', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -288,7 +321,7 @@ export function Stockoutpage() {
           <h1 className="text-2xl font-semibold text-gray-900">Stock Out</h1>
           <p className="text-sm text-gray-600 mt-1">Search for items to remove from inventory and track reasons.</p>
         </div>
-        <button onClick={() => navigate('/inventory')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+        <button type="button" onClick={() => navigate('/inventory')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <X className="w-5 h-5 text-gray-600" />
         </button>
       </div>
@@ -302,7 +335,7 @@ export function Stockoutpage() {
               <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">
                 Items to Remove ({stockOutItems.length})
               </div>
-              <button onClick={handleAddSlot} className="text-sm text-[#15aaad] hover:text-[#0d8082] font-medium flex items-center gap-1">
+              <button type="button" onClick={handleAddSlot} className="text-sm text-[#15aaad] hover:text-[#0d8082] font-medium flex items-center gap-1">
                 <Plus className="w-4 h-4" />
                 Add Another Item
               </button>
@@ -312,6 +345,7 @@ export function Stockoutpage() {
               <div key={item.id} className="border border-gray-200 rounded-lg p-5 relative">
                 {stockOutItems.length > 1 && (
                   <button
+                    type="button"
                     onClick={() => handleRemoveItem(item.id)}
                     className="absolute top-4 right-4 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
                   >
@@ -353,15 +387,24 @@ export function Stockoutpage() {
                           <div className="relative">
                             <input
                               type="number"
+                              min="1"
                               value={item.quantity}
-                              onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 0)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                handleQuantityChange(item.id, val === '' ? '' : Math.max(1, parseInt(val) || 1));
+                              }}
+                              onBlur={(e) => {
+                                if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                                  handleQuantityChange(item.id, 1);
+                                }
+                              }}
                               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
                             />
                             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col">
-                              <button onClick={() => handleQuantityChange(item.id, item.quantity + 1)} className="px-1 py-0.5 text-gray-400 hover:text-gray-600">
+                              <button type="button" onClick={() => handleQuantityChange(item.id, (parseInt(item.quantity) || 1) + 1)} className="px-1 py-0.5 text-gray-400 hover:text-gray-600">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
                               </button>
-                              <button onClick={() => handleQuantityChange(item.id, item.quantity - 1)} className="px-1 py-0.5 text-gray-400 hover:text-gray-600">
+                              <button type="button" onClick={() => handleQuantityChange(item.id, Math.max(1, (parseInt(item.quantity) || 1) - 1))} className="px-1 py-0.5 text-gray-400 hover:text-gray-600">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                               </button>
                             </div>
@@ -375,6 +418,18 @@ export function Stockoutpage() {
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400">Calculated</span>
                           </div>
                         </div>
+                      </div>
+
+                      {/* Batch Number — editable, pre-filled if product has one */}
+                      <div>
+                        <label className="text-sm font-medium text-gray-900 mb-2 block">Batch Number <span className="text-gray-400 font-normal">(Optional)</span></label>
+                        <input
+                          type="text"
+                          value={item.batchNumber}
+                          onChange={(e) => setStockOutItems(prev => prev.map(s => s.id === item.id ? { ...s, batchNumber: e.target.value } : s))}
+                          placeholder="Enter batch number..."
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
+                        />
                       </div>
 
                       <div>
@@ -414,7 +469,7 @@ export function Stockoutpage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Quantity:</span>
                 <span className="text-sm font-semibold text-gray-900">
-                  {stockOutItems.reduce((sum, item) => sum + item.quantity, 0)} units
+                  {stockOutItems.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0)} units
                 </span>
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-gray-200">
