@@ -26,6 +26,66 @@ function getToken() {
   }
 }
 
+// Shared design system styles – green accent (#0f8c5a)
+const PRODUCTS_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .products-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-select {
+    padding: 8px 14px; background: #fff; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+    color: #444; cursor: pointer; outline: none; transition: border-color .2s;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+  }
+  .db-select:hover { border-color: #0f8c5a; }
+  .db-table { width: 100%; border-collapse: collapse; }
+  .db-table th { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: .5px; padding: 10px 16px; text-align: left; background: #f9faf7; }
+  .db-table td { padding: 12px 16px; font-size: 13px; color: #1a1a18; border-top: 1px solid rgba(0,0,0,.05); }
+  .db-table tr:hover td { background: #f9faf7; }
+  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
+  .pill-green { background: #d6f5e8; color: #0a6b45; }
+  .pill-blue { background: #e8f0fe; color: #2c5f8a; }
+  .pill-amber { background: #fef3c7; color: #8b5e00; }
+  .pill-gray { background: #f3f4f6; color: #4b5563; }
+  .db-search-input {
+    width: 100%; padding: 9px 14px 9px 36px;
+    background: #f5f6f3; border: 1px solid transparent;
+    border-radius: 100px; font-size: 13.5px; font-family: 'DM Sans', sans-serif;
+    color: #1a1a18; outline: none; transition: border-color .2s, background .2s;
+  }
+  .db-search-input::placeholder { color: #aaa; }
+  .db-search-input:focus { background: #fff; border-color: rgba(15,140,90,.3); }
+  .db-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #666; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .db-skeleton { background: linear-gradient(90deg,#f0f0ec 25%,#e8e8e4 50%,#f0f0ec 75%); background-size:200% 100%; animation: shimmer 1.4s infinite; border-radius:10px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+`;
+
 export function ProductsPage() {
   const navigate = useNavigate();
 
@@ -80,15 +140,10 @@ export function ProductsPage() {
           name: product.name || "Unnamed Product",
           sku: product.sku || "—",
           category: product.category || "Uncategorized",
-          stockLevel:
-            product.stock !== null && product.stock !== undefined
-              ? product.stock
-              : 0,
+          stockLevel: product.stock !== null && product.stock !== undefined ? product.stock : 0,
           price: product.sellingPrice ?? product.price ?? 0,
           costPrice: product.costPrice ?? 0,
-          expiryDate: product.expiryDate
-            ? new Date(product.expiryDate).toLocaleDateString()
-            : "N/A",
+          expiryDate: product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : "N/A",
           status: product.status || "Active",
           barcode: product.barcode || "—",
           description: product.description || "",
@@ -97,8 +152,6 @@ export function ProductsPage() {
 
         setProductsList(normalizedProducts);
 
-        // Derive unique categories from the full unfiltered product list
-        // only when no category filter is active (so we always have the full list)
         if (filterId === "all") {
           const unique = [...new Map(
             rawArray
@@ -132,8 +185,7 @@ export function ProductsPage() {
       name: item.name,
       sku: item.sku,
       category: item.category,
-      stockLevel:
-        parseInt(item.stocklevel || item.stockLevel || item.stock || "0", 10) || 0,
+      stockLevel: parseInt(item.stocklevel || item.stockLevel || item.stock || "0", 10) || 0,
       price: parseFloat(item.price || item.sellingPrice || "0") || 0,
       expiryDate: item.expirydate || item.expiryDate || "N/A",
       status: "Active",
@@ -155,329 +207,286 @@ export function ProductsPage() {
   // CLIENT-SIDE PAGINATION
   // ================================
   const totalPages = Math.ceil(productsList.length / ITEMS_PER_PAGE);
-
   const paginatedProducts = productsList.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
 
   const start = productsList.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
   const end = Math.min(currentPage * ITEMS_PER_PAGE, productsList.length);
 
+  // Stats cards data
+  const totalCategories = [...new Set(productsList.map((p) => p.category))].length;
+
   return (
-    <div className="space-y-6">
+    <div className="products-root space-y-6">
+      <style>{PRODUCTS_STYLES}</style>
+
       {/* HEADER */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Products</h1>
-
+        <h1 className="db-section-title">Products</h1>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCsvModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
-          >
+          <button onClick={() => setCsvModalOpen(true)} className="db-secondary-btn">
             <Upload className="w-[18px] h-[18px]" />
             Import CSV
           </button>
-
-          <Link
-            to="/add-item"
-            className="flex items-center gap-2 px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors"
-          >
+          <Link to="/add-item" className="db-primary-btn">
             <Plus className="w-[18px] h-[18px]" />
             Add Product
           </Link>
         </div>
       </div>
 
-      {/* STATS */}
+      {/* STATS CARDS (matching Dashboard) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">Total Products</div>
-          <div className="text-2xl font-semibold text-gray-900">
-            {productsList.length.toLocaleString()}
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Total Products</span>
+          </div>
+          <div className="p-5">
+            <div className="text-2xl font-semibold text-gray-900">
+              {loading ? <div className="db-skeleton w-20 h-8" /> : productsList.length.toLocaleString()}
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">Categories</div>
-          <div className="text-2xl font-semibold text-gray-900">
-            {[...new Set(productsList.map((p) => p.category))].length}
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Categories</span>
+          </div>
+          <div className="p-5">
+            <div className="text-2xl font-semibold text-gray-900">
+              {loading ? <div className="db-skeleton w-20 h-8" /> : totalCategories}
+            </div>
           </div>
         </div>
       </div>
 
       {/* SEARCH + FILTER + SORT */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex items-center gap-3">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by name, SKU, or category..."
-              value={searchQuery}
+      <div className="db-card db-fade-in">
+        <div className="db-card-header">
+          <span className="db-card-title">Filter & Sort</span>
+        </div>
+        <div className="p-5">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search */}
+            <div className="flex-1 min-w-[200px] relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by name, SKU, or category..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="db-search-input pl-11"
+              />
+            </div>
+
+            {/* Filter */}
+            <select
+              value={filterId}
               onChange={(e) => {
-                setSearchQuery(e.target.value);
+                setFilterId(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-11 pr-4 py-2.5 bg-[#f6f8fa] border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
-            />
+              className="db-select"
+            >
+              <option value="all">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Sort */}
+            <select
+              value={sortId}
+              onChange={(e) => {
+                setSortId(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="db-select"
+            >
+              <option value="">Default Sort</option>
+              <option value="1">Name A → Z</option>
+              <option value="2">Price (Selling)</option>
+              <option value="3">Quantity (Stock)</option>
+            </select>
           </div>
-
-          {/* Filter */}
-          <select
-            value={filterId}
-            onChange={(e) => {
-              setFilterId(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
-          >
-            <option value="all">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Sort */}
-          <select
-            value={sortId}
-            onChange={(e) => {
-              setSortId(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
-          >
-            <option value="">Default Sort</option>
-            <option value="1">Name A → Z</option>
-            <option value="2">Price (Selling)</option>
-            <option value="3">Quantity (Stock)</option>
-          </select>
         </div>
       </div>
 
-      {/* TABLE CARD */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-visible">
-        <div className="space-y-4 p-6">
+      {/* PRODUCTS TABLE CARD */}
+      <div className="db-card db-fade-in">
+        <div className="db-card-header">
+          <span className="db-card-title">Product List</span>
+        </div>
+        <div className="overflow-x-auto">
           {loading ? (
-            <div className="py-16 text-center text-sm text-gray-500">
-              Loading products from database...
+            <div className="p-10 text-center">
+              <div className="db-skeleton h-10 mb-3" />
+              <div className="db-skeleton h-10 mb-3" />
+              <div className="db-skeleton h-10 mb-3" />
             </div>
           ) : error ? (
-            <div className="py-16 text-center text-sm text-red-600">
-              Error loading data: {error}
-            </div>
+            <div className="p-10 text-center text-red-500">Error loading data: {error}</div>
           ) : (
-            <>
-              <div className="overflow-visible min-h-[550px]">
-                <table className="w-full min-w-[900px]">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Product Name
-                      </th>
-                      <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        SKU
-                      </th>
-                      <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Category
-                      </th>
-                      <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Stock
-                      </th>
-                      <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Price
-                      </th>
-                      <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Expiry Date
-                      </th>
-                      <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Reorder Level
-                      </th>
-                      <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {paginatedProducts.map((product) => (
-                      <tr
-                        key={product.id}
-                        className="border-b border-gray-100 hover:bg-gray-50"
-                      >
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {product.name}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {product.sku}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600 whitespace-nowrap">
-                            {product.category}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {product.stockLevel}
-                        </td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          ${Number(product.price).toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {product.expiryDate}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {product.reorderLevel}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            product.status === 'Active' ? 'bg-green-100 text-green-700' :
-                            product.status === 'Inactive' ? 'bg-gray-100 text-gray-600' :
-                            'bg-red-100 text-red-700'
-                          }`}>
-                            {product.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <div className="relative">
-                            <button
-                              onClick={() =>
-                                setOpenDropdown(openDropdown === product.id ? null : product.id)
-                              }
-                              className="p-1 hover:bg-gray-100 rounded transition-colors"
-                            >
-                              <MoreVertical className="w-5 h-5 text-gray-600" />
-                            </button>
-
-                            {openDropdown === product.id && (
-                              <>
-                                <div
-                                  className="fixed inset-0 z-10"
-                                  onClick={() => setOpenDropdown(null)}
-                                />
-                                <div className="absolute right-0 top-full z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-                                  <button
-                                    onClick={() => {
-                                      setOpenDropdown(null);
-                                      navigate(`/products/view-product/${product.id}`, { state: { product } });
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                    View Details
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setOpenDropdown(null);
-                                      navigate(`/products/edit-product/${product.id}`);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                    Edit Product
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setOpenDropdown(null);
-                                      setDeleteModal({ isOpen: true, product });
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                    Delete
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {paginatedProducts.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="px-6 py-12 text-center text-sm text-gray-500"
+            <table className="db-table w-full">
+              <thead>
+                <tr>
+                  <th>Product Name</th>
+                  <th>SKU</th>
+                  <th>Category</th>
+                  <th>Stock</th>
+                  <th>Price</th>
+                  <th>Expiry Date</th>
+                  <th>Reorder Level</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedProducts.map((product) => (
+                  <tr key={product.id}>
+                    <td className="font-medium">{product.name}</td>
+                    <td>{product.sku}</td>
+                    <td>
+                      <span className="db-stat-pill pill-blue">
+                        {product.category}
+                      </span>
+                    </td>
+                    <td>{product.stockLevel}</td>
+                    <td>${Number(product.price).toFixed(2)}</td>
+                    <td>{product.expiryDate}</td>
+                    <td>{product.reorderLevel}</td>
+                    <td>
+                      <span className={`db-stat-pill ${
+                        product.status === "Active" ? "pill-green" : "pill-amber"
+                      }`}>
+                        {product.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === product.id ? null : product.id)}
+                          className="db-icon-btn"
                         >
-                          No products found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* PAGINATION */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600">
-                  Showing {start} to {end} of {productsList.length.toLocaleString()} products
-                </p>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="w-4 h-4 text-gray-600" />
-                  </button>
-
-                  {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                        currentPage === page
-                          ? "bg-[#15aaad] text-white"
-                          : "border border-gray-200 hover:bg-gray-50"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-
-                  {totalPages > 3 && <span className="px-2 text-gray-600">...</span>}
-                  {totalPages > 3 && (
-                    <button
-                      onClick={() => setCurrentPage(totalPages)}
-                      className={`px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors ${
-                        currentPage === totalPages ? "bg-[#15aaad] text-white border-[#15aaad]" : ""
-                      }`}
-                    >
-                      {totalPages}
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                    className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="w-4 h-4 text-gray-600" />
-                  </button>
-                </div>
-              </div>
-            </>
+                          <MoreVertical className="w-5 h-5" />
+                        </button>
+                        {openDropdown === product.id && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setOpenDropdown(null)} />
+                            <div className="absolute right-0 top-full z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                              <button
+                                onClick={() => {
+                                  setOpenDropdown(null);
+                                  navigate(`/products/view-product/${product.id}`, { state: { product } });
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                              >
+                                <Eye className="w-4 h-4" />
+                                View Details
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setOpenDropdown(null);
+                                  navigate(`/products/edit-product/${product.id}`);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                              >
+                                <Edit className="w-4 h-4" />
+                                Edit Product
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setOpenDropdown(null);
+                                  setDeleteModal({ isOpen: true, product });
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {paginatedProducts.length === 0 && (
+                  <tr>
+                    <td colSpan="9" className="text-center py-12 text-gray-500">
+                      No products found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           )}
         </div>
+
+        {/* PAGINATION */}
+        {!loading && !error && productsList.length > 0 && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between flex-wrap gap-3">
+            <p className="text-sm text-gray-600">
+              Showing {start} to {end} of {productsList.length.toLocaleString()} products
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="db-icon-btn disabled:opacity-40"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                    currentPage === page
+                      ? "bg-[#0f8c5a] text-white"
+                      : "border border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              {totalPages > 3 && <span className="px-2 text-gray-600">...</span>}
+              {totalPages > 3 && (
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  className={`px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 ${
+                    currentPage === totalPages ? "bg-[#0f8c5a] text-white border-[#0f8c5a]" : ""
+                  }`}
+                >
+                  {totalPages}
+                </button>
+              )}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="db-icon-btn disabled:opacity-40"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* MODALS */}
+      {/* MODALS (unchanged) */}
       <CSVUploadModal
         isOpen={csvModalOpen}
         onClose={() => setCsvModalOpen(false)}
         type="products"
         onUploadComplete={handleCSVUpload}
       />
-
       <CSVReviewModal
         isOpen={reviewModalOpen}
         onClose={() => setReviewModalOpen(false)}
@@ -485,7 +494,6 @@ export function ProductsPage() {
         type="products"
         onConfirmImport={handleConfirmImport}
       />
-
       <DeleteProductModal
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, product: null })}

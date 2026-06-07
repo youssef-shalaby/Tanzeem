@@ -6,40 +6,151 @@ const steps = [
   "Set up your first branch",
 ];
 
-export function AuthLayout({ activeStep = 1, children }) {
+const AUTH_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .auth-root { font-family: 'DM Sans', sans-serif; }
+  .auth-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: #1a1a18;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+  }
+  .auth-copy {
+    font-size: 13px;
+    color: #888;
+    font-weight: 300;
+    line-height: 1.55;
+    margin-bottom: 24px;
+  }
+  .auth-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 7px;
+  }
+  .auth-input-wrap {
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(0,0,0,.12);
+    border-radius: 12px;
+    padding: 11px 14px;
+    background: #fff;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .auth-input-wrap:focus-within {
+    border-color: #0f8c5a;
+    box-shadow: 0 0 0 3px rgba(15,140,90,.08);
+  }
+  .auth-input-wrap input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: #1a1a18;
+  }
+  .auth-input-wrap input::placeholder { color: #bbb; }
+  .auth-field { margin-bottom: 16px; }
+  .auth-error {
+    margin-top: 16px;
+    background: #fde8e8;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #9b1c1c;
+    font-weight: 500;
+  }
+  .auth-btn-primary {
+    width: 100%; padding: 13px; background: #0f8c5a; color: #fff; font-size: 14px;
+    font-weight: 500; border-radius: 12px; border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: background .2s, opacity .2s;
+    margin-top: 24px;
+  }
+  .auth-btn-primary:hover { background: #0a6b45; }
+  .auth-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .auth-footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 13px;
+    color: #888;
+  }
+  .auth-footer a {
+    color: #1a1a18;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color .2s;
+  }
+  .auth-footer a:hover { color: #0f8c5a; }
+  .auth-toggle-pw {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #bbb;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    transition: color .2s;
+  }
+  .auth-toggle-pw:hover { color: #0f8c5a; }
+`;
+
+// Named export for AuthLayout
+export function AuthLayout({ activeStep = 1, children, logo }) {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="auth-root min-h-screen">
+      <style>{AUTH_STYLES}</style>
       <div className="flex min-h-screen flex-col lg:flex-row">
+
+        {/* Left panel (gradient) */}
         <section className="min-h-[360px] flex-1 p-3 lg:min-h-screen">
-          <div className="relative flex h-full min-h-[360px] overflow-hidden rounded-[32px] bg-[linear-gradient(142deg,#15aaad_0%,#000_100%)] p-9 text-white lg:p-12">
+          <div className="relative flex h-full min-h-[360px] overflow-hidden rounded-[32px] bg-[linear-gradient(142deg,#0f8c5a_0%,#111614_100%)] p-9 text-white lg:p-12">
             <div className="absolute -left-36 top-24 h-[720px] w-[720px] rounded-full border border-white/10" />
             <div className="absolute -bottom-44 right-0 h-[520px] w-[520px] rounded-full bg-white/10 blur-3xl" />
+
             <div className="relative z-10 flex w-full flex-col justify-between">
-              <Link to="/" className="inline-flex">
-                <img src="/logo.svg" alt="Tanzeem" className="h-10 w-auto" />
-              </Link>
+              {logo || (
+                <Link to="/" className="inline-flex items-center gap-3">
+                  <svg width="34" height="32" viewBox="0 0 47 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M36.0427 19.4379C36.0427 18.789 36.3807 18.187 36.9348 17.8492C38.1746 17.0934 39.7638 17.9858 39.7638 19.4379V23.2598C39.7638 23.9087 39.4257 24.5107 38.8716 24.8485C37.6318 25.6043 36.0427 24.7119 36.0427 23.2598V19.4379Z" fill="white" fillOpacity="0.9"/>
+                  </svg>
+                  <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: "#fff", letterSpacing: "-0.2px" }}>
+                    Tanzeem
+                  </span>
+                </Link>
+              )}
+
               <div className="max-w-[520px]">
                 <div className="mb-5 grid gap-5 sm:grid-cols-[1fr_220px] sm:items-end xl:mb-8">
-                  <h1 className="text-4xl font-medium leading-tight md:text-[40px]">Get Started with Us</h1>
+                  <h1 style={{ fontFamily: "'DM Serif Display', serif" }} className="text-4xl font-medium leading-tight md:text-[40px]">
+                    Get Started with Us
+                  </h1>
                   <p className="text-lg leading-7 text-white/80">Complete these easy steps to register your account.</p>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-3">
+                <div className="grid gap-2 sm:grid-cols-3">
                   {steps.map((step, index) => {
                     const stepNumber = index + 1;
-                    const isActive = stepNumber === activeStep;
+                    const isActive   = stepNumber === activeStep;
                     const isComplete = stepNumber < activeStep;
                     return (
                       <div
                         key={step}
                         className={`rounded-2xl p-4 backdrop-blur xl:p-5 ${
                           isActive
-                            ? "border border-white/30 bg-white text-[#111]"
-                            : "bg-white/12 text-white/80"
+                            ? "border border-white/30 bg-white text-[#1a1a18] shadow-md"
+                            : "bg-white/10 text-white/70"
                         }`}
                       >
                         <div
                           className={`mb-4 flex h-6 w-6 items-center justify-center rounded-full text-sm font-medium xl:mb-6 ${
-                            isActive ? "bg-black text-white" : "bg-white/16 text-white"
+                            isActive   ? "bg-[#0f8c5a] text-white" :
+                            isComplete ? "bg-white/30 text-white"  :
+                                         "bg-white/15 text-white"
                           }`}
                         >
                           {isComplete ? "✓" : stepNumber}
@@ -53,7 +164,9 @@ export function AuthLayout({ activeStep = 1, children }) {
             </div>
           </div>
         </section>
-        <section className="flex w-full items-center justify-center px-6 py-10 lg:w-[628px] lg:px-20 lg:py-10 xl:px-24 xl:py-16">
+
+        {/* Right panel — matches landing page background */}
+        <section className="flex w-full items-center justify-center bg-[#f9faf7] px-6 py-10 lg:w-[628px] lg:px-20 lg:py-10 xl:px-24 xl:py-16">
           <div className="w-full max-w-[436px]">{children}</div>
         </section>
       </div>
@@ -61,10 +174,13 @@ export function AuthLayout({ activeStep = 1, children }) {
   );
 }
 
+// Optional: if you need these, keep them as named exports too
 export function AuthHeader({ title, copy }) {
   return (
     <div className="mb-8 text-center xl:mb-10">
-      <h2 className="text-[28px] font-medium leading-10 text-[#111]">{title}</h2>
+      <h2 style={{ fontFamily: "'DM Serif Display', serif" }} className="text-[28px] font-medium leading-10 text-[#1a1a18]">
+        {title}
+      </h2>
       <p className="mt-2 text-base leading-6 text-[#4b4b4b]">{copy}</p>
     </div>
   );
@@ -73,9 +189,9 @@ export function AuthHeader({ title, copy }) {
 export function AuthInput({ label, className = "", ...props }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-2.5 block text-base font-medium leading-6 text-[#111]">{label}</span>
+      <span className="mb-2.5 block text-base font-medium leading-6 text-[#1a1a18]">{label}</span>
       <input
-        className="w-full rounded-xl bg-[#f5f5f5] px-5 py-3.5 text-base leading-6 text-[#111] outline-none transition placeholder:text-[#6b6b6b] focus:bg-white focus:ring-2 focus:ring-[#15aaad]/35 xl:py-4"
+        className="w-full rounded-xl bg-[#f5f5f5] px-5 py-3.5 text-base leading-6 text-[#1a1a18] outline-none transition placeholder:text-[#6b6b6b] focus:bg-white focus:ring-2 focus:ring-[#0f8c5a]/25 xl:py-4"
         {...props}
       />
     </label>
@@ -85,7 +201,7 @@ export function AuthInput({ label, className = "", ...props }) {
 export function AuthButton({ children, className = "", ...props }) {
   return (
     <button
-      className={`w-full rounded-xl bg-[#111] p-4 text-base font-semibold leading-6 text-white transition hover:bg-[#252525] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`w-full rounded-xl bg-[#0f8c5a] p-4 text-base font-semibold leading-6 text-white transition hover:bg-[#0a6b45] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
       {...props}
     >
       {children}

@@ -2,6 +2,50 @@ import { ArrowLeft, CheckCircle, AlertTriangle, Package } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
 
+// ============================
+// Design system styles (green accent)
+// ============================
+const CONFIRM_DELIVERY_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .confirm-delivery-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #666; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
+  .pill-green { background: #d6f5e8; color: #0a6b45; }
+  .pill-orange { background: #ffedd5; color: #c2410c; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .db-input {
+    width: 100%; padding: 9px 14px;
+    background: #fff; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 12px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+    color: #1a1a18; outline: none; transition: border-color .2s;
+  }
+  .db-input:focus { border-color: #0f8c5a; box-shadow: 0 0 0 2px rgba(15,140,90,.1); }
+`;
+
 const ISSUE_TYPE_MAP = { damaged: 0, missing: 1, incorrect: 2, defective: 3, other: 4 };
 
 function getToken() {
@@ -158,37 +202,43 @@ export function ConfirmDeliveryPage() {
       });
   };
 
-  if (loading) return <div className="p-6 text-sm text-gray-500">Loading procurement snapshot details...</div>;
-  if (error || !order) return <div className="p-6 text-sm text-red-600">Failed to render: {error}</div>;
+  if (loading) return <div className="confirm-delivery-root p-6 text-sm text-gray-500">Loading procurement snapshot details...</div>;
+  if (error || !order) return <div className="confirm-delivery-root p-6 text-sm text-red-600">Failed to render: {error}</div>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="confirm-delivery-root max-w-4xl mx-auto space-y-6">
+      <style>{CONFIRM_DELIVERY_STYLES}</style>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(`/orders/${orderId}`)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="db-icon-btn"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Confirm Delivery & Update Stock</h1>
+            <h1 className="db-section-title">Confirm Delivery & Update Stock</h1>
             <p className="text-sm text-gray-600 mt-1">Order {order.orderStringId} • Review and confirm received quantities</p>
           </div>
         </div>
       </div>
 
-      {/* Delivery date */}
-      <div className="bg-white rounded-xl p-6 border border-gray-200">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Actual Delivery Date *</label>
-        <input
-          type="date"
-          value={receivedDate}
-          onChange={(e) => setReceivedDate(e.target.value)}
-          max={new Date().toISOString().split('T')[0]}
-          className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none w-full sm:w-64"
-        />
+      {/* Delivery date card */}
+      <div className="db-card">
+        <div className="db-card-header">
+          <span className="db-card-title">Actual Delivery Date</span>
+        </div>
+        <div className="p-5">
+          <input
+            type="date"
+            value={receivedDate}
+            onChange={(e) => setReceivedDate(e.target.value)}
+            max={new Date().toISOString().split('T')[0]}
+            className="db-input w-full sm:w-64"
+          />
+        </div>
       </div>
 
       {/* Info Banner */}
@@ -226,11 +276,11 @@ export function ConfirmDeliveryPage() {
       )}
 
       {/* Item Cards */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h2 className="font-semibold text-gray-900">Order Items</h2>
+      <div className="db-card">
+        <div className="db-card-header">
+          <span className="db-card-title">Order Items</span>
         </div>
-        <div className="p-6 space-y-6">
+        <div className="p-5 space-y-6">
           {order.itemsConfirmResponseDtos?.map((item) => {
             const totalIssues = getTotalIssues(item.productId);
             const ordered = item.orderedQuantity;
@@ -276,7 +326,7 @@ export function ConfirmDeliveryPage() {
                           type="number"
                           min="0"
                           placeholder="0"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
+                          className="db-input"
                           value={itemDetails[item.productId]?.[field] || ''}
                           onChange={(e) => handleItemChange(item.productId, field, parseInt(e.target.value) || 0)}
                         />
@@ -288,11 +338,11 @@ export function ConfirmDeliveryPage() {
                     <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
                       <p className="text-xs font-medium text-gray-900 mb-2">Issue Summary:</p>
                       <div className="flex flex-wrap gap-2">
-                        {itemDetails[item.productId]?.damaged > 0 && <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700">Damaged: {itemDetails[item.productId].damaged}</span>}
-                        {itemDetails[item.productId]?.missing > 0 && <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-700">Missing: {itemDetails[item.productId].missing}</span>}
-                        {itemDetails[item.productId]?.incorrect > 0 && <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">Incorrect: {itemDetails[item.productId].incorrect}</span>}
-                        {itemDetails[item.productId]?.defective > 0 && <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Defective: {itemDetails[item.productId].defective}</span>}
-                        {itemDetails[item.productId]?.other > 0 && <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">Other: {itemDetails[item.productId].other}</span>}
+                        {itemDetails[item.productId]?.damaged > 0 && <span className="db-stat-pill pill-green">Damaged: {itemDetails[item.productId].damaged}</span>}
+                        {itemDetails[item.productId]?.missing > 0 && <span className="db-stat-pill pill-green">Missing: {itemDetails[item.productId].missing}</span>}
+                        {itemDetails[item.productId]?.incorrect > 0 && <span className="db-stat-pill pill-green">Incorrect: {itemDetails[item.productId].incorrect}</span>}
+                        {itemDetails[item.productId]?.defective > 0 && <span className="db-stat-pill pill-green">Defective: {itemDetails[item.productId].defective}</span>}
+                        {itemDetails[item.productId]?.other > 0 && <span className="db-stat-pill pill-green">Other: {itemDetails[item.productId].other}</span>}
                       </div>
                     </div>
                   )}
@@ -306,7 +356,7 @@ export function ConfirmDeliveryPage() {
                     <textarea
                       rows={3}
                       placeholder="Explain the issues in detail..."
-                      className="w-full px-4 py-3 border border-orange-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white resize-none"
+                      className="db-input resize-none"
                       value={itemDetails[item.productId]?.notes || ''}
                       onChange={(e) => handleItemChange(item.productId, 'notes', e.target.value)}
                     />
@@ -333,25 +383,31 @@ export function ConfirmDeliveryPage() {
         </div>
       </div>
 
-      {/* General Notes */}
+      {/* General Notes (only if discrepancies exist) */}
       {hasDiscrepancies && (
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <h2 className="font-semibold text-gray-900 mb-4">Additional Information</h2>
-          <label className="text-sm font-medium text-gray-900 mb-2 block">General Notes (Optional)</label>
-          <textarea
-            rows={4}
-            placeholder="Add any general notes about the delivery or issues..."
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 resize-none"
-            value={generalNotes}
-            onChange={(e) => setGeneralNotes(e.target.value)}
-          />
+        <div className="db-card">
+          <div className="db-card-header">
+            <span className="db-card-title">Additional Information</span>
+          </div>
+          <div className="p-5">
+            <label className="text-sm font-medium text-gray-900 mb-2 block">General Notes (Optional)</label>
+            <textarea
+              rows={4}
+              placeholder="Add any general notes about the delivery or issues..."
+              className="db-input resize-none"
+              value={generalNotes}
+              onChange={(e) => setGeneralNotes(e.target.value)}
+            />
+          </div>
         </div>
       )}
 
-      {/* Summary */}
-      <div className="bg-white rounded-xl p-6 border border-gray-200">
-        <h2 className="font-semibold text-gray-900 mb-4">Summary</h2>
-        <div className="space-y-3">
+      {/* Summary Card */}
+      <div className="db-card">
+        <div className="db-card-header">
+          <span className="db-card-title">Summary</span>
+        </div>
+        <div className="p-5 space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">Total Items</span>
             <span className="font-medium text-gray-900">{order.itemsConfirmResponseDtos?.length}</span>
@@ -389,14 +445,14 @@ export function ConfirmDeliveryPage() {
       <div className="flex items-center justify-end gap-3 pb-8">
         <button
           onClick={() => navigate(`/orders/${orderId}`)}
-          className="px-6 py-2.5 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+          className="db-secondary-btn"
         >
           Cancel
         </button>
         <button
           onClick={handleConfirmDelivery}
           disabled={submitting}
-          className="flex items-center gap-2 px-6 py-2.5 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-50"
+          className="db-primary-btn"
         >
           <CheckCircle className="w-[18px] h-[18px]" />
           {submitting ? 'Confirming...' : 'Confirm & Update Stock'}

@@ -20,10 +20,46 @@ import { useNavigate, useParams, Link } from 'react-router';
 import { useState, useEffect } from 'react';
 import { DeleteSupplierModal } from '../ui/DeleteSupplierModal';
 
-// ------- Enums -------
-// supplierStatus: 0 = Inactive, 1 = Active
-// badge: "TopPerformer" | "Standard" | "ReliablePartner" | "AtRisk" | "At Risk" | "Average"
+// ============================
+// Design system styles (green accent)
+// ============================
+const VIEW_SUPPLIER_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .view-supplier-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
+  .pill-green { background: #d6f5e8; color: #0a6b45; }
+  .pill-blue { background: #e8f0fe; color: #2c5f8a; }
+  .pill-amber { background: #fef3c7; color: #8b5e00; }
+  .pill-red { background: #fde8e8; color: #9b1c1c; }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #666; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+`;
 
+// ------- Helper Functions -------
 function mapStatus(supplierStatus) {
   return supplierStatus === 1 ? 'Active' : 'Inactive';
 }
@@ -43,12 +79,12 @@ function mapBadgeLabel(badge) {
 function getBadgeStyle(badge) {
   const label = mapBadgeLabel(badge);
   switch (label) {
-    case 'Top Performer':   return 'bg-green-100 text-green-700 border-green-200';
-    case 'Reliable Partner': return 'bg-blue-100 text-blue-700 border-blue-200';
+    case 'Top Performer':   return 'pill-green';
+    case 'Reliable Partner': return 'pill-blue';
     case 'Standard':
-    case 'Average':          return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-    case 'At Risk':          return 'bg-red-100 text-red-700 border-red-200';
-    default:                 return 'bg-gray-100 text-gray-700 border-gray-200';
+    case 'Average':          return 'pill-amber';
+    case 'At Risk':          return 'pill-red';
+    default:                 return 'bg-gray-100 text-gray-600';
   }
 }
 
@@ -118,10 +154,8 @@ export function ViewSupplierPage() {
           website: data.websiteURL || '',
           taxId: data.tax_Id || '',
           notes: data.notes || '',
-          // Enums
           status: mapStatus(data.supplierStatus),
           badge: data.badge || '',
-          // Performance
           onTimePercentage: Math.round(data.onTimePercentage ?? 0),
           leadTime: data.leadTime != null ? Number(data.leadTime).toFixed(1) : null,
         });
@@ -143,18 +177,17 @@ export function ViewSupplierPage() {
     return url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
   };
 
-  if (loading) return <div className="p-6 text-gray-500 text-sm">Loading supplier...</div>;
-  if (error)   return <div className="p-6 text-red-600 text-sm">Error: {error}</div>;
+  if (loading) return <div className="view-supplier-root p-6 text-gray-500 text-sm">Loading supplier...</div>;
+  if (error)   return <div className="view-supplier-root p-6 text-red-600 text-sm">Error: {error}</div>;
 
   if (!supplier) {
     return (
-      <div className="flex flex-col items-center justify-center h-96">
+      <div className="view-supplier-root flex flex-col items-center justify-center h-96">
+        <style>{VIEW_SUPPLIER_STYLES}</style>
         <AlertCircle className="w-16 h-16 text-gray-400 mb-4" />
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Supplier Not Found</h2>
         <p className="text-gray-600 mb-6">The supplier you're looking for doesn't exist.</p>
-        <Link to="/suppliers" className="px-6 py-2.5 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors">
-          Back to Suppliers
-        </Link>
+        <Link to="/suppliers" className="db-primary-btn">Back to Suppliers</Link>
       </div>
     );
   }
@@ -162,27 +195,23 @@ export function ViewSupplierPage() {
   const addressLine = [supplier.address, supplier.city, supplier.country].filter(Boolean).join(', ');
 
   return (
-    <div className="space-y-6">
+    <div className="view-supplier-root space-y-6">
+      <style>{VIEW_SUPPLIER_STYLES}</style>
 
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/suppliers')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          <button onClick={() => navigate('/suppliers')} className="db-icon-btn">
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold text-gray-900">{supplier.name}</h1>
-              <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${
-                supplier.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-              }`}>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="db-section-title">{supplier.name}</h1>
+              <span className={`db-stat-pill ${supplier.status === 'Active' ? 'pill-green' : 'bg-gray-100 text-gray-500'}`}>
                 {supplier.status}
               </span>
               {supplier.badge && (
-                <span className={`px-2.5 py-1 rounded-md text-xs font-medium border ${getBadgeStyle(supplier.badge)}`}>
+                <span className={`db-stat-pill ${getBadgeStyle(supplier.badge)}`}>
                   <Award className="w-3.5 h-3.5 inline mr-1" />
                   {mapBadgeLabel(supplier.badge)}
                 </span>
@@ -195,14 +224,14 @@ export function ViewSupplierPage() {
         <div className="flex items-center gap-3">
           <Link
             to={`/suppliers/edit-supplier/${supplier.id}`}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+            className="db-secondary-btn"
           >
             <Edit className="w-[18px] h-[18px]" />
             Edit Supplier
           </Link>
           <button
             onClick={() => setDeleteModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 text-sm rounded-lg hover:bg-red-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 text-sm rounded-full hover:bg-red-50 transition-colors"
           >
             <Trash2 className="w-[18px] h-[18px]" />
             Delete
@@ -210,13 +239,25 @@ export function ViewSupplierPage() {
         </div>
       </div>
 
-      {/* PERFORMANCE STATS */}
+      {/* PERFORMANCE STATS (dashboard style) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-
-        {/* On-Time Delivery */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">On-Time Delivery</div>
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">On-Time Delivery</span>
+          </div>
+          <div className="p-5 flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">{supplier.onTimePercentage}%</div>
+              <div className="w-32 mt-2 bg-gray-200 rounded-full h-1.5">
+                <div
+                  className={`h-1.5 rounded-full transition-all ${
+                    supplier.onTimePercentage >= 90 ? 'bg-green-500' :
+                    supplier.onTimePercentage >= 75 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${Math.min(supplier.onTimePercentage, 100)}%` }}
+                />
+              </div>
+            </div>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
               supplier.onTimePercentage >= 90 ? 'bg-green-100' :
               supplier.onTimePercentage >= 75 ? 'bg-yellow-100' : 'bg-red-100'
@@ -227,64 +268,56 @@ export function ViewSupplierPage() {
               }`} />
             </div>
           </div>
-          <div className="text-3xl font-semibold text-gray-900 mb-3">{supplier.onTimePercentage}%</div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className={`h-2 rounded-full transition-all ${
-                supplier.onTimePercentage >= 90 ? 'bg-green-500' :
-                supplier.onTimePercentage >= 75 ? 'bg-yellow-500' : 'bg-red-500'
-              }`}
-              style={{ width: `${Math.min(supplier.onTimePercentage, 100)}%` }}
-            />
-          </div>
         </div>
 
-        {/* Lead Time */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">Lead Time</div>
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Lead Time</span>
+          </div>
+          <div className="p-5 flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">{supplier.leadTime ?? '—'}</div>
+              <div className="text-xs text-gray-500 mt-1">days average</div>
+            </div>
             <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
               <Clock className="w-5 h-5 text-orange-600" />
             </div>
           </div>
-          <div className="text-3xl font-semibold text-gray-900 mb-1">
-            {supplier.leadTime ?? '—'}
-          </div>
-          <div className="text-sm text-gray-500">days average</div>
         </div>
 
-        {/* Badge */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">Supplier Badge</div>
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Supplier Badge</span>
+          </div>
+          <div className="p-5 flex items-center justify-between">
+            <div>
+              <div className="text-xl font-semibold text-gray-900">{mapBadgeLabel(supplier.badge)}</div>
+              <div className="text-xs text-gray-500 mt-1">Performance rating</div>
+            </div>
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
               <Award className="w-5 h-5 text-blue-600" />
             </div>
           </div>
-          <div className="text-xl font-semibold text-gray-900 mb-1">{mapBadgeLabel(supplier.badge)}</div>
-          <div className="text-sm text-gray-500">Performance rating</div>
         </div>
       </div>
 
       {/* MAIN CONTENT */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
         {/* LEFT — Contact Information */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-xl border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-base font-semibold text-gray-900">Contact Information</h2>
+          <div className="db-card">
+            <div className="db-card-header">
+              <span className="db-card-title">Contact Information</span>
             </div>
-
             <div className="divide-y divide-gray-100">
               {supplier.email && (
                 <div className="flex items-center gap-4 px-6 py-4">
-                  <div className="w-9 h-9 rounded-lg bg-[#15aaad]/10 flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-4 h-4 text-[#15aaad]" />
+                  <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-4 h-4 text-[#0f8c5a]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-gray-500 mb-0.5">Email</div>
-                    <a href={`mailto:${supplier.email}`} className="text-sm text-[#15aaad] hover:underline truncate block">
+                    <a href={`mailto:${supplier.email}`} className="text-sm text-[#0f8c5a] hover:underline truncate block">
                       {supplier.email}
                     </a>
                   </div>
@@ -294,8 +327,8 @@ export function ViewSupplierPage() {
 
               {supplier.phone && (
                 <div className="flex items-center gap-4 px-6 py-4">
-                  <div className="w-9 h-9 rounded-lg bg-[#15aaad]/10 flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-4 h-4 text-[#15aaad]" />
+                  <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-4 h-4 text-[#0f8c5a]" />
                   </div>
                   <div className="flex-1">
                     <div className="text-xs text-gray-500 mb-0.5">Phone</div>
@@ -312,8 +345,8 @@ export function ViewSupplierPage() {
 
               {addressLine && (
                 <div className="flex items-center gap-4 px-6 py-4">
-                  <div className="w-9 h-9 rounded-lg bg-[#15aaad]/10 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-4 h-4 text-[#15aaad]" />
+                  <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-4 h-4 text-[#0f8c5a]" />
                   </div>
                   <div className="flex-1">
                     <div className="text-xs text-gray-500 mb-0.5">Address</div>
@@ -325,8 +358,8 @@ export function ViewSupplierPage() {
 
               {supplier.website && (
                 <div className="flex items-center gap-4 px-6 py-4">
-                  <div className="w-9 h-9 rounded-lg bg-[#15aaad]/10 flex items-center justify-center flex-shrink-0">
-                    <Globe className="w-4 h-4 text-[#15aaad]" />
+                  <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
+                    <Globe className="w-4 h-4 text-[#0f8c5a]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-gray-500 mb-0.5">Website</div>
@@ -334,7 +367,7 @@ export function ViewSupplierPage() {
                       href={formatWebsite(supplier.website)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-[#15aaad] hover:underline truncate block"
+                      className="text-sm text-[#0f8c5a] hover:underline truncate block"
                     >
                       {supplier.website}
                     </a>
@@ -346,9 +379,9 @@ export function ViewSupplierPage() {
 
           {/* Notes */}
           {supplier.notes && (
-            <div className="bg-white rounded-xl border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-base font-semibold text-gray-900">Notes</h2>
+            <div className="db-card">
+              <div className="db-card-header">
+                <span className="db-card-title">Notes</span>
               </div>
               <div className="px-6 py-5">
                 <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{supplier.notes}</p>
@@ -359,9 +392,9 @@ export function ViewSupplierPage() {
 
         {/* RIGHT — Business Details & Quick Actions */}
         <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-base font-semibold text-gray-900">Business Details</h2>
+          <div className="db-card">
+            <div className="db-card-header">
+              <span className="db-card-title">Business Details</span>
             </div>
             <div className="divide-y divide-gray-100">
               {supplier.contactPerson && (
@@ -391,9 +424,9 @@ export function ViewSupplierPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-white rounded-xl border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-base font-semibold text-gray-900">Quick Actions</h2>
+          <div className="db-card">
+            <div className="db-card-header">
+              <span className="db-card-title">Quick Actions</span>
             </div>
             <div className="p-4 space-y-2">
               {supplier.email && (

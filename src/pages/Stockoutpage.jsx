@@ -2,6 +2,58 @@ import { useState, useEffect, useRef } from 'react';
 import { X, Search, Plus, Check, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 
+// ============================
+// Design system styles (green accent)
+// ============================
+const STOCK_OUT_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .stockout-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-input {
+    width: 100%; padding: 9px 14px;
+    background: #fff; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 12px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+    color: #1a1a18; outline: none; transition: border-color .2s;
+  }
+  .db-input:focus { border-color: #0f8c5a; box-shadow: 0 0 0 2px rgba(15,140,90,.1); }
+  .db-select {
+    padding: 8px 14px; background: #fff; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+    color: #444; cursor: pointer; outline: none; transition: border-color .2s;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+  }
+  .db-select:hover { border-color: #0f8c5a; }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #666; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; }
+  .db-badge-teal { background: #e6f7f5; color: #0f8c5a; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+`;
+
 function getToken() {
   try {
     return JSON.parse(localStorage.getItem('tanzeem_auth'))?.token || null;
@@ -22,8 +74,6 @@ const REASON_CODE_MAP = {
   'Internal Use': 8,             // Production = 8
 };
 
-// Normalize API response — handles camelCase, PascalCase, and sparse dropdown shape
-// Dropdown endpoint only returns: id, name, sku, price
 function norm(product) {
   const p = product;
   const price = p.price ?? p.Price ?? 0;
@@ -73,7 +123,8 @@ function createEmptySlot() {
   };
 }
 
-// Per-item search dropdown component
+// Product search dropdown component (green accent)
+// Updated ProductSearchInput component (for both Addstockpage and Stockoutpage)
 function ProductSearchInput({ item, onProductSelect }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -104,16 +155,17 @@ function ProductSearchInput({ item, onProductSelect }) {
       setIsLoading(true);
       try {
         const token = getToken();
-        const res = await fetch(`/api/Products/Get-Products-Dropdown-Menu?searchQuery=${encodeURIComponent(value)}`, {          headers: {
+        const res = await fetch(`/api/Products/Get-Products-Dropdown-Menu?searchQuery=${encodeURIComponent(value)}`, {
+          headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         });
         if (!res.ok) throw new Error('Failed to fetch products');
         const data = await res.json();
-        console.log('Products API response:', JSON.stringify(data, null, 2));
         setResults(Array.isArray(data) ? data : []);
-      } catch {
+      } catch (err) {
+        console.error('Products API error:', err);
         setResults([]);
       } finally {
         setIsLoading(false);
@@ -132,18 +184,24 @@ function ProductSearchInput({ item, onProductSelect }) {
   return (
     <div ref={wrapperRef} className="relative">
       <label className="text-sm font-medium text-gray-900 mb-2 block">Product</label>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      {/* Use flex container instead of absolute positioning */}
+      <div className="flex items-center gap-2 border border-gray-200 rounded-lg focus-within:ring-2 focus-within:ring-[#0f8c5a]/20 focus-within:border-[#0f8c5a] bg-white">
+        <div className="pl-3">
+          <Search className="w-4 h-4 text-gray-400" />
+        </div>
         <input
           type="text"
           placeholder="Search by name, SKU, or barcode..."
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => query && setShowDropdown(true)}
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+          className="flex-1 py-2 pr-3 text-sm bg-transparent focus:outline-none"
+          style={{ fontFamily: "'DM Sans', sans-serif" }}
         />
         {isLoading && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+          <div className="pr-3">
+            <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+          </div>
         )}
       </div>
       {showDropdown && (results.length > 0 || isLoading) && (
@@ -165,7 +223,7 @@ function ProductSearchInput({ item, onProductSelect }) {
                   <div className="text-xs text-gray-500 mt-0.5">
                     SKU: {p.sku}
                     {p.barcode && ` · Barcode: ${p.barcode}`}
-                    {p.stock > 0 && ` · In stock: ${p.stock}`}
+                    {p.costPrice > 0 && ` · $${Number(p.costPrice).toFixed(2)}`}
                   </div>
                 </button>
               );
@@ -187,8 +245,6 @@ export function Stockoutpage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-
-  // Start with one empty slot
   const [stockOutItems, setStockOutItems] = useState([createEmptySlot()]);
 
   const handleProductSelect = (slotId, product) => {
@@ -313,19 +369,26 @@ export function Stockoutpage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="stockout-root space-y-6">
+      <style>{STOCK_OUT_STYLES}</style>
+
+      {/* Header (identical to Addstockpage) */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Stock Out</h1>
+          <h1 className="db-section-title">Stock Out</h1>
           <p className="text-sm text-gray-600 mt-1">Search for items to remove from inventory and track reasons.</p>
         </div>
-        <button type="button" onClick={() => navigate('/inventory')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-          <X className="w-5 h-5 text-gray-600" />
+        <button onClick={() => navigate('/inventory')} className="db-icon-btn">
+          <X className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="space-y-6">
+      {/* Main Card */}
+      <div className="db-card">
+        <div className="db-card-header">
+          <span className="db-card-title">Stock Deduction</span>
+        </div>
+        <div className="p-6 space-y-6">
 
           {/* Items List */}
           <div className="space-y-6">
@@ -333,17 +396,16 @@ export function Stockoutpage() {
               <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">
                 Items to Remove ({stockOutItems.length})
               </div>
-              <button type="button" onClick={handleAddSlot} className="text-sm text-[#15aaad] hover:text-[#0d8082] font-medium flex items-center gap-1">
+              <button onClick={handleAddSlot} className="text-sm text-[#0f8c5a] hover:text-[#0a6b45] font-medium flex items-center gap-1 transition-colors">
                 <Plus className="w-4 h-4" />
                 Add Another Item
               </button>
             </div>
 
             {stockOutItems.map((item, index) => (
-              <div key={item.id} className="border border-gray-200 rounded-lg p-5 relative">
+              <div key={item.id} className="relative border border-gray-200 rounded-xl p-5 bg-white">
                 {stockOutItems.length > 1 && (
                   <button
-                    type="button"
                     onClick={() => handleRemoveItem(item.id)}
                     className="absolute top-4 right-4 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
                   >
@@ -352,34 +414,30 @@ export function Stockoutpage() {
                 )}
 
                 <div className="space-y-4">
-                  <div className="text-xs font-semibold text-[#15aaad] uppercase tracking-wide">
-                    Item #{index + 1}
-                  </div>
+                  <div className="db-badge db-badge-teal w-fit">Item #{index + 1}</div>
 
-                  {/* Product Search */}
                   <ProductSearchInput item={item} onProductSelect={handleProductSelect} />
 
-                  {/* Product details — only shown after selection */}
                   {item.productSelected && (
                     <>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium text-gray-900 mb-2 block">Barcode</label>
-                          <div className="relative">
-                            <input type="text" value={item.barcode} readOnly className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900" />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">#</span>
+                          <div className="flex items-center gap-2 border border-gray-200 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                            <span className="flex-1">{item.barcode || '—'}</span>
+                            <span className="text-gray-400 text-xs">#</span>
                           </div>
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-900 mb-2 block">Unit Price (Selling)</label>
-                          <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                            <input type="text" value={item.unitPrice.toFixed(2)} readOnly className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                          <div className="flex items-center gap-2 border border-gray-200 rounded-lg bg-gray-50 px-3 py-2">
+                            <span className="text-gray-500">$</span>
+                            <span className="flex-1 text-sm text-gray-900">{item.unitPrice.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium text-gray-900 mb-2 block">Quantity to Remove</label>
                           <div className="relative">
@@ -395,7 +453,7 @@ export function Stockoutpage() {
                                 const val = parseInt(item.quantity);
                                 if (!val || val < 1) handleQuantityChange(item.id, 1);
                               }}
-                              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              className="db-input pr-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col">
                               <button type="button" onClick={() => handleQuantityChange(item.id, (parseInt(item.quantity) || 1) + 1)} className="px-1 py-0.5 text-gray-400 hover:text-gray-600">
@@ -409,15 +467,14 @@ export function Stockoutpage() {
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-900 mb-2 block">Total Value</label>
-                          <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                            <input type="text" value={item.totalPrice.toFixed(2)} readOnly className="w-full pl-8 pr-20 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900" />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400">Calculated</span>
+                          <div className="flex items-center gap-2 border border-gray-200 rounded-lg bg-gray-50 px-3 py-2">
+                            <span className="text-gray-500">$</span>
+                            <span className="flex-1 text-sm text-gray-900">{item.totalPrice.toFixed(2)}</span>
+                            <span className="text-xs text-gray-400">Calculated</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Batch Number — editable, pre-filled if product has one */}
                       <div>
                         <label className="text-sm font-medium text-gray-900 mb-2 block">Batch Number <span className="text-gray-400 font-normal">(Optional)</span></label>
                         <input
@@ -425,7 +482,7 @@ export function Stockoutpage() {
                           value={item.batchNumber}
                           onChange={(e) => setStockOutItems(prev => prev.map(s => s.id === item.id ? { ...s, batchNumber: e.target.value } : s))}
                           placeholder="Enter batch number..."
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
+                          className="db-input"
                         />
                       </div>
 
@@ -435,7 +492,7 @@ export function Stockoutpage() {
                           <select
                             value={item.reason}
                             onChange={(e) => handleReasonChange(item.id, e.target.value)}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 appearance-none focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
+                            className="db-select w-full"
                           >
                             <option>Sold to Customer</option>
                             <option>Damaged</option>
@@ -446,7 +503,6 @@ export function Stockoutpage() {
                             <option>Sample/Demo</option>
                             <option>Internal Use</option>
                           </select>
-                          <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                         </div>
                       </div>
                     </>
@@ -456,16 +512,16 @@ export function Stockoutpage() {
             ))}
           </div>
 
-          {/* Summary */}
-          <div className="border-t border-gray-200 pt-6">
-            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Total Items:</span>
-                <span className="text-sm font-semibold text-gray-900">{stockOutItems.length}</span>
+          {/* Summary Section */}
+          <div className="border-t border-gray-100 pt-6">
+            <div className="bg-gray-50 rounded-xl p-5 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Total Items:</span>
+                <span className="font-semibold text-gray-900">{stockOutItems.length}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Total Quantity:</span>
-                <span className="text-sm font-semibold text-gray-900">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Total Quantity:</span>
+                <span className="font-semibold text-gray-900">
                   {stockOutItems.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0)} units
                 </span>
               </div>
@@ -476,7 +532,7 @@ export function Stockoutpage() {
             </div>
           </div>
 
-          {/* Date */}
+          {/* Date Removed */}
           <div>
             <label className="text-sm font-medium text-gray-900 mb-2 block">Date Removed</label>
             <div className="relative">
@@ -484,7 +540,7 @@ export function Stockoutpage() {
                 type="text"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
+                className="db-input"
               />
               <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
             </div>
@@ -498,11 +554,10 @@ export function Stockoutpage() {
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add any additional details here..."
               rows={4}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
+              className="db-input resize-none"
             />
           </div>
 
-          {/* Error / Success feedback */}
           {submitError && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
               {submitError}
@@ -515,16 +570,14 @@ export function Stockoutpage() {
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 mt-8">
-          <Link to="/products" className="px-6 py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-            Cancel
-          </Link>
+        {/* Action Buttons (exactly like Addstockpage) */}
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
+          <Link to="/products" className="db-secondary-btn">Cancel</Link>
           <button
             onClick={handleConfirm}
             disabled={isSubmitting || !allSelected}
             title={!allSelected ? 'Please select a product for all items' : ''}
-            className="flex items-center gap-2 px-6 py-2.5 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="db-primary-btn"
           >
             {isSubmitting ? <Loader2 className="w-[18px] h-[18px] animate-spin" /> : <Check className="w-[18px] h-[18px]" />}
             {isSubmitting ? 'Submitting...' : 'Confirm Stock Deduction'}

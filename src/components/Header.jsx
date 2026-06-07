@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Bell, User, Shield, LogOut, UserCircle } from 'lucide-react';
+import { Bell, Shield, LogOut, UserCircle } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { NotificationPanel } from './NotificationPanel';
@@ -12,33 +12,26 @@ function getToken() {
   }
 }
 
+const ROLE_CONFIG = {
+  admin:   { label: "Admin",   bg: "#1e2820", color: "#5de0a5", border: "rgba(15,140,90,.3)" },
+  manager: { label: "Manager", bg: "#1a1e2e", color: "#93b4f5", border: "rgba(59,130,246,.3)" },
+  staff:   { label: "Staff",   bg: "#1e1a28", color: "#c4a8f5", border: "rgba(139,92,246,.3)" },
+};
+
 export function Header() {
   const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadCount,    setUnreadCount]    = useState(0);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
 
-  const role = currentUser?.role || 'staff';
+  const role   = currentUser?.role || 'staff';
+  const config = ROLE_CONFIG[role] || { label: role, bg: "#1e1e1e", color: "#aaa", border: "rgba(255,255,255,.15)" };
 
-  const getRoleColor = () => {
-    switch (role) {
-      case 'admin':   return 'bg-purple-600';
-      case 'manager': return 'bg-blue-600';
-      case 'staff':   return 'bg-green-600';
-      default:        return 'bg-gray-600';
-    }
-  };
-
-  const getRoleLabel = () => {
-    switch (role) {
-      case 'admin':   return 'Admin';
-      case 'manager': return 'Manager';
-      case 'staff':   return 'Staff';
-      default:        return role;
-    }
-  };
+  // Initials from name
+  const initials = (currentUser?.name || "U")
+    .split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   const fetchUnreadCount = () => {
     const token = getToken();
@@ -51,17 +44,13 @@ export function Header() {
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (!data?.data) return;
-        const count = data.data.filter((n) => !n.isRead).length;
-        setUnreadCount(count);
+        setUnreadCount(data.data.filter((n) => !n.isRead).length);
       })
       .catch(() => {});
   };
 
-  useEffect(() => {
-    fetchUnreadCount();
-  }, []);
+  useEffect(() => { fetchUnreadCount(); }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e) {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
@@ -80,84 +69,99 @@ export function Header() {
 
   return (
     <>
-      <header className="bg-white border-b border-gray-200 px-8 py-4">
-        <div className="flex items-center gap-4">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap');
+        .hdr-root { font-family: 'DM Sans', sans-serif; }
+        .hdr-icon-btn {
+          width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+          display: flex; align-items: center; justify-content: center;
+          color: #666; cursor: pointer; transition: background .15s, color .15s; position: relative;
+        }
+        .hdr-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+        .hdr-notif-dot { position: absolute; top: 7px; right: 7px; width: 7px; height: 7px; background: #0f8c5a; border-radius: 50%; border: 1.5px solid #fff; }
+        .hdr-notif-count {
+          position: absolute; top: -4px; right: -4px;
+          min-width: 18px; height: 18px; padding: 0 4px;
+          background: #0f8c5a; color: #fff; font-size: 10px; font-weight: 600;
+          border-radius: 100px; display: flex; align-items: center; justify-content: center;
+        }
+        .hdr-avatar {
+          width: 36px; height: 36px; border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          background: #1e2820; color: #5de0a5;
+          font-size: 12px; font-weight: 600; cursor: pointer; border: none;
+          transition: opacity .15s; letter-spacing: .5px;
+        }
+        .hdr-avatar:hover { opacity: .85; }
+        .hdr-dropdown {
+          position: absolute; right: 0; top: calc(100% + 8px);
+          width: 200px; background: #fff; border: 1px solid rgba(0,0,0,.08);
+          border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,.1);
+          z-index: 50; overflow: hidden;
+          animation: dropIn .15s ease both;
+        }
+        @keyframes dropIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+        .hdr-dropdown-info { padding: 14px 16px; border-bottom: 1px solid rgba(0,0,0,.06); }
+        .hdr-dropdown-name { font-size: 13px; font-weight: 500; color: #1a1a18; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hdr-dropdown-email { font-size: 11px; color: #888; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hdr-menu-btn {
+          width: 100%; display: flex; align-items: center; gap: 10px;
+          padding: 10px 16px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+          background: none; border: none; cursor: pointer; text-align: left;
+          transition: background .15s; color: #444;
+        }
+        .hdr-menu-btn:hover { background: #f5f6f3; }
+        .hdr-menu-btn.danger { color: #c0392b; }
+        .hdr-menu-btn.danger:hover { background: #fff5f5; }
+      `}</style>
 
-          {/* Search — grows to fill available space */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search"
-                className="w-full pl-11 pr-4 py-2.5 bg-[#f6f8fa] border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
-              />
-            </div>
-          </div>
+      <header className="hdr-root" style={{ background: "#fff", borderBottom: "1px solid rgba(0,0,0,.07)", padding: "10px 24px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
 
-          {/* Right controls */}
-          <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Right controls - now directly on the right since search is removed */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
 
-            {/* Role badge */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
-              <Shield className="w-4 h-4 text-gray-500" />
-              <span className={`text-xs font-semibold text-white px-2 py-0.5 rounded ${getRoleColor()}`}>
-                {getRoleLabel()}
+            {/* Role pill */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "5px 10px", borderRadius: 100,
+              background: config.bg, border: `1px solid ${config.border}`,
+            }}>
+              <Shield size={12} color={config.color} />
+              <span style={{ fontSize: 11, fontWeight: 500, color: config.color, letterSpacing: ".2px" }}>
+                {config.label}
               </span>
             </div>
 
             {/* Notifications */}
-            <button
-              onClick={() => setIsNotificationPanelOpen(true)}
-              className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors relative"
-            >
-              <Bell className="w-[18px] h-[18px] text-gray-700" />
+            <button className="hdr-icon-btn" onClick={() => setIsNotificationPanelOpen(true)}>
+              <Bell size={17} />
               {unreadCount > 0 && (
-                <>
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#15aaad] rounded-full" />
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#15aaad] text-white text-[10px] font-semibold rounded-full flex items-center justify-center">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                </>
+                unreadCount === 1
+                  ? <span className="hdr-notif-dot" />
+                  : <span className="hdr-notif-count">{unreadCount > 99 ? "99+" : unreadCount}</span>
               )}
             </button>
 
-            {/* User avatar + dropdown */}
-            <div className="relative" ref={userMenuRef}>
-              <button
-                onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                className="w-9 h-9 rounded-lg bg-[#15aaad] flex items-center justify-center hover:bg-[#0d8082] transition-colors"
-              >
-                <User className="w-[18px] h-[18px] text-white" />
+            {/* Avatar + dropdown */}
+            <div style={{ position: "relative" }} ref={userMenuRef}>
+              <button className="hdr-avatar" onClick={() => setIsUserMenuOpen((p) => !p)}>
+                {initials}
               </button>
 
               {isUserMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
-                  {/* User info */}
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {currentUser?.name || 'User'}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate mt-0.5">
-                      {currentUser?.email || ''}
-                    </p>
+                <div className="hdr-dropdown">
+                  <div className="hdr-dropdown-info">
+                    <div className="hdr-dropdown-name">{currentUser?.name || "User"}</div>
+                    <div className="hdr-dropdown-email">{currentUser?.email || ""}</div>
                   </div>
-
-                  {/* Menu items */}
-                  <div className="py-1">
-                    <button
-                      onClick={() => { setIsUserMenuOpen(false); navigate('/profile'); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <UserCircle className="w-4 h-4 text-gray-500" />
+                  <div style={{ padding: "6px 0" }}>
+                    <button className="hdr-menu-btn" onClick={() => { setIsUserMenuOpen(false); navigate('/profile'); }}>
+                      <UserCircle size={15} />
                       Profile
                     </button>
-
-                    <button
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <LogOut className="w-4 h-4" />
+                    <button className="hdr-menu-btn danger" onClick={handleLogout}>
+                      <LogOut size={15} />
                       Log out
                     </button>
                   </div>

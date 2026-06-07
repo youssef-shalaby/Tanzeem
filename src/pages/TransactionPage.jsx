@@ -1,9 +1,61 @@
 import { useState, useEffect } from "react";
 import {
-  Search, SlidersHorizontal, Download, Calendar, TrendingUp, TrendingDown,
-  RefreshCw, ArrowUpCircle, ArrowDownCircle, Package, Eye, Loader2,
+  Search, ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown,
+  RefreshCw, Eye, Loader2,
 } from "lucide-react";
 import { Link } from "react-router";
+
+// ============================
+// Design system styles (green accent)
+// ============================
+const TRANSACTIONS_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .transactions-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-search-input {
+    width: 100%; padding: 9px 14px 9px 36px;
+    background: #f5f6f3; border: 1px solid transparent;
+    border-radius: 100px; font-size: 13.5px; font-family: 'DM Sans', sans-serif;
+    color: #1a1a18; outline: none; transition: border-color .2s, background .2s;
+  }
+  .db-search-input::placeholder { color: #aaa; }
+  .db-search-input:focus { background: #fff; border-color: rgba(15,140,90,.3); }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-table { width: 100%; border-collapse: collapse; }
+  .db-table th { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: .5px; padding: 10px 16px; text-align: left; background: #f9faf7; }
+  .db-table td { padding: 12px 16px; font-size: 13px; color: #1a1a18; border-top: 1px solid rgba(0,0,0,.05); }
+  .db-table tr:hover td { background: #f9faf7; }
+  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
+  .pill-green { background: #d6f5e8; color: #0a6b45; }
+  .pill-red { background: #fde8e8; color: #9b1c1c; }
+  .pill-blue { background: #e8f0fe; color: #2c5f8a; }
+  .db-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #666; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .db-skeleton { background: linear-gradient(90deg,#f0f0ec 25%,#e8e8e4 50%,#f0f0ec 75%); background-size:200% 100%; animation: shimmer 1.4s infinite; border-radius:10px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+`;
 
 function getToken() {
   try {
@@ -78,12 +130,13 @@ export function TransactionsPage() {
     return matchesType && matchesSearch;
   });
 
+  // Only pill badges – no arrow icons
   const getTypeStyle = (type) => {
     switch (type) {
-      case "Stock In":   return { badge: "bg-green-100 text-green-700 border-green-200", icon: ArrowUpCircle,   iconColor: "text-green-600" };
-      case "Stock Out":  return { badge: "bg-red-100 text-red-700 border-red-200",       icon: ArrowDownCircle, iconColor: "text-red-600" };
-      case "Adjustment": return { badge: "bg-blue-100 text-blue-700 border-blue-200",    icon: RefreshCw,       iconColor: "text-blue-600" };
-      default:           return { badge: "bg-gray-100 text-gray-700 border-gray-200",    icon: Package,         iconColor: "text-gray-600" };
+      case "Stock In":   return "pill-green";
+      case "Stock Out":  return "pill-red";
+      case "Adjustment": return "pill-blue";
+      default:           return "bg-gray-100 text-gray-600";
     }
   };
 
@@ -92,152 +145,192 @@ export function TransactionsPage() {
   const totalAdj      = transactions.filter((t) => t.type === "Adjustment").reduce((s, t) => s + Math.abs(t.totalValue), 0);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="transactions-root space-y-6">
+      <style>{TRANSACTIONS_STYLES}</style>
+
+      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Transaction History</h1>
+          <h1 className="db-section-title">Transaction History</h1>
           <p className="text-sm text-gray-600 mt-1">Complete record of all inventory movements and adjustments</p>
         </div>
         <div className="flex items-center gap-3">
-          <Link to="/add-stock" className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-            <ArrowUpCircle className="w-4 h-4 text-gray-600" /> Stock In
+          <Link to="/add-stock" className="db-secondary-btn">
+            <ArrowUpCircle className="w-4 h-4" /> Stock In
           </Link>
-          <Link to="/stock-out" className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-            <ArrowDownCircle className="w-4 h-4 text-gray-600" /> Stock Out
+          <Link to="/stock-out" className="db-secondary-btn">
+            <ArrowDownCircle className="w-4 h-4" /> Stock Out
           </Link>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* STATS CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">Total Stock In</div>
-            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center"><TrendingUp className="w-5 h-5 text-green-600" /></div>
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Total Stock In</span>
           </div>
-          <div className="text-3xl font-semibold text-gray-900 mb-2">${totalStockIn.toLocaleString()}</div>
-          <div className="text-sm text-gray-600">{transactions.filter((t) => t.type === "Stock In").length} transactions</div>
+          <div className="p-5 flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">${totalStockIn.toLocaleString()}</div>
+              <div className="text-xs text-gray-500 mt-1">{transactions.filter((t) => t.type === "Stock In").length} transactions</div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-green-600" />
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">Total Stock Out</div>
-            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center"><TrendingDown className="w-5 h-5 text-red-600" /></div>
+
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Total Stock Out</span>
           </div>
-          <div className="text-3xl font-semibold text-gray-900 mb-2">${totalStockOut.toLocaleString()}</div>
-          <div className="text-sm text-gray-600">{transactions.filter((t) => t.type === "Stock Out").length} transactions</div>
+          <div className="p-5 flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">${totalStockOut.toLocaleString()}</div>
+              <div className="text-xs text-gray-500 mt-1">{transactions.filter((t) => t.type === "Stock Out").length} transactions</div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+              <TrendingDown className="w-5 h-5 text-red-600" />
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">Adjustments</div>
-            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center"><RefreshCw className="w-5 h-5 text-blue-600" /></div>
+
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Adjustments</span>
           </div>
-          <div className="text-3xl font-semibold text-gray-900 mb-2">${totalAdj.toLocaleString()}</div>
-          <div className="text-sm text-gray-600">{transactions.filter((t) => t.type === "Adjustment").length} transactions</div>
+          <div className="p-5 flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">${totalAdj.toLocaleString()}</div>
+              <div className="text-xs text-gray-500 mt-1">{transactions.filter((t) => t.type === "Adjustment").length} transactions</div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+              <RefreshCw className="w-5 h-5 text-blue-600" />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 relative">
+      {/* FILTERS CARD */}
+      <div className="db-card db-fade-in">
+        <div className="db-card-header">
+          <span className="db-card-title">Filter Transactions</span>
+        </div>
+        <div className="p-5 space-y-4">
+          {/* Search */}
+          <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search by Transaction ID, Product Name, or SKU..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-[#f6f8fa] border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
+              className="db-search-input pl-11"
             />
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {[["all","All Transactions","bg-[#15aaad]"], ["stock-in","Stock In","bg-green-600"], ["stock-out","Stock Out","bg-red-600"], ["adjustment","Adjustments","bg-blue-600"]].map(([val, label, activeClass]) => (
-            <button key={val} onClick={() => setTypeFilter(val)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${typeFilter === val ? `${activeClass} text-white` : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>
-              {label}
-            </button>
-          ))}
+          {/* Type filter pills */}
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              ["all", "All Transactions", "bg-[#0f8c5a] text-white"],
+              ["stock-in", "Stock In", "bg-green-600 text-white"],
+              ["stock-out", "Stock Out", "bg-red-600 text-white"],
+              ["adjustment", "Adjustments", "bg-blue-600 text-white"],
+            ].map(([val, label, activeClass]) => (
+              <button
+                key={val}
+                onClick={() => setTypeFilter(val)}
+                className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
+                  typeFilter === val
+                    ? activeClass
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-[#15aaad] animate-spin" />
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center py-20 text-sm text-red-600">{error}</div>
-        ) : filteredTransactions.length === 0 ? (
-          <div className="flex items-center justify-center py-20 text-sm text-gray-500">No transactions found.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+      {/* TRANSACTIONS TABLE CARD */}
+      <div className="db-card db-fade-in">
+        <div className="db-card-header">
+          <span className="db-card-title">Transaction Log</span>
+        </div>
+        <div className="overflow-x-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 text-[#0f8c5a] animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center py-20 text-sm text-red-600">{error}</div>
+          ) : filteredTransactions.length === 0 ? (
+            <div className="flex items-center justify-center py-20 text-sm text-gray-500">No transactions found.</div>
+          ) : (
+            <table className="db-table">
               <thead>
-                <tr className="border-b border-gray-200">
-                  {["Transaction ID","Date & Time","Type","Product","Quantity","Value","Source/Reason","Performed By","Actions"].map((h, i) => (
-                    <th key={h} className={`px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider ${i >= 4 && i <= 5 ? "text-right" : i === 8 ? "text-center" : "text-left"}`}>{h}</th>
-                  ))}
+                <tr>
+                  <th>Transaction ID</th>
+                  <th>Date & Time</th>
+                  <th>Type</th>
+                  <th>Product</th>
+                  <th className="text-right">Quantity</th>
+                  <th className="text-right">Value</th>
+                  <th>Source/Reason</th>
+                  <th>Performed By</th>
+                  <th className="text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredTransactions.map((txn) => {
-                  const { badge, icon: Icon, iconColor } = getTypeStyle(txn.type);
+                  const badgeClass = getTypeStyle(txn.type);
                   return (
-                    <tr key={txn.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    <tr key={txn.id}>
+                      <td className="font-medium">
                         #{txn.id}
                         {txn.reference && <div className="text-xs text-gray-500 mt-0.5">{txn.reference}</div>}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">{txn.date}</div>
+                      <td>
+                        <div>{txn.date}</div>
                         <div className="text-xs text-gray-500">{txn.time}</div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${badge.split(" ")[0]}`}>
-                            <Icon className={`w-4 h-4 ${iconColor}`} />
-                          </div>
-                          <span className={`inline-flex px-3 py-1 rounded-md text-xs font-medium border ${badge}`}>{txn.type}</span>
-                        </div>
+                      <td>
+                        <span className={`db-stat-pill ${badgeClass}`}>{txn.type}</span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{txn.productName}</div>
+                      <td>
+                        <div className="font-medium">{txn.productName}</div>
                         <div className="text-xs text-gray-500">SKU: {txn.sku}</div>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className={`text-sm font-semibold ${txn.quantity > 0 ? "text-green-600" : "text-red-600"}`}>
+                      <td className="text-right">
+                        <span className={txn.quantity > 0 ? "text-green-600" : "text-red-600"}>
                           {txn.quantity > 0 ? "+" : ""}{txn.quantity}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className={`text-sm font-semibold ${txn.totalValue > 0 ? "text-green-600" : "text-red-600"}`}>
+                      <td className="text-right">
+                        <span className={txn.totalValue > 0 ? "text-green-600" : "text-red-600"}>
                           {txn.totalValue > 0 ? "+" : ""}${Math.abs(txn.totalValue).toFixed(2)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{txn.source}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{txn.performedBy}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex justify-center">
-                          <Link to={`/transactions/${txn.id}`} className="p-2 hover:bg-gray-100 rounded-lg transition-colors group">
-                            <Eye className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                          </Link>
-                        </div>
+                      <td className="text-gray-600">{txn.source}</td>
+                      <td>{txn.performedBy}</td>
+                      <td className="text-center">
+                        <Link to={`/transactions/${txn.id}`} className="inline-flex p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                          <Eye className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                        </Link>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+          )}
+        </div>
+        {!isLoading && !error && (
+          <div className="px-6 py-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-600">
+            <span>Showing {filteredTransactions.length} of {transactions.length} transactions</span>
           </div>
         )}
-
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            Showing {filteredTransactions.length} of {transactions.length} transactions
-          </div>
-        </div>
       </div>
     </div>
   );

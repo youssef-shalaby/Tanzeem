@@ -2,6 +2,46 @@ import { ArrowLeft, AlertTriangle, Package, Calendar, User, FileText } from 'luc
 import { useNavigate, useParams } from 'react-router';
 import { useState, useEffect } from 'react';
 
+// ============================
+// Design system styles (green accent)
+// ============================
+const VIEW_ISSUE_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .view-issue-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
+  .pill-green { background: #d6f5e8; color: #0a6b45; }
+  .pill-red { background: #fde8e8; color: #9b1c1c; }
+  .pill-yellow { background: #fef3c7; color: #8b5e00; }
+  .pill-orange { background: #ffedd5; color: #c2410c; }
+  .pill-blue { background: #e8f0fe; color: #2c5f8a; }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #666; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+`;
+
 function getToken() {
   try {
     return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
@@ -56,8 +96,8 @@ export function ViewDeliveryIssuePage() {
       });
   }, [issueId]);
 
-  if (loading) return <div className="p-6 text-gray-500">Loading issue details...</div>;
-  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
+  if (loading) return <div className="view-issue-root p-6 text-gray-500">Loading issue details...</div>;
+  if (error) return <div className="view-issue-root p-6 text-red-600">Error: {error}</div>;
   if (!issue) return null;
 
   const formattedDate = new Date(issue.recievedDate).toLocaleDateString('en-US', {
@@ -70,18 +110,17 @@ export function ViewDeliveryIssuePage() {
   const totalDiscrepancy = issue.discrepancy || 0;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="view-issue-root space-y-6">
+      <style>{VIEW_ISSUE_STYLES}</style>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          <button onClick={() => navigate(-1)} className="db-icon-btn">
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Issue Details</h1>
+            <h1 className="db-section-title">Issue Details</h1>
             <p className="text-sm text-gray-600 mt-1">
               Issue {issue.stringId} • Order ORD-{issue.orderId}
             </p>
@@ -89,7 +128,7 @@ export function ViewDeliveryIssuePage() {
         </div>
         <button
           onClick={() => navigate(`/orders/${issue.orderId}`)}
-          className="px-4 py-2 text-sm text-[#15aaad] border border-[#15aaad] rounded-lg hover:bg-[#15aaad]/5 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm text-[#0f8c5a] border border-[#0f8c5a] rounded-full hover:bg-[#0f8c5a]/10 transition-colors"
         >
           View Order
         </button>
@@ -100,52 +139,54 @@ export function ViewDeliveryIssuePage() {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Issue Overview */}
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <h2 className="font-semibold text-gray-900 text-lg mb-4">Issue Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <div className="flex items-center gap-2 text-gray-600 mb-1">
-                  <Calendar className="w-4 h-4" />
-                  <span>Received Date</span>
+          <div className="db-card">
+            <div className="db-card-header">
+              <span className="db-card-title">Issue Overview</span>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div className="flex items-center gap-2 text-gray-600 mb-1">
+                    <Calendar className="w-4 h-4" />
+                    <span>Received Date</span>
+                  </div>
+                  <p className="font-medium text-gray-900">{formattedDate} at {formattedTime}</p>
                 </div>
-                <p className="font-medium text-gray-900">{formattedDate} at {formattedTime}</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-gray-600 mb-1">
-                  <User className="w-4 h-4" />
-                  <span>Supplier</span>
+                <div>
+                  <div className="flex items-center gap-2 text-gray-600 mb-1">
+                    <User className="w-4 h-4" />
+                    <span>Supplier</span>
+                  </div>
+                  <p className="font-medium text-gray-900">{issue.supplierName}</p>
                 </div>
-                <p className="font-medium text-gray-900">{issue.supplierName}</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-gray-600 mb-1">
-                  <Package className="w-4 h-4" />
-                  <span>Total Discrepancy</span>
+                <div>
+                  <div className="flex items-center gap-2 text-gray-600 mb-1">
+                    <Package className="w-4 h-4" />
+                    <span>Total Discrepancy</span>
+                  </div>
+                  <p className="font-medium text-orange-600">-{totalDiscrepancy} units</p>
                 </div>
-                <p className="font-medium text-orange-600">-{totalDiscrepancy} units</p>
               </div>
             </div>
           </div>
 
           {/* Affected Items */}
-          <div className="bg-white rounded-xl border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="font-semibold text-gray-900">
-                Affected Items ({issue.items?.length || 0})
-              </h2>
+          <div className="db-card">
+            <div className="db-card-header">
+              <span className="db-card-title">Affected Items ({issue.items?.length || 0})</span>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 space-y-4">
               {issue.items?.map((item, index) => {
                 const totalIssueQty = item.issues?.reduce((sum, i) => sum + i.quantity, 0) || 0;
                 const received = item.orderedQuantity - totalIssueQty;
                 return (
-                  <div key={index} className="rounded-lg p-5 bg-orange-50 border-2 border-orange-200">
+                  <div key={index} className="rounded-xl p-5 bg-orange-50 border border-orange-200">
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-semibold text-gray-900">{item.productName}</h3>
-                          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-700 text-sm font-medium rounded-md">
-                            <AlertTriangle className="w-4 h-4" />
+                          <span className="db-stat-pill pill-orange">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
                             -{totalIssueQty} units
                           </span>
                         </div>
@@ -190,12 +231,16 @@ export function ViewDeliveryIssuePage() {
 
           {/* General Notes */}
           {issue.notes && (
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
-              <div className="flex items-center gap-2 mb-3">
-                <FileText className="w-5 h-5 text-gray-600" />
-                <h2 className="font-semibold text-gray-900">Notes</h2>
+            <div className="db-card">
+              <div className="db-card-header">
+                <span className="db-card-title">Notes</span>
               </div>
-              <p className="text-sm text-gray-700 leading-relaxed">{issue.notes}</p>
+              <div className="p-5">
+                <div className="flex items-start gap-2">
+                  <FileText className="w-4 h-4 text-gray-400 mt-0.5" />
+                  <p className="text-sm text-gray-700 leading-relaxed">{issue.notes}</p>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -203,9 +248,11 @@ export function ViewDeliveryIssuePage() {
         {/* Sidebar */}
         <div className="lg:col-span-1 space-y-6">
           {/* Supplier Info */}
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <h2 className="font-semibold text-gray-900 mb-4">Supplier Information</h2>
-            <div className="space-y-3 text-sm">
+          <div className="db-card">
+            <div className="db-card-header">
+              <span className="db-card-title">Supplier Information</span>
+            </div>
+            <div className="p-5 space-y-3 text-sm">
               <div>
                 <p className="text-gray-600 mb-1">Name</p>
                 <p className="font-medium text-gray-900">{issue.supplierName}</p>
@@ -223,15 +270,19 @@ export function ViewDeliveryIssuePage() {
                 </div>
               )}
             </div>
-            <button className="w-full mt-4 px-4 py-2.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors">
-              Contact Supplier
-            </button>
+            <div className="px-5 pb-5">
+              <button className="w-full db-secondary-btn justify-center">
+                Contact Supplier
+              </button>
+            </div>
           </div>
 
           {/* Summary */}
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <h2 className="font-semibold text-gray-900 mb-4">Summary</h2>
-            <div className="space-y-3 text-sm">
+          <div className="db-card">
+            <div className="db-card-header">
+              <span className="db-card-title">Summary</span>
+            </div>
+            <div className="p-5 space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Items Affected</span>
                 <span className="font-medium text-gray-900">{issue.itemsAffected}</span>
@@ -250,21 +301,25 @@ export function ViewDeliveryIssuePage() {
           </div>
 
           {/* Resolution Notes */}
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <h2 className="font-semibold text-gray-900 mb-4">Resolution Notes</h2>
-            <textarea
-              rows={4}
-              placeholder="Add notes about the resolution..."
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 resize-none"
-              value={resolutionNotes}
-              onChange={(e) => setResolutionNotes(e.target.value)}
-            />
-            <button
-              onClick={() => alert('Resolution notes saved!')}
-              className="w-full mt-3 px-4 py-2.5 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors"
-            >
-              Save Notes
-            </button>
+          <div className="db-card">
+            <div className="db-card-header">
+              <span className="db-card-title">Resolution Notes</span>
+            </div>
+            <div className="p-5 space-y-3">
+              <textarea
+                rows={4}
+                placeholder="Add notes about the resolution..."
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 resize-none"
+                value={resolutionNotes}
+                onChange={(e) => setResolutionNotes(e.target.value)}
+              />
+              <button
+                onClick={() => alert('Resolution notes saved!')}
+                className="w-full db-primary-btn justify-center"
+              >
+                Save Notes
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -2,6 +2,58 @@ import { useState } from 'react';
 import { X, ScanLine, Sparkles, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
+// ============================
+// Design system styles (green accent)
+// ============================
+const ADD_ITEM_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .add-item-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-input {
+    width: 100%; padding: 9px 14px;
+    background: #fff; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 12px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+    color: #1a1a18; outline: none; transition: border-color .2s;
+  }
+  .db-input:focus { border-color: #0f8c5a; box-shadow: 0 0 0 2px rgba(15,140,90,.1); }
+  .db-select {
+    padding: 8px 14px; background: #fff; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+    color: #444; cursor: pointer; outline: none; transition: border-color .2s;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+  }
+  .db-select:hover { border-color: #0f8c5a; }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #666; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; }
+  .db-badge-teal { background: #e6f7f5; color: #0f8c5a; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+`;
+
 function getToken() {
   try {
     return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
@@ -127,7 +179,7 @@ Category:`,
     const token = getToken();
 
     try {
-      const results = await Promise.all(
+      await Promise.all(
         products.map(async (product) => {
           const payload = {
             name: product.productName,
@@ -171,18 +223,17 @@ Category:`,
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="add-item-root space-y-6">
+      <style>{ADD_ITEM_STYLES}</style>
+
+      {/* Header – exactly like Addstockpage */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Add New Products</h1>
+          <h1 className="db-section-title">Add New Products</h1>
           <p className="text-sm text-gray-600 mt-1">Add one or multiple products at once</p>
         </div>
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <X className="w-5 h-5 text-gray-600" />
+        <button onClick={() => navigate(-1)} className="db-icon-btn">
+          <X className="w-5 h-5" />
         </button>
       </div>
 
@@ -195,23 +246,15 @@ Category:`,
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {products.map((product, index) => (
-          <div key={product.id} className="space-y-6 pb-6 border-b border-gray-200 last:border-0 last:pb-0">
-
-            {/* Product Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#15aaad]/10 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-[#15aaad]">{index + 1}</span>
-                </div>
-                <h2 className="font-semibold text-gray-900">
-                  {product.productName || `Product ${index + 1}`}
-                </h2>
-              </div>
+          <div key={product.id} className="relative border border-gray-200 rounded-xl p-5 bg-white">
+            {/* Product header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="db-badge db-badge-teal">Product #{index + 1}</div>
               {products.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeProduct(product.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="text-red-600 hover:bg-red-50 p-1 rounded-lg transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -219,42 +262,39 @@ Category:`,
             </div>
 
             {/* Basic Information */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-5">Basic Information</h3>
+            <div className="space-y-5">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Product Name <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={product.productName}
+                  onChange={(e) => handleChange(product.id, 'productName', e.target.value)}
+                  required
+                  className="db-input"
+                  placeholder="Enter product name"
+                />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Product Name <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    value={product.productName}
-                    onChange={(e) => handleChange(product.id, 'productName', e.target.value)}
-                    required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
-                    placeholder="Enter product name"
-                  />
-                </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">SKU <span className="text-red-500">*</span></label>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">SKU <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={product.sku}
                     onChange={(e) => handleChange(product.id, 'sku', e.target.value)}
                     required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="db-input"
                     placeholder="Enter SKU"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Barcode</label>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Barcode</label>
                   <div className="relative">
                     <input
                       type="text"
                       value={product.barcode}
                       onChange={(e) => handleChange(product.id, 'barcode', e.target.value)}
-                      className="w-full px-4 py-2.5 pr-12 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                      className="db-input pr-10"
                       placeholder="Enter barcode"
                     />
                     <button
@@ -267,81 +307,80 @@ Category:`,
                     </button>
                   </div>
                 </div>
+              </div>
 
-                <div className="md:col-span-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Category <span className="text-red-500">*</span></label>
-                    <button
-                      type="button"
-                      onClick={() => handleAISuggestCategory(product.id)}
-                      disabled={aiSuggesting[product.id]}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#15aaad]/10 text-[#15aaad] text-xs font-medium rounded-lg hover:bg-[#15aaad]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {aiSuggesting[product.id] ? (
-                        <><Loader2 className="w-3.5 h-3.5 animate-spin" />Analyzing...</>
-                      ) : (
-                        <><Sparkles className="w-3.5 h-3.5" />AI Suggest</>
-                      )}
-                    </button>
-                  </div>
-                  <select
-                    value={product.category}
-                    onChange={(e) => handleChange(product.id, 'category', e.target.value)}
-                    required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">Category <span className="text-red-500">*</span></label>
+                  <button
+                    type="button"
+                    onClick={() => handleAISuggestCategory(product.id)}
+                    disabled={aiSuggesting[product.id]}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0f8c5a]/10 text-[#0f8c5a] text-xs font-medium rounded-lg hover:bg-[#0f8c5a]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="">Select category</option>
-                    {CATEGORIES.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                    {aiSuggesting[product.id] ? (
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" />Analyzing...</>
+                    ) : (
+                      <><Sparkles className="w-3.5 h-3.5" />AI Suggest</>
+                    )}
+                  </button>
+                </div>
+                <select
+                  value={product.category}
+                  onChange={(e) => handleChange(product.id, 'category', e.target.value)}
+                  required
+                  className="db-select w-full"
+                >
+                  <option value="">Select category</option>
+                  {CATEGORIES.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
 
-                  {aiSuggestions[product.id] && (
-                    <div className="mt-2 p-3 bg-[#15aaad]/10 border border-[#15aaad]/20 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-[#15aaad]" />
-                          <span className="text-sm text-gray-900">
-                            AI suggests: <span className="font-semibold text-[#15aaad]">{aiSuggestions[product.id]}</span>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button type="button" onClick={() => applyAISuggestion(product.id)}
-                            className="px-3 py-1 bg-[#15aaad] text-white text-xs font-medium rounded hover:bg-[#0d8082] transition-colors">
-                            Apply
-                          </button>
-                          <button type="button" onClick={() => dismissAISuggestion(product.id)}
-                            className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-300 transition-colors">
-                            Dismiss
-                          </button>
-                        </div>
+                {aiSuggestions[product.id] && (
+                  <div className="mt-3 p-3 bg-[#0f8c5a]/10 border border-[#0f8c5a]/20 rounded-lg">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-[#0f8c5a]" />
+                        <span className="text-sm text-gray-900">
+                          AI suggests: <span className="font-semibold text-[#0f8c5a]">{aiSuggestions[product.id]}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => applyAISuggestion(product.id)}
+                          className="px-3 py-1 bg-[#0f8c5a] text-white text-xs font-medium rounded hover:bg-[#0a6b45] transition-colors">
+                          Apply
+                        </button>
+                        <button type="button" onClick={() => dismissAISuggestion(product.id)}
+                          className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-300 transition-colors">
+                          Dismiss
+                        </button>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                  <textarea
-                    value={product.description}
-                    onChange={(e) => handleChange(product.id, 'description', e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad] resize-none"
-                    placeholder="Enter product description"
-                  />
-                </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Description</label>
+                <textarea
+                  value={product.description}
+                  onChange={(e) => handleChange(product.id, 'description', e.target.value)}
+                  rows={3}
+                  className="db-input resize-none"
+                  placeholder="Enter product description"
+                />
               </div>
             </div>
 
-            {/* Pricing & Stock */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-5">Pricing & Stock</h3>
+            {/* Pricing & Stock – separate section inside the same card */}
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Pricing & Stock</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Unit Price (Selling) <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Unit Price (Selling) <span className="text-red-500">*</span></label>
+                  <div className="flex items-center gap-2 border border-gray-200 rounded-lg focus-within:ring-2 focus-within:ring-[#0f8c5a]/20 focus-within:border-[#0f8c5a] bg-white">
+                    <span className="pl-3 text-gray-500 text-sm">$</span>
                     <input
                       type="number"
                       value={product.unitPrice}
@@ -349,55 +388,51 @@ Category:`,
                       required
                       step="0.01"
                       min="0"
-                      className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                      className="flex-1 py-2 pr-3 text-sm bg-transparent focus:outline-none"
                       placeholder="0.00"
                     />
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Initial Stock Quantity <span className="text-red-500">*</span></label>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Initial Stock Quantity <span className="text-red-500">*</span></label>
                   <input
                     type="number"
                     value={product.stock}
                     onChange={(e) => handleChange(product.id, 'stock', e.target.value)}
                     required
                     min="0"
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="db-input"
                     placeholder="0"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Reorder Level <span className="text-red-500">*</span></label>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Reorder Level <span className="text-red-500">*</span></label>
                   <input
                     type="number"
                     value={product.reorderLevel}
                     onChange={(e) => handleChange(product.id, 'reorderLevel', e.target.value)}
                     required
                     min="0"
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="db-input"
                     placeholder="0"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Expiry Date</label>
                   <input
                     type="date"
                     value={product.expiryDate}
                     onChange={(e) => handleChange(product.id, 'expiryDate', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="db-input"
                   />
                 </div>
-
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status <span className="text-red-500">*</span></label>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Status <span className="text-red-500">*</span></label>
                   <select
                     value={product.status}
                     onChange={(e) => handleChange(product.id, 'status', e.target.value)}
                     required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="db-select w-full"
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -409,36 +444,36 @@ Category:`,
           </div>
         ))}
 
-        {/* Add Another Product */}
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-[#15aaad] transition-colors">
+        {/* Add Another Product – dashed border like Addstockpage */}
+        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-[#0f8c5a] transition-colors">
           <button
             type="button"
             onClick={addProduct}
-            className="w-full flex items-center justify-center gap-2 text-[#15aaad] font-medium hover:text-[#0d8082] transition-colors"
+            className="w-full flex items-center justify-center gap-2 text-[#0f8c5a] font-medium hover:text-[#0a6b45] transition-colors"
           >
             <Plus className="w-5 h-5" />
             Add Another Product
           </button>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="flex-1 px-6 py-2.5 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors font-medium disabled:opacity-60"
-          >
-            {submitting
-              ? 'Saving...'
-              : `Add ${products.length} ${products.length === 1 ? 'Product' : 'Products'}`}
-          </button>
+        {/* Action Buttons – exactly as in Addstockpage */}
+        <div className="flex items-center justify-end gap-3 pt-4">
           <button
             type="button"
             onClick={() => navigate(-1)}
             disabled={submitting}
-            className="px-6 py-2.5 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="db-secondary-btn"
           >
             Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="db-primary-btn"
+          >
+            {submitting
+              ? 'Saving...'
+              : `Add ${products.length} ${products.length === 1 ? 'Product' : 'Products'}`}
           </button>
         </div>
       </form>

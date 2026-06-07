@@ -8,7 +8,38 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
-// --- Role config (only permissions + activity, no fake personal info) ---
+// ============================
+// Design system styles (matching Dashboard)
+// ============================
+const PROFILE_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .profile-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
+  .pill-green { background: #d6f5e8; color: #0a6b45; }
+  .pill-yellow { background: #fef3c7; color: #8b5e00; }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+`;
+
+// --- Role config (permissions + activity) ---
 const roleConfig = {
   admin: {
     avatarGradient: "from-purple-500 to-purple-700",
@@ -31,7 +62,7 @@ const roleConfig = {
       { action: "Updated settings", detail: "Alert configurations modified", time: "3 hours ago", color: "bg-blue-500" },
       { action: "Generated report", detail: "Monthly inventory analytics report", time: "5 hours ago", color: "bg-orange-500" },
       { action: "Approved order", detail: "Order #ORD-045 approved for processing", time: "1 day ago", color: "bg-purple-500" },
-      { action: "System backup", detail: "Database backup completed successfully", time: "2 days ago", color: "bg-[#15aaad]" },
+      { action: "System backup", detail: "Database backup completed successfully", time: "2 days ago", color: "bg-[#0f8c5a]" },
     ],
   },
   manager: {
@@ -55,7 +86,7 @@ const roleConfig = {
       { action: "Updated order", detail: "Order #ORD-032 status changed to Shipped", time: "4 hours ago", color: "bg-blue-500" },
       { action: "Added supplier", detail: "Global Tech Solutions added to supplier list", time: "6 hours ago", color: "bg-purple-500" },
       { action: "Stock adjustment", detail: "Updated stock levels for 12 items", time: "1 day ago", color: "bg-orange-500" },
-      { action: "Generated report", detail: "Weekly inventory summary report", time: "2 days ago", color: "bg-[#15aaad]" },
+      { action: "Generated report", detail: "Weekly inventory summary report", time: "2 days ago", color: "bg-[#0f8c5a]" },
     ],
   },
   staff: {
@@ -91,12 +122,17 @@ export function ProfilePage() {
   const config = roleConfig[role] ?? roleConfig.staff;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Profile</h1>
+    <div className="profile-root space-y-6">
+      <style>{PROFILE_STYLES}</style>
 
-      {/* Header Card */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
+      <h1 className="db-section-title">Profile</h1>
+
+      {/* Header Card - Profile Info */}
+      <div className="db-card db-fade-in">
+        <div className="db-card-header">
+          <span className="db-card-title">Personal Information</span>
+        </div>
+        <div className="p-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-6">
               <div
@@ -111,27 +147,29 @@ export function ProfilePage() {
                 <p className="text-sm text-gray-600 mb-2">
                   {config.roleLabel}
                 </p>
-                <span className="inline-flex px-2.5 py-1 bg-green-100 text-green-700 rounded-md text-xs font-medium border border-green-200">
+                <span className="db-stat-pill pill-green">
                   Active
                 </span>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">
+            <button className="db-secondary-btn">
               <Edit2 className="w-4 h-4" />
               Edit Profile
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Account Info */}
+      {/* Account Information Card */}
+      <div className="db-card db-fade-in">
+        <div className="db-card-header">
+          <span className="db-card-title">Account Information</span>
+        </div>
         <div className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-6">
-            Account Information
-          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Email */}
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                 <Mail className="w-5 h-5 text-blue-600" />
               </div>
               <div>
@@ -144,8 +182,8 @@ export function ProfilePage() {
 
             {/* User ID */}
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[#15aaad]/10 flex items-center justify-center">
-                <IdCard className="w-5 h-5 text-[#15aaad]" />
+              <div className="w-10 h-10 rounded-full bg-[#0f8c5a]/10 flex items-center justify-center">
+                <IdCard className="w-5 h-5 text-[#0f8c5a]" />
               </div>
               <div>
                 <div className="text-xs text-gray-600 mb-1">User ID</div>
@@ -157,7 +195,7 @@ export function ProfilePage() {
 
             {/* Company ID */}
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
                 <IdCard className="w-5 h-5 text-orange-500" />
               </div>
               <div>
@@ -171,14 +209,14 @@ export function ProfilePage() {
             {/* Role */}
             <div className="flex items-center gap-4">
               <div
-                className={`w-12 h-12 rounded-full ${config.roleIconBg} flex items-center justify-center`}
+                className={`w-10 h-10 rounded-full ${config.roleIconBg} flex items-center justify-center`}
               >
                 <Shield className={`w-5 h-5 ${config.roleIcon}`} />
               </div>
               <div>
                 <div className="text-xs text-gray-600 mb-1">Role</div>
                 <span
-                  className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${config.roleBadge}`}
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${config.roleBadge}`}
                 >
                   {config.roleLabel}
                 </span>
@@ -188,11 +226,10 @@ export function ProfilePage() {
         </div>
       </div>
 
-
-      {/* Recent Activity */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="p-5 border-b border-gray-200">
-          <h3 className="font-semibold text-gray-900">Recent Activity</h3>
+      {/* Recent Activity Card */}
+      <div className="db-card db-fade-in">
+        <div className="db-card-header">
+          <span className="db-card-title">Recent Activity</span>
         </div>
         <div className="p-6">
           <div className="space-y-4">

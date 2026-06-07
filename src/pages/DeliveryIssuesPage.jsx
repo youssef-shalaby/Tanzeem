@@ -1,8 +1,60 @@
-import { Search, Eye, AlertTriangle, XCircle } from 'lucide-react';
+import { Search, Eye, AlertTriangle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useState, useEffect } from 'react';
 
-// issueType numbers → labels  (0 = Other/Unknown as a safe fallback for unmapped backend values)
+// ============================
+// Design system styles (matching Dashboard)
+// ============================
+const DELIVERY_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .delivery-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
+  .pill-green { background: #d6f5e8; color: #0a6b45; }
+  .pill-red { background: #fde8e8; color: #9b1c1c; }
+  .pill-yellow { background: #fef3c7; color: #8b5e00; }
+  .pill-blue { background: #e8f0fe; color: #2c5f8a; }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-search-input {
+    width: 100%; padding: 9px 14px 9px 36px;
+    background: #f5f6f3; border: 1px solid transparent;
+    border-radius: 100px; font-size: 13.5px; font-family: 'DM Sans', sans-serif;
+    color: #1a1a18; outline: none; transition: border-color .2s, background .2s;
+  }
+  .db-search-input::placeholder { color: #aaa; }
+  .db-search-input:focus { background: #fff; border-color: rgba(15,140,90,.3); }
+  .db-table { width: 100%; border-collapse: collapse; }
+  .db-table th { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: .5px; padding: 10px 16px; text-align: left; background: #f9faf7; }
+  .db-table td { padding: 12px 16px; font-size: 13px; color: #1a1a18; border-top: 1px solid rgba(0,0,0,.05); }
+  .db-table tr:hover td { background: #f9faf7; }
+  .db-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #666; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .db-skeleton { background: linear-gradient(90deg,#f0f0ec 25%,#e8e8e4 50%,#f0f0ec 75%); background-size:200% 100%; animation: shimmer 1.4s infinite; border-radius:10px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+`;
+
 const ISSUE_TYPE_LABELS = {
   0: 'Damaged',
   1: 'Missing',
@@ -11,7 +63,6 @@ const ISSUE_TYPE_LABELS = {
   4: 'Other',
 };
 
-
 function getToken() {
   try {
     return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
@@ -19,6 +70,7 @@ function getToken() {
     return null;
   }
 }
+
 export function DeliveryIssuesPage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,7 +106,6 @@ export function DeliveryIssuesPage() {
       });
   }, [currentPage]);
 
-  // Collect unique issue type labels across all items in a delivery issue
   const getIssueTypeLabels = (items) => {
     const types = new Set();
     items?.forEach(item =>
@@ -83,130 +134,139 @@ export function DeliveryIssuesPage() {
     discrepancy: issues.reduce((sum, i) => sum + (i.discrepancy || 0), 0),
   };
 
-  if (loading) return <div className="p-6 text-gray-500">Loading delivery issues...</div>;
-  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
+  if (loading) return <div className="delivery-root p-6 text-gray-500">Loading delivery issues...</div>;
+  if (error) return <div className="delivery-root p-6 text-red-600">Error: {error}</div>;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="delivery-root space-y-6">
+      <style>{DELIVERY_STYLES}</style>
+
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Delivery Issues</h1>
+        <h1 className="db-section-title">Delivery Issues</h1>
         <p className="text-sm text-gray-600 mt-1">Track and manage delivery discrepancies and issues</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Issues</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-gray-600" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Total Issues</span>
+          </div>
+          <div className="p-5 flex items-center justify-between">
+            <div className="text-2xl font-semibold text-gray-900">{stats.total}</div>
+            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-gray-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Items Affected</p>
-              <p className="text-2xl font-semibold text-orange-600">{stats.itemsAffected}</p>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-orange-600" />
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Items Affected</span>
+          </div>
+          <div className="p-5 flex items-center justify-between">
+            <div className="text-2xl font-semibold text-orange-600">{stats.itemsAffected}</div>
+            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-orange-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Discrepancy</p>
-              <p className="text-2xl font-semibold text-red-600">-{stats.discrepancy}</p>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-              <XCircle className="w-6 h-6 text-red-600" />
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Total Discrepancy</span>
+          </div>
+          <div className="p-5 flex items-center justify-between">
+            <div className="text-2xl font-semibold text-red-600">-{stats.discrepancy}</div>
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+              <XCircle className="w-5 h-5 text-red-600" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="bg-white rounded-xl p-4 border border-gray-200">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by issue ID, order ID, or supplier..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      {/* Search Card */}
+      <div className="db-card db-fade-in">
+        <div className="db-card-header">
+          <span className="db-card-title">Search Issues</span>
+        </div>
+        <div className="p-5">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by issue ID, order ID, or supplier..."
+              className="db-search-input pl-11"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200">
+      {/* Issues Table Card */}
+      <div className="db-card db-fade-in">
+        <div className="db-card-header">
+          <span className="db-card-title">Issue Log</span>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="db-table">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Issue ID</th>
-                <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Date Received</th>
-                <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
-                <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Issue Types</th>
-                <th className="text-center px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Items Affected</th>
-                <th className="text-center px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Discrepancy</th>
-                <th className="text-center px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <tr>
+                <th>Issue ID</th>
+                <th>Order ID</th>
+                <th>Date Received</th>
+                <th>Supplier</th>
+                <th>Issue Types</th>
+                <th className="text-center">Items Affected</th>
+                <th className="text-center">Discrepancy</th>
+                <th className="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredIssues.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-500">
+                  <td colSpan={8} className="text-center py-10 text-gray-500">
                     No delivery issues found.
                   </td>
                 </tr>
               ) : (
                 filteredIssues.map((issue) => (
-                  <tr key={issue.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-gray-900">{issue.stringId}</span>
-                    </td>
-                    <td className="px-6 py-4">
+                  <tr key={issue.id}>
+                    <td className="font-medium">{issue.stringId}</td>
+                    <td>
                       <button
                         onClick={() => navigate(`/orders/${issue.orderId}`)}
-                        className="text-sm text-[#15aaad] hover:underline"
+                        className="text-[#0f8c5a] hover:underline text-sm"
                       >
                         ORD-{issue.orderId}
                       </button>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td>
                       {new Date(issue.recievedDate).toLocaleDateString('en-US', {
                         year: 'numeric', month: 'short', day: 'numeric'
                       })}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{issue.supplierName}</td>
-                    <td className="px-6 py-4">
+                    <td>{issue.supplierName}</td>
+                    <td>
                       <div className="flex flex-wrap gap-1">
                         {getIssueTypeLabels(issue.items).map((type, idx) => (
-                          <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                          <span key={idx} className="db-stat-pill pill-red">
                             {type}
                           </span>
                         ))}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 text-center">{issue.itemsAffected}</td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="text-center">{issue.itemsAffected}</td>
+                    <td className="text-center">
                       <span className="text-sm font-medium text-orange-600">-{issue.discrepancy}</span>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="text-center">
                       <button
                         onClick={() => navigate(`/delivery-issues/${issue.id}`)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="db-secondary-btn"
+                        style={{ padding: "6px 12px", fontSize: "12px" }}
                       >
                         <Eye className="w-4 h-4" />
                         View
@@ -221,7 +281,7 @@ export function DeliveryIssuesPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between flex-wrap gap-3">
             <p className="text-sm text-gray-600">
               Page {currentPage} of {totalPages} — {totalCount} total issues
             </p>
@@ -229,16 +289,18 @@ export function DeliveryIssuesPage() {
               <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="db-icon-btn disabled:opacity-40"
               >
-                Previous
+                <ChevronLeft className="w-4 h-4" />
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-lg text-sm transition-colors ${
-                    currentPage === page ? 'bg-[#15aaad] text-white' : 'text-gray-700 hover:bg-gray-100'
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                    currentPage === page
+                      ? "bg-[#0f8c5a] text-white"
+                      : "text-gray-600 hover:bg-gray-100"
                   }`}
                 >
                   {page}
@@ -247,9 +309,9 @@ export function DeliveryIssuesPage() {
               <button
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="db-icon-btn disabled:opacity-40"
               >
-                Next
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>

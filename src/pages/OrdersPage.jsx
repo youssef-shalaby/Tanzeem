@@ -8,6 +8,66 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+// ============================
+// Design system styles (green accent, DM Sans, etc.)
+// ============================
+const ORDERS_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .orders-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
+  .pill-green { background: #d6f5e8; color: #0a6b45; }
+  .pill-yellow { background: #fef3c7; color: #8b5e00; }
+  .pill-red { background: #fde8e8; color: #9b1c1c; }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-select {
+    padding: 8px 14px; background: #fff; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+    color: #444; cursor: pointer; outline: none; transition: border-color .2s;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+  }
+  .db-select:hover { border-color: #0f8c5a; }
+  .db-table { width: 100%; border-collapse: collapse; }
+  .db-table th { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: .5px; padding: 10px 16px; text-align: left; background: #f9faf7; }
+  .db-table td { padding: 12px 16px; font-size: 13px; color: #1a1a18; border-top: 1px solid rgba(0,0,0,.05); }
+  .db-table tr:hover td { background: #f9faf7; }
+  .db-search-input {
+    width: 100%; padding: 9px 14px 9px 36px;
+    background: #f5f6f3; border: 1px solid transparent;
+    border-radius: 100px; font-size: 13.5px; font-family: 'DM Sans', sans-serif;
+    color: #1a1a18; outline: none; transition: border-color .2s, background .2s;
+  }
+  .db-search-input::placeholder { color: #aaa; }
+  .db-search-input:focus { background: #fff; border-color: rgba(15,140,90,.3); }
+  .db-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #666; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .db-skeleton { background: linear-gradient(90deg,#f0f0ec 25%,#e8e8e4 50%,#f0f0ec 75%); background-size:200% 100%; animation: shimmer 1.4s infinite; border-radius:10px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+`;
 
 function getToken() {
   try {
@@ -16,6 +76,7 @@ function getToken() {
     return null;
   }
 }
+
 export function OrdersPage() {
   const navigate = useNavigate();
 
@@ -37,8 +98,6 @@ export function OrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-
-  // orderId => total nested issues count
   const [issueMap, setIssueMap] = useState({});
 
   const pageSize = 10;
@@ -74,11 +133,9 @@ export function OrdersPage() {
     if (searchTerm) {
       url += `&searchTerm=${encodeURIComponent(searchTerm)}`;
     }
-
     if (filterId !== "all") {
       url += `&filterId=${filterId}`;
     }
-
     if (sortId !== "") {
       url += `&sortId=${sortId}`;
     }
@@ -90,22 +147,13 @@ export function OrdersPage() {
       },
     })
       .then((res) => {
-        if (!res.ok)
-          throw new Error("Failed to fetch orders.");
-
+        if (!res.ok) throw new Error("Failed to fetch orders.");
         return res.json();
       })
       .then((body) => {
         setOrdersList(body.data || []);
-
-        setTotalPages(
-          body.totalPages && body.totalPages > 0
-            ? body.totalPages
-            : 1
-        );
-
+        setTotalPages(body.totalPages && body.totalPages > 0 ? body.totalPages : 1);
         setTotalCount(body.totalCount || 0);
-
         setLoading(false);
       })
       .catch((err) => {
@@ -125,372 +173,262 @@ export function OrdersPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data) return;
-
         const map = {};
-
         (data.data || []).forEach((deliveryIssue) => {
           const orderId = deliveryIssue.orderId;
-
           if (!orderId) return;
-
           let totalIssues = 0;
-
           (deliveryIssue.items || []).forEach((item) => {
             totalIssues += (item.issues || []).length;
           });
-
-          map[orderId] =
-            (map[orderId] || 0) + totalIssues;
+          map[orderId] = (map[orderId] || 0) + totalIssues;
         });
-
-        console.log("Issue Map:", map);
-
         setIssueMap(map);
       })
-      .catch((err) => {
-        console.error(err);
-      });
+      .catch((err) => console.error(err));
   }, []);
 
   const getStatus = (status) => {
     if (typeof status === "number") {
       return status === 0 ? "Pending" : "Delivered";
     }
-
     if (!status) return "Pending";
-
     const normalized = String(status).toLowerCase();
-
-    if (normalized.includes("deliver")) {
-      return "Delivered";
-    }
-
-    if (normalized.includes("cancel")) {
-      return "Cancelled";
-    }
-
+    if (normalized.includes("deliver")) return "Delivered";
+    if (normalized.includes("cancel")) return "Cancelled";
     return "Pending";
   };
 
   const getStatusStyle = (status) => {
     switch (getStatus(status)) {
-      case "Pending":
-        return "bg-yellow-100 text-yellow-700";
-
-      case "Delivered":
-        return "bg-green-100 text-green-700";
-
-      case "Cancelled":
-        return "bg-red-100 text-red-700";
-
-      default:
-        return "bg-blue-100 text-blue-700";
+      case "Pending":   return "pill-yellow";
+      case "Delivered": return "pill-green";
+      case "Cancelled": return "pill-red";
+      default:          return "bg-gray-100 text-gray-600";
     }
   };
 
-  // Dynamic Pagination
   const renderPagination = () => {
     const pages = [];
-
     let start = Math.max(currentPage - 2, 1);
     let end = Math.min(start + 4, totalPages);
-
-    if (end - start < 4) {
-      start = Math.max(end - 4, 1);
-    }
-
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-
+    if (end - start < 4) start = Math.max(end - 4, 1);
+    for (let i = start; i <= end; i++) pages.push(i);
     return pages;
   };
 
   return (
-    <div className="space-y-6">
+    <div className="orders-root space-y-6">
+      <style>{ORDERS_STYLES}</style>
+
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Orders
-        </h1>
-
+        <div>
+          <h1 className="db-section-title">Orders</h1>
+          <p className="text-sm text-gray-600 mt-1">Manage purchase orders and track deliveries</p>
+        </div>
         <button
           onClick={() => navigate("/orders/create")}
-          className="px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors"
+          className="db-primary-btn"
         >
           Create Order
         </button>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards (Dashboard style) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Revenue */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">
-              Total Revenue
-            </div>
-
-            <div className="w-12 h-12 rounded-full bg-[#15aaad]/10 flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-[#15aaad]" />
-            </div>
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Total Revenue</span>
           </div>
-
-          <div className="text-3xl font-semibold text-gray-900 mb-2">
-            $
-            {Number(
-              dashboardStats.totalOrdersRevenue || 0
-            ).toLocaleString()}
-          </div>
-
-          <div className="flex items-center gap-1 text-sm text-green-600">
-            <span>↗</span>
-            <span>12%</span>
+          <div className="p-5 flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">
+                ${Number(dashboardStats.totalOrdersRevenue || 0).toLocaleString()}
+              </div>
+              <div className="text-xs text-green-600 mt-1">↑ 12% vs last period</div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-[#0f8c5a]/10 flex items-center justify-center">
+              <DollarSign className="w-5 h-5 text-[#0f8c5a]" />
+            </div>
           </div>
         </div>
 
-        {/* Pending */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">
-              Pending Orders
-            </div>
-
-            <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
-              <Clock className="w-6 h-6 text-orange-600" />
-            </div>
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Pending Orders</span>
           </div>
-
-          <div className="text-3xl font-semibold text-gray-900 mb-2">
-            {dashboardStats.pendingOrdersCount}
-          </div>
-
-          <div className="flex items-center gap-1 text-sm text-green-600">
-            <span>↗</span>
-            <span>2%</span>
+          <div className="p-5 flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">
+                {dashboardStats.pendingOrdersCount}
+              </div>
+              <div className="text-xs text-yellow-600 mt-1">Need attention</div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-yellow-600" />
+            </div>
           </div>
         </div>
 
-        {/* Delivered */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">
-              Completed Orders
-            </div>
-
-            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Completed Orders</span>
           </div>
-
-          <div className="text-3xl font-semibold text-gray-900 mb-2">
-            {dashboardStats.deliveredOrdersCount}
-          </div>
-
-          <div className="flex items-center gap-1 text-sm text-green-600">
-            <span>↗</span>
-            <span>5%</span>
+          <div className="p-5 flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">
+                {dashboardStats.deliveredOrdersCount}
+              </div>
+              <div className="text-xs text-green-600 mt-1">↑ 5% vs last period</div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Search + Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex items-center gap-3">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
+      {/* Search + Filters Card */}
+      <div className="db-card db-fade-in">
+        <div className="db-card-header">
+          <span className="db-card-title">Filter Orders</span>
+        </div>
+        <div className="p-5">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search */}
+            <div className="flex-1 min-w-[200px] relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by Order ID, Supplier, or Date..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="db-search-input pl-11"
+              />
+            </div>
 
-            <input
-              type="text"
-              placeholder="Search by Order ID, Supplier, or Date..."
-              value={searchTerm}
+            {/* Filter (Status) */}
+            <select
+              value={filterId}
               onChange={(e) => {
-                setSearchTerm(e.target.value);
+                setFilterId(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-11 pr-4 py-2.5 bg-[#f6f8fa] border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
-            />
+              className="db-select"
+            >
+              <option value="all">All Statuses</option>
+              <option value="0">Pending</option>
+              <option value="1">Delivered</option>
+            </select>
+
+            {/* Sort */}
+            <select
+              value={sortId}
+              onChange={(e) => {
+                setSortId(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="db-select"
+            >
+              <option value="">Default Sort</option>
+              <option value="0">Receive Date ↑ (Nearest)</option>
+              <option value="1">Receive Date ↓ (Farthest)</option>
+              <option value="2">Order Date ↑ (Nearest)</option>
+              <option value="3">Order Date ↓ (Farthest)</option>
+              <option value="4">Supplier A → Z</option>
+              <option value="5">Supplier Z → A</option>
+              <option value="6">Total ↓ (Highest)</option>
+              <option value="7">Total ↑ (Lowest)</option>
+            </select>
           </div>
-
-          {/* Filter */}
-          <select
-            value={filterId}
-            onChange={(e) => {
-              setFilterId(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
-          >
-            <option value="all">All Statuses</option>
-            <option value="0">Pending</option>
-            <option value="1">Delivered</option>
-          </select>
-
-          {/* Sort */}
-          <select
-            value={sortId}
-            onChange={(e) => {
-              setSortId(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 bg-white"
-          >
-            <option value="">Default Sort</option>
-            <option value="0">Receive Date ↑ (Nearest)</option>
-            <option value="1">Receive Date ↓ (Farthest)</option>
-            <option value="2">Order Date ↑ (Nearest)</option>
-            <option value="3">Order Date ↓ (Farthest)</option>
-            <option value="4">Supplier A → Z</option>
-            <option value="5">Supplier Z → A</option>
-            <option value="6">Total ↓ (Highest)</option>
-            <option value="7">Total ↑ (Lowest)</option>
-          </select>
         </div>
       </div>
 
-      {/* Orders Table */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        {loading ? (
-          <div className="p-10 text-center text-sm text-gray-500">
-            Loading orders...
-          </div>
-        ) : error ? (
-          <div className="p-10 text-center text-sm text-red-600">
-            Error: {error}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+      {/* Orders Table Card */}
+      <div className="db-card db-fade-in">
+        <div className="db-card-header">
+          <span className="db-card-title">Order List</span>
+        </div>
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="p-10 space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="db-skeleton h-12" />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="p-10 text-center text-sm text-red-600">{error}</div>
+          ) : (
+            <table className="db-table">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Order ID
-                  </th>
-
-                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-
-                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Supplier
-                  </th>
-
-                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Value
-                  </th>
-
-                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-
-                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Delivery
-                  </th>
-
-                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Date</th>
+                  <th>Supplier</th>
+                  <th>Total Value</th>
+                  <th>Status</th>
+                  <th>Delivery</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
-
               <tbody>
                 {ordersList.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={7}
-                      className="px-6 py-10 text-center text-sm text-gray-400"
-                    >
+                    <td colSpan={7} className="text-center py-10 text-gray-500">
                       No orders found.
                     </td>
                   </tr>
                 ) : (
                   ordersList.map((ord) => {
                     const status = getStatus(ord.status);
-
-                    const issueCount =
-                      issueMap[ord.id] || 0;
-
-                    const showDelivery =
-                      status === "Delivered";
+                    const issueCount = issueMap[ord.id] || 0;
+                    const showDelivery = status === "Delivered";
 
                     return (
-                      <tr
-                        key={ord.id}
-                        className="border-b border-gray-100 hover:bg-gray-50"
-                      >
-                        {/* Order ID */}
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      <tr key={ord.id}>
+                        <td className="font-medium">
                           {ord.stringId || `#${ord.id}`}
                         </td>
-
-                        {/* Date */}
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {new Date(
-                            ord.orderDate
-                          ).toLocaleDateString(undefined, {
+                        <td>
+                          {new Date(ord.orderDate).toLocaleDateString(undefined, {
                             year: "numeric",
                             month: "short",
                             day: "numeric",
                           })}
                         </td>
-
-                        {/* Supplier */}
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {ord.supplierName}
-                        </td>
-
-                        {/* Total */}
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          $
-                          {Number(
-                            ord.total || 0
-                          ).toFixed(2)}
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex px-3 py-1 rounded-md text-xs font-medium ${getStatusStyle(
-                              ord.status
-                            )}`}
-                          >
+                        <td>{ord.supplierName}</td>
+                        <td>${Number(ord.total || 0).toFixed(2)}</td>
+                        <td>
+                          <span className={`db-stat-pill ${getStatusStyle(ord.status)}`}>
                             {status}
                           </span>
                         </td>
-
-                        {/* Delivery Issues */}
-                        <td className="px-6 py-4">
+                        <td>
                           {!showDelivery ? (
-                            <span className="text-xs text-gray-400">
-                              —
-                            </span>
+                            <span className="text-xs text-gray-400">—</span>
                           ) : issueCount > 0 ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-orange-100 text-orange-700">
-                              <AlertTriangle className="w-3 h-3" />
-
-                              {issueCount}{" "}
-                              {issueCount === 1
-                                ? "issue"
-                                : "issues"}
+                            <span className="db-stat-pill pill-red">
+                              <AlertTriangle className="w-3 h-3 mr-1" />
+                              {issueCount} {issueCount === 1 ? "issue" : "issues"}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-green-100 text-green-700">
-                              <CheckCircle className="w-3 h-3" />
+                            <span className="db-stat-pill pill-green">
+                              <CheckCircle className="w-3 h-3 mr-1" />
                               Clean
                             </span>
                           )}
                         </td>
-
-                        {/* Actions */}
-                        <td className="px-6 py-4">
+                        <td>
                           <button
                             onClick={() =>
-                              navigate(`/orders/${ord.id}`, {
-                                state: { order: ord },
-                              })
+                              navigate(`/orders/${ord.id}`, { state: { order: ord } })
                             }
-                            className="inline-flex items-center px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+                            className="db-secondary-btn"
+                            style={{ padding: "6px 12px", fontSize: "12px" }}
                           >
                             View
                           </button>
@@ -501,51 +439,40 @@ export function OrdersPage() {
                 )}
               </tbody>
             </table>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Pagination */}
         {!loading && totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              Showing page {currentPage} of{" "}
-              {totalPages} ({totalCount} orders)
-            </div>
-
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between flex-wrap gap-3">
+            <p className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages} ({totalCount} orders)
+            </p>
             <div className="flex items-center gap-2">
-              {/* Previous */}
               <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                onClick={() =>
-                  setCurrentPage((p) => p - 1)
-                }
-                className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
+                className="db-icon-btn disabled:opacity-40"
               >
                 ‹
               </button>
-
-              {/* Pages */}
               {renderPagination().map((page) => (
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1.5 text-sm rounded-lg ${
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                     currentPage === page
-                      ? "bg-[#15aaad] text-white"
+                      ? "bg-[#0f8c5a] text-white"
                       : "text-gray-600 hover:bg-gray-100"
                   }`}
                 >
                   {page}
                 </button>
               ))}
-
-              {/* Next */}
               <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                onClick={() =>
-                  setCurrentPage((p) => p + 1)
-                }
-                className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
+                className="db-icon-btn disabled:opacity-40"
               >
                 ›
               </button>

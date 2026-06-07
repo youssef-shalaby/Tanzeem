@@ -16,6 +16,72 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams, useLocation, Link } from "react-router";
 
+// ============================
+// Design system styles (green accent)
+// ============================
+const VIEW_ORDER_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .view-order-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-input {
+    width: 100%; padding: 9px 14px;
+    background: #fff; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 12px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+    color: #1a1a18; outline: none; transition: border-color .2s;
+  }
+  .db-input:focus { border-color: #0f8c5a; box-shadow: 0 0 0 2px rgba(15,140,90,.1); }
+  .db-select {
+    padding: 8px 14px; background: #fff; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+    color: #444; cursor: pointer; outline: none; transition: border-color .2s;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+  }
+  .db-select:hover { border-color: #0f8c5a; }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-danger-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #dc2626; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-danger-btn:hover { background: #b91c1c; }
+  .db-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #666; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
+  .pill-green { background: #d6f5e8; color: #0a6b45; }
+  .pill-yellow { background: #fef3c7; color: #8b5e00; }
+  .pill-red { background: #fde8e8; color: #9b1c1c; }
+  .pill-blue { background: #e8f0fe; color: #2c5f8a; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .db-table { width: 100%; border-collapse: collapse; }
+  .db-table th { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: .5px; padding: 10px 16px; text-align: left; background: #f9faf7; }
+  .db-table td { padding: 12px 16px; font-size: 13px; color: #1a1a18; border-top: 1px solid rgba(0,0,0,.05); }
+  .db-table tr:hover td { background: #f9faf7; }
+`;
+
 function getToken() {
   try {
     return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
@@ -24,7 +90,7 @@ function getToken() {
   }
 }
 
-// ─── Cancel Confirmation Modal ────────────────────────────────────────────────
+// ─── Cancel Confirmation Modal (enhanced) ────────────────────────────────────
 function CancelModal({ orderId, orderIdDisplay, onClose, onCancelled }) {
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState("");
@@ -34,12 +100,12 @@ function CancelModal({ orderId, orderIdDisplay, onClose, onCancelled }) {
     setError("");
     try {
       const res = await fetch(`/api/Order/${orderId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-    });
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
+      });
       if (!res.ok) throw new Error("Failed to cancel order.");
       onCancelled();
     } catch (err) {
@@ -55,9 +121,9 @@ function CancelModal({ orderId, orderIdDisplay, onClose, onCancelled }) {
           <h2 className="text-lg font-semibold text-gray-900">Cancel Order</h2>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            className="db-icon-btn"
           >
-            <X className="w-4 h-4 text-gray-500" />
+            <X className="w-4 h-4" />
           </button>
         </div>
         <p className="text-sm text-gray-600 mb-6">
@@ -73,14 +139,14 @@ function CancelModal({ orderId, orderIdDisplay, onClose, onCancelled }) {
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 border border-gray-200 text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="db-secondary-btn flex-1 justify-center"
           >
             Keep Order
           </button>
           <button
             onClick={handleCancel}
             disabled={cancelling}
-            className="flex-1 px-4 py-2.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+            className="db-danger-btn flex-1 justify-center"
           >
             {cancelling ? "Cancelling..." : "Cancel Order"}
           </button>
@@ -90,7 +156,7 @@ function CancelModal({ orderId, orderIdDisplay, onClose, onCancelled }) {
   );
 }
 
-// ─── Edit Order Modal ─────────────────────────────────────────────────────────
+// ─── Edit Order Modal (enhanced) ─────────────────────────────────────────────
 function EditModal({ order, items: initialItems, onClose, onSaved }) {
   const [form, setForm] = useState({
     supplierId: order.supplierId ?? 0,
@@ -100,10 +166,7 @@ function EditModal({ order, items: initialItems, onClose, onSaved }) {
       : "",
     recievedDeliveryDate:
       order.recievedDeliveryDate || order.receivedDeliveryDate
-        ? (order.recievedDeliveryDate || order.receivedDeliveryDate).slice(
-            0,
-            10,
-          )
+        ? (order.recievedDeliveryDate || order.receivedDeliveryDate).slice(0, 10)
         : "",
     notes: order.notes ?? "",
     shippingCost: order.shippingCost ?? 0,
@@ -185,141 +248,62 @@ function EditModal({ order, items: initialItems, onClose, onSaved }) {
           <h2 className="text-lg font-semibold text-gray-900">Edit Order</h2>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            className="db-icon-btn"
           >
-            <X className="w-4 h-4 text-gray-500" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Order Date
-              </label>
-              <input
-                type="date"
-                value={form.orderDate}
-                onChange={updateForm("orderDate")}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/30"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Order Date</label>
+              <input type="date" value={form.orderDate} onChange={updateForm("orderDate")} className="db-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Expected Delivery
-              </label>
-              <input
-                type="date"
-                value={form.expectedDeliveryDate}
-                onChange={updateForm("expectedDeliveryDate")}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/30"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Expected Delivery</label>
+              <input type="date" value={form.expectedDeliveryDate} onChange={updateForm("expectedDeliveryDate")} className="db-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Received Date
-              </label>
-              <input
-                type="date"
-                value={form.recievedDeliveryDate}
-                onChange={updateForm("recievedDeliveryDate")}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/30"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Received Date</label>
+              <input type="date" value={form.recievedDeliveryDate} onChange={updateForm("recievedDeliveryDate")} className="db-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Supplier ID
-              </label>
-              <input
-                type="number"
-                value={form.supplierId}
-                onChange={updateForm("supplierId")}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/30"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Supplier ID</label>
+              <input type="number" value={form.supplierId} onChange={updateForm("supplierId")} className="db-input" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Shipping Cost
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.shippingCost}
-                onChange={updateForm("shippingCost")}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/30"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Shipping Cost</label>
+              <input type="number" step="0.01" value={form.shippingCost} onChange={updateForm("shippingCost")} className="db-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Taxes
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.taxes}
-                onChange={updateForm("taxes")}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/30"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Taxes</label>
+              <input type="number" step="0.01" value={form.taxes} onChange={updateForm("taxes")} className="db-input" />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Notes
-            </label>
-            <textarea
-              rows={3}
-              value={form.notes}
-              onChange={updateForm("notes")}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/30 resize-none"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
+            <textarea rows={3} value={form.notes} onChange={updateForm("notes")} className="db-input resize-none" />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-gray-700">
-                Order Items
-              </label>
-              <button
-                onClick={addItem}
-                className="flex items-center gap-1.5 text-xs text-[#15aaad] hover:text-[#0d8082] font-medium"
-              >
+              <label className="text-sm font-medium text-gray-700">Order Items</label>
+              <button onClick={addItem} className="flex items-center gap-1.5 text-xs text-[#0f8c5a] hover:text-[#0a6b45] font-medium">
                 <Plus className="w-3.5 h-3.5" /> Add Item
               </button>
             </div>
             <div className="space-y-2">
               {items.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    placeholder="Product ID"
-                    value={item.productId}
-                    onChange={updateItem(idx, "productId")}
-                    className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/30"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Qty"
-                    value={item.quantity}
-                    onChange={updateItem(idx, "quantity")}
-                    className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/30"
-                  />
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="Price"
-                    value={item.price}
-                    onChange={updateItem(idx, "price")}
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/30"
-                  />
-                  <button
-                    onClick={() => removeItem(idx)}
-                    disabled={items.length === 1}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30"
-                  >
+                  <input type="number" placeholder="Product ID" value={item.productId} onChange={updateItem(idx, "productId")} className="db-input w-28" />
+                  <input type="number" placeholder="Qty" value={item.quantity} onChange={updateItem(idx, "quantity")} className="db-input w-20" />
+                  <input type="number" step="0.01" placeholder="Price" value={item.price} onChange={updateItem(idx, "price")} className="db-input flex-1" />
+                  <button onClick={() => removeItem(idx)} disabled={items.length === 1} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30">
                     <Minus className="w-4 h-4" />
                   </button>
                 </div>
@@ -328,24 +312,13 @@ function EditModal({ order, items: initialItems, onClose, onSaved }) {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-3">
-              {error}
-            </p>
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-3">{error}</p>
           )}
         </div>
 
         <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 border border-gray-200 text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex-1 px-4 py-2.5 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-50"
-          >
+          <button onClick={onClose} className="db-secondary-btn flex-1 justify-center">Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="db-primary-btn flex-1 justify-center">
             {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
@@ -436,7 +409,7 @@ export function ViewOrderPage() {
         );
         setDeliveryIssues(matched);
       })
-      .catch(() => {}); // silently fail — not critical
+      .catch(() => {});
   }, [orderId]);
 
   useEffect(() => {
@@ -453,38 +426,26 @@ export function ViewOrderPage() {
 
   const getStatusIcon = (status) => {
     switch (normalizeStatus(status)) {
-      case "Pending":
-        return <Clock className="w-5 h-5" />;
-      case "Delivered":
-        return <CheckCircle className="w-5 h-5" />;
-      case "Cancelled":
-        return <XCircle className="w-5 h-5" />;
-      default:
-        return <Package className="w-5 h-5" />;
+      case "Pending":   return <Clock className="w-5 h-5" />;
+      case "Delivered": return <CheckCircle className="w-5 h-5" />;
+      case "Cancelled": return <XCircle className="w-5 h-5" />;
+      default:          return <Package className="w-5 h-5" />;
     }
   };
 
   const getStatusStyle = (status) => {
     switch (normalizeStatus(status)) {
-      case "Pending":
-        return "bg-yellow-100 text-yellow-700";
-      case "Delivered":
-        return "bg-green-100 text-green-700";
-      case "Cancelled":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-blue-100 text-blue-700";
+      case "Pending":   return "pill-yellow";
+      case "Delivered": return "pill-green";
+      case "Cancelled": return "pill-red";
+      default:          return "bg-blue-100 text-blue-700";
     }
   };
 
   if (loading)
-    return (
-      <div className="p-6 text-sm text-gray-500">Loading order details...</div>
-    );
+    return <div className="view-order-root p-6 text-sm text-gray-500">Loading order details...</div>;
   if (error || !confirmationData)
-    return (
-      <div className="p-6 text-sm text-red-600">Failed to render: {error}</div>
-    );
+    return <div className="view-order-root p-6 text-sm text-red-600">Failed to render: {error}</div>;
 
   const orderIdDisplay =
     confirmationData.stringId ||
@@ -522,10 +483,11 @@ export function ViewOrderPage() {
     : "—";
 
   const expectedDelivery = confirmationData.expectedDeliveryDate
-    ? new Date(confirmationData.expectedDeliveryDate).toLocaleDateString(
-        undefined,
-        { year: "numeric", month: "short", day: "numeric" },
-      )
+    ? new Date(confirmationData.expectedDeliveryDate).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
     : "—";
 
   const receivedDate =
@@ -541,7 +503,6 @@ export function ViewOrderPage() {
         })
       : null;
 
-  // ✅ CORRECTED: Count ALL nested issues across all delivery issue records
   const totalIssueCount = deliveryIssues.reduce(
     (total, deliveryIssue) =>
       total +
@@ -552,7 +513,6 @@ export function ViewOrderPage() {
     0,
   );
 
-  // Collect all unique issue type labels
   const allIssueTypes = [
     ...new Set(
       deliveryIssues.flatMap((deliveryIssue) =>
@@ -565,9 +525,10 @@ export function ViewOrderPage() {
     ),
   ];
 
-
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="view-order-root space-y-6">
+      <style>{VIEW_ORDER_STYLES}</style>
+
       {/* Modals */}
       {showCancelModal && (
         <CancelModal
@@ -592,34 +553,28 @@ export function ViewOrderPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          <button onClick={() => navigate(-1)} className="db-icon-btn">
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Order Details
-            </h1>
+            <h1 className="db-section-title">Order Details</h1>
             <p className="text-sm text-gray-600 mt-1">Order {orderIdDisplay}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Only show Edit/Cancel for Pending orders */}
           {isPending && (
             <>
               <button
                 onClick={() => setShowEditModal(true)}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+                className="db-secondary-btn"
               >
                 <Pencil className="w-4 h-4" />
                 Edit
               </button>
               <button
                 onClick={() => setShowCancelModal(true)}
-                className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 text-sm rounded-lg hover:bg-red-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 text-sm rounded-full hover:bg-red-50 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
                 Cancel Order
@@ -641,7 +596,7 @@ export function ViewOrderPage() {
                 },
               })
             }
-            className="flex items-center gap-2 px-4 py-2 border border-[#15aaad] text-[#15aaad] text-sm rounded-lg hover:bg-[#15aaad]/10 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-[#0f8c5a] text-[#0f8c5a] text-sm rounded-full hover:bg-[#0f8c5a]/10 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Reorder
@@ -649,14 +604,13 @@ export function ViewOrderPage() {
         </div>
       </div>
 
-      {/* Delivery Issues Banner — shown when order is Delivered and has issues */}
+      {/* Delivery Issues Banner */}
       {orderStatus === "Delivered" && deliveryIssues.length > 0 && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-orange-800 mb-1">
-                {/* ✅ CORRECTED: Use totalIssueCount instead of deliveryIssues.length */}
                 This order was delivered with{" "}
                 {totalIssueCount === 1
                   ? "1 issue"
@@ -692,159 +646,132 @@ export function ViewOrderPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Status */}
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <h2 className="font-semibold text-gray-900 mb-2">Order Status</h2>
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${getStatusStyle(orderStatus)}`}
-              >
-                {getStatusIcon(orderStatus)}
-                {orderStatus}
-              </span>
-              {orderDate && (
-                <span className="text-sm text-gray-600">on {orderDate}</span>
-              )}
+          {/* Status Card */}
+          <div className="db-card">
+            <div className="db-card-header">
+              <span className="db-card-title">Order Status</span>
             </div>
-          </div>
-
-          {/* Supplier */}
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <h2 className="font-semibold text-gray-900 mb-4">
-              Supplier Information
-            </h2>
-            <div className="text-sm">
-              <div className="text-gray-600 mb-1">Name</div>
-
-              {confirmationData.supplierId ? (
-                <Link
-                  to={`/suppliers/view-supplier/${confirmationData.supplierId}`}
-                  className="inline-flex items-center gap-1.5 text-[#15aaad] font-medium hover:underline"
-                >
-                  {confirmationData.supplierName || "—"}
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </Link>
-              ) : (
-                <span className="text-gray-900 font-medium">
-                  {confirmationData.supplierName || "—"}
+            <div className="p-5">
+              <div className="flex items-center gap-2">
+                <span className={`db-stat-pill ${getStatusStyle(orderStatus)}`}>
+                  {getStatusIcon(orderStatus)}
+                  <span className="ml-1">{orderStatus}</span>
                 </span>
-              )}
+                {orderDate && (
+                  <span className="text-sm text-gray-600">on {orderDate}</span>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Items */}
-          <div className="bg-white rounded-xl border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="font-semibold text-gray-900">Order Items</h2>
+          {/* Supplier Card */}
+          <div className="db-card">
+            <div className="db-card-header">
+              <span className="db-card-title">Supplier Information</span>
             </div>
+            <div className="p-5">
+              <div className="text-sm">
+                <div className="text-gray-600 mb-1">Name</div>
+                {confirmationData.supplierId ? (
+                  <Link
+                    to={`/suppliers/view-supplier/${confirmationData.supplierId}`}
+                    className="inline-flex items-center gap-1.5 text-[#0f8c5a] font-medium hover:underline"
+                  >
+                    {confirmationData.supplierName || "—"}
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Link>
+                ) : (
+                  <span className="text-gray-900 font-medium">
+                    {confirmationData.supplierName || "—"}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
 
+          {/* Items Card */}
+          <div className="db-card">
+            <div className="db-card-header">
+              <span className="db-card-title">Order Items</span>
+            </div>
             {items.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="db-table">
                     <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Product
-                        </th>
-                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          SKU
-                        </th>
-                        <th className="text-right px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Quantity
-                        </th>
-                        <th className="text-right px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Price
-                        </th>
-                        <th className="text-right px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Total
-                        </th>
+                      <tr>
+                        <th>Product</th>
+                        <th>SKU</th>
+                        <th className="text-right">Quantity</th>
+                        <th className="text-right">Price</th>
+                        <th className="text-right">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.map((item, idx) => (
-                        <tr key={idx} className="border-b border-gray-100">
-                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                            {item.productName}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            {item.sku}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-right text-gray-900">
-                            {item.quantity}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-right text-gray-900">
-                            ${Number(item.price).toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-medium text-right text-gray-900">
-                            ${(item.price * item.quantity).toFixed(2)}
-                          </td>
+                        <tr key={idx}>
+                          <td className="font-medium">{item.productName}</td>
+                          <td>{item.sku}</td>
+                          <td className="text-right">{item.quantity}</td>
+                          <td className="text-right">${Number(item.price).toFixed(2)}</td>
+                          <td className="text-right font-medium">${(item.price * item.quantity).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
                   <div className="space-y-2 max-w-sm ml-auto">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Subtotal</span>
-                      <span className="font-medium text-gray-900">
-                        ${Number(subtotal).toFixed(2)}
-                      </span>
+                      <span className="font-medium">${Number(subtotal).toFixed(2)}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Tax</span>
-                      <span className="font-medium text-gray-900">
-                        ${Number(tax).toFixed(2)}
-                      </span>
+                      <span className="font-medium">${Number(tax).toFixed(2)}</span>
                     </div>
                     {shipping > 0 && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Shipping</span>
-                        <span className="font-medium text-gray-900">
-                          ${Number(shipping).toFixed(2)}
-                        </span>
+                        <span className="font-medium">${Number(shipping).toFixed(2)}</span>
                       </div>
                     )}
                     <div className="flex items-center justify-between pt-2 border-t border-gray-300">
                       <span className="font-semibold text-gray-900">Total</span>
-                      <span className="text-xl font-semibold text-gray-900">
-                        ${Number(total).toFixed(2)}
-                      </span>
+                      <span className="text-xl font-semibold text-gray-900">${Number(total).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
               </>
             ) : (
-              <div className="px-6 py-10 text-sm text-gray-400 text-center">
-                No items available for this order.
-              </div>
+              <div className="px-6 py-10 text-sm text-gray-400 text-center">No items available for this order.</div>
             )}
           </div>
 
-          {/* Notes */}
+          {/* Notes Card */}
           {confirmationData.notes && (
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
-              <h2 className="font-semibold text-gray-900 mb-3">Order Notes</h2>
-              <p className="text-sm text-gray-700">{confirmationData.notes}</p>
+            <div className="db-card">
+              <div className="db-card-header">
+                <span className="db-card-title">Order Notes</span>
+              </div>
+              <div className="p-5">
+                <p className="text-sm text-gray-700">{confirmationData.notes}</p>
+              </div>
             </div>
           )}
         </div>
 
         {/* Sidebar */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl p-6 border border-gray-200 space-y-6 sticky top-8">
-            <div>
-              <h2 className="font-semibold text-gray-900 mb-4">
-                Order Information
-              </h2>
+          <div className="db-card sticky top-8">
+            <div className="db-card-header">
+              <span className="db-card-title">Order Information</span>
+            </div>
+            <div className="p-5 space-y-4">
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Order ID</span>
-                  <span className="font-medium text-gray-900">
-                    {orderIdDisplay}
-                  </span>
+                  <span className="font-medium">{orderIdDisplay}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Order Date</span>
@@ -871,40 +798,36 @@ export function ViewOrderPage() {
                 {deliveryIssues.length > 0 && (
                   <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                     <span className="text-gray-600">Delivery Issues</span>
-                    {/* ✅ CORRECTED: Use totalIssueCount instead of deliveryIssues.length */}
-                    <span className="font-medium text-orange-600">
-                      {totalIssueCount}
-                    </span>
+                    <span className="font-medium text-orange-600">{totalIssueCount}</span>
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Confirm delivery — only for Pending */}
-            {isPending && (
-              <div className="pt-6 border-t border-gray-200">
-                <h2 className="font-semibold text-gray-900 mb-3">Actions</h2>
-                <button
-                  onClick={() =>
-                    navigate(`/orders/${orderId}/confirm-delivery`, {
-                      state: {
-                        order: confirmationData,
-                        items: items.map((i) => ({
-                          productId: i.productId,
-                          orderedQuantity: i.quantity,
-                          sku: i.sku,
-                          price: i.price,
-                        })),
-                      },
-                    })
-                  }
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Confirm & Update Stock
-                </button>
-              </div>
-            )}
+              {isPending && (
+                <div className="pt-4 border-t border-gray-100">
+                  <h2 className="font-semibold text-gray-900 mb-3">Actions</h2>
+                  <button
+                    onClick={() =>
+                      navigate(`/orders/${orderId}/confirm-delivery`, {
+                        state: {
+                          order: confirmationData,
+                          items: items.map((i) => ({
+                            productId: i.productId,
+                            orderedQuantity: i.quantity,
+                            sku: i.sku,
+                            price: i.price,
+                          })),
+                        },
+                      })
+                    }
+                    className="db-primary-btn w-full justify-center"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Confirm & Update Stock
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

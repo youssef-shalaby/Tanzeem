@@ -2,6 +2,12 @@ import { X, Package, TruckIcon, Clock, Skull } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 
+// ============================
+// Design system colors & helpers
+// ============================
+const GREEN_PRIMARY = '#0f8c5a';
+const GREEN_HOVER = '#0a6b45';
+
 function getToken() {
   try {
     return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
@@ -107,16 +113,19 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
 
   return (
     <>
+      {/* Backdrop */}
       <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
 
-      <div className="fixed top-0 right-0 h-full w-[420px] bg-white shadow-2xl z-50 flex flex-col">
+      {/* Panel */}
+      <div className="fixed top-0 right-0 h-full w-[420px] bg-white shadow-2xl z-50 flex flex-col" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+        
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold text-gray-900">Notifications</h2>
               {localUnread > 0 && (
-                <span className="px-2 py-0.5 bg-[#15aaad] text-white text-xs font-semibold rounded-full">
+                <span className="px-2 py-0.5 text-white text-xs font-semibold rounded-full" style={{ backgroundColor: GREEN_PRIMARY }}>
                   {localUnread}
                 </span>
               )}
@@ -132,14 +141,17 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
           {localUnread > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              className="text-sm text-[#15aaad] hover:text-[#0d8082] font-medium"
+              className="text-sm font-medium transition-colors"
+              style={{ color: GREEN_PRIMARY }}
+              onMouseEnter={(e) => e.currentTarget.style.color = GREEN_HOVER}
+              onMouseLeave={(e) => e.currentTarget.style.color = GREEN_PRIMARY}
             >
               Mark all as read
             </button>
           )}
         </div>
 
-        {/* List */}
+        {/* Notifications List */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center h-40 text-sm text-gray-400">
@@ -164,7 +176,7 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
                     key={n.id}
                     onClick={() => handleClick(n)}
                     className={`w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors ${
-                      !n.isRead ? 'bg-[#15aaad]/5' : ''
+                      !n.isRead ? 'bg-[#0f8c5a]/5' : ''
                     }`}
                   >
                     <div className="flex gap-3">
@@ -177,7 +189,7 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
                             {n.title}
                           </h4>
                           {!n.isRead && (
-                            <span className="w-2 h-2 bg-[#15aaad] rounded-full flex-shrink-0 mt-1.5" />
+                            <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: GREEN_PRIMARY }} />
                           )}
                         </div>
                         <p className="text-sm text-gray-600 mb-1 line-clamp-2">{n.message}</p>
@@ -196,7 +208,10 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
           <div className="px-6 py-4 border-t border-gray-200">
             <button
               onClick={() => { navigate('/alerts'); onClose(); }}
-              className="w-full py-2.5 text-sm font-medium text-[#15aaad] hover:text-[#0d8082] transition-colors"
+              className="w-full py-2.5 text-sm font-medium transition-colors"
+              style={{ color: GREEN_PRIMARY }}
+              onMouseEnter={(e) => e.currentTarget.style.color = GREEN_HOVER}
+              onMouseLeave={(e) => e.currentTarget.style.color = GREEN_PRIMARY}
             >
               View All Notifications
             </button>

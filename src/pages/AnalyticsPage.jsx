@@ -3,6 +3,59 @@
 import { useEffect, useState } from 'react';
 import { TrendingUp, Package, AlertCircle, Download, BarChart3, Target, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
+// ============================
+// Design system styles (green accent instead of teal)
+// ============================
+const ANALYTICS_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .analytics-root { font-family: 'DM Sans', sans-serif; }
+  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
+  .pill-green { background: #d6f5e8; color: #0a6b45; }
+  .pill-red { background: #fde8e8; color: #9b1c1c; }
+  .pill-yellow { background: #fef3c7; color: #8b5e00; }
+  .pill-blue { background: #e8f0fe; color: #2c5f8a; }
+  .db-primary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #0f8c5a; color: white;
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s;
+  }
+  .db-primary-btn:hover { background: #0a6b45; }
+  .db-secondary-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #444; cursor: pointer; transition: background .15s;
+  }
+  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-select {
+    padding: 8px 14px; background: #fff; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 100px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+    color: #444; cursor: pointer; outline: none; transition: border-color .2s;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+  }
+  .db-select:hover { border-color: #0f8c5a; }
+  .db-table { width: 100%; border-collapse: collapse; }
+  .db-table th { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: .5px; padding: 10px 16px; text-align: left; background: #f9faf7; }
+  .db-table td { padding: 12px 16px; font-size: 13px; color: #1a1a18; border-top: 1px solid rgba(0,0,0,.05); }
+  .db-table tr:hover td { background: #f9faf7; }
+  .db-icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #666; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-fade-in { animation: dbFadeIn .4s ease both; }
+  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .db-skeleton { background: linear-gradient(90deg,#f0f0ec 25%,#e8e8e4 50%,#f0f0ec 75%); background-size:200% 100%; animation: shimmer 1.4s infinite; border-radius:10px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+`;
 
 function getToken() {
   try {
@@ -11,6 +64,7 @@ function getToken() {
     return null;
   }
 }
+
 export function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState('30days');
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,7 +82,7 @@ export function AnalyticsPage() {
   const itemsPerPage = 10;
 
   const CATEGORY_COLORS = [
-    'bg-[#15aaad]',
+    'bg-[#0f8c5a]',
     'bg-blue-500',
     'bg-purple-500',
     'bg-orange-500',
@@ -44,7 +98,7 @@ export function AnalyticsPage() {
     document.getElementById('demand-forecast-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Fetch mini dashboard summary stats from the dedicated endpoint
+  // Fetch mini dashboard summary stats
   useEffect(() => {
     fetch('/api/DemandForecasting/Get_mini_dashboard', {
       headers: {
@@ -65,7 +119,7 @@ export function AnalyticsPage() {
       .catch(() => {});
   }, []);
 
-  // Fetch top categories from the dedicated endpoint
+  // Fetch top categories
   useEffect(() => {
     fetch('/api/DemandForecasting/Get_Top_Categories_By_Forecast', {
       headers: {
@@ -76,8 +130,6 @@ export function AnalyticsPage() {
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (!Array.isArray(data)) return;
-
-        // Filter out placeholder entries (categoryName === 'string') and deduplicate by name
         const seen = new Set();
         const cleaned = data.filter((c) => {
           if (!c.categoryName || c.categoryName === 'string') return false;
@@ -85,25 +137,21 @@ export function AnalyticsPage() {
           seen.add(c.categoryName);
           return true;
         });
-
-        // Compute bar widths: if all counts are 0 distribute equally, otherwise scale to max
         const maxCount = Math.max(...cleaned.map((c) => c.categoryCount ?? 0));
         const mapped = cleaned.map((c, i) => ({
           category: c.categoryName,
           count: c.categoryCount ?? 0,
-          // When counts are all zero show equal bars at 60% to indicate data is present but not counted yet
           percentage: maxCount > 0
             ? Math.round(((c.categoryCount ?? 0) / maxCount) * 90) + 10
             : 60,
           color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
         }));
-
         setTopCategories(mapped);
       })
       .catch(() => {});
   }, []);
 
-  // Paginated table fetch — PascalCase params for ASP.NET Core backend
+  // Paginated table fetch
   useEffect(() => {
     setLoading(true);
     fetch(`/api/DemandForecasting?page=${currentPage}&page_size=${itemsPerPage}`, {
@@ -122,7 +170,6 @@ export function AnalyticsPage() {
           productName: item.productName,
           sku: item.sku,
           predictedDemand: item.predicted_units ?? 0,
-          // API returns confidence as a decimal (e.g. 0.7766) → convert to percentage
           confidence: Math.round((item.confidence ?? 0) * 100),
           trend: item.demand_occurs ? 'up' : (item.segment === 'zero' ? 'down' : 'stable'),
           segment: item.segment,
@@ -132,18 +179,9 @@ export function AnalyticsPage() {
             ? 'No demand expected'
             : 'Monitor stock levels',
         }));
-        if (mapped.length === 0 && (body.totalCount ?? 0) > 0) {
-          console.warn('[AnalyticsPage] data[] is empty but totalCount > 0. Check query param names. Raw body:', JSON.stringify(body));
-        }
         setForecastData(mapped);
-
-        const count = body.totalCount ?? 0;
-        // Guard against negative/zero/overflow totalPages from the backend
-        const pages = body.totalPages > 0
-          ? body.totalPages
-          : Math.max(1, Math.ceil(count / itemsPerPage));
-        setTotalPages(pages);
-        setTotalCount(count);
+        setTotalCount(body.totalCount ?? 0);
+        setTotalPages(body.totalPages > 0 ? body.totalPages : Math.max(1, Math.ceil((body.totalCount ?? 0) / itemsPerPage)));
         setLoading(false);
       })
       .catch((err) => {
@@ -171,87 +209,75 @@ export function AnalyticsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">AI-Powered Analytics</h1>
-          <p className="text-sm text-gray-600 mt-1">Demand forecasting and intelligent insights</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <select
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
-          >
-            <option value="7days">Next 7 Days</option>
-            <option value="30days">Next 30 Days</option>
-            <option value="60days">Next 60 Days</option>
-            <option value="90days">Next 90 Days</option>
-          </select>
-          <button className="flex items-center gap-2 px-4 py-2 bg-[#15aaad] text-white text-sm font-medium rounded-lg hover:bg-[#0d8082] transition-colors">
-            <Download className="w-4 h-4" />
-            Export Report
-          </button>
-        </div>
+    <div className="analytics-root space-y-6">
+      <style>{ANALYTICS_STYLES}</style>
+
+      {/* Header - removed dropdown and export button */}
+      <div>
+        <h1 className="db-section-title">AI-Powered Analytics</h1>
+        <p className="text-sm text-gray-600 mt-1">Demand forecasting and intelligent insights</p>
       </div>
 
-      {/* Summary Cards — sourced from Get_mini_dashboard */}
+      {/* Summary Cards (Dashboard style) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-full bg-[#15aaad]/10 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-[#15aaad]" />
-            </div>
-            <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">AI</span>
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Total Products Forecasted</span>
           </div>
-          <div className="text-2xl font-semibold text-gray-900 mb-1">{miniDashboard.totalProductForecasted}</div>
-          <div className="text-sm text-gray-600">Total Products Forecasted</div>
+          <div className="p-5 flex items-center justify-between">
+            <div className="text-2xl font-semibold text-gray-900">{miniDashboard.totalProductForecasted}</div>
+            <div className="w-10 h-10 rounded-full bg-[#0f8c5a]/10 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-[#0f8c5a]" />
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
-              <AlertCircle className="w-6 h-6 text-orange-600" />
-            </div>
-            <span className="text-xs font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded-full">Urgent</span>
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Items Need Restock</span>
           </div>
-          <div className="text-2xl font-semibold text-gray-900 mb-1">{miniDashboard.itemsNeedRestock}</div>
-          <div className="text-sm text-gray-600">Items Need Restock</div>
+          <div className="p-5 flex items-center justify-between">
+            <div className="text-2xl font-semibold text-gray-900">{miniDashboard.itemsNeedRestock}</div>
+            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+              <AlertCircle className="w-5 h-5 text-orange-600" />
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-green-600" />
-            </div>
-            <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">Active</span>
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">High Demand Items</span>
           </div>
-          <div className="text-2xl font-semibold text-gray-900 mb-1">{miniDashboard.highDemandItems}</div>
-          <div className="text-sm text-gray-600">High Demand Items</div>
+          <div className="p-5 flex items-center justify-between">
+            <div className="text-2xl font-semibold text-gray-900">{miniDashboard.highDemandItems}</div>
+            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-green-600" />
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-              <Target className="w-6 h-6 text-blue-600" />
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Avg Forecast Confidence</span>
+          </div>
+          <div className="p-5 flex items-center justify-between">
+            <div className="text-2xl font-semibold text-gray-900">
+              {miniDashboard.averageForecastConfidence > 0
+                ? `${miniDashboard.averageForecastConfidence}%`
+                : '—'}
             </div>
-            <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full">On Track</span>
+            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+              <Target className="w-5 h-5 text-blue-600" />
+            </div>
           </div>
-          <div className="text-2xl font-semibold text-gray-900 mb-1">
-            {miniDashboard.averageForecastConfidence > 0
-              ? `${miniDashboard.averageForecastConfidence}%`
-              : '—'}
-          </div>
-          <div className="text-sm text-gray-600">Avg Forecast Confidence</div>
         </div>
       </div>
 
-      {/* AI Insights Banner */}
-      <div className="bg-white rounded-xl p-6 border border-gray-200">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-full bg-[#15aaad]/10 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-6 h-6 text-[#15aaad]" />
+      {/* AI Insights Banner (green accent) */}
+      <div className="db-card db-fade-in">
+        <div className="p-5 flex items-start gap-4">
+          <div className="w-10 h-10 rounded-full bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-5 h-5 text-[#0f8c5a]" />
           </div>
           <div className="flex-1">
             <h3 className="font-semibold text-gray-900 mb-2">AI Recommendation</h3>
@@ -259,7 +285,7 @@ export function AnalyticsPage() {
               Based on historical sales patterns and demand forecasting data, review items marked as high demand and restock before stockout occurs. Items with confidence above 90% are highly reliable signals.
             </p>
             <button
-              className="px-4 py-2 bg-[#15aaad] text-white text-sm font-medium rounded-lg hover:bg-[#0d8082] transition-colors"
+              className="db-primary-btn"
               onClick={scrollToForecast}
             >
               View Detailed Analysis
@@ -269,73 +295,70 @@ export function AnalyticsPage() {
       </div>
 
       {/* Demand Forecast Table */}
-      <div id="demand-forecast-table" className="bg-white rounded-xl border border-gray-200">
-        <div className="p-5 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Demand Forecast (Next 30 Days)</h3>
-            <span className="text-sm text-gray-500">{totalCount} products</span>
-          </div>
+      <div id="demand-forecast-table" className="db-card db-fade-in">
+        <div className="db-card-header flex items-center justify-between">
+          <span className="db-card-title">Demand Forecast (Next 30 Days)</span>
+          <span className="text-sm text-gray-500">{totalCount} products</span>
         </div>
-
         <div className="overflow-x-auto">
           {loading ? (
             <div className="p-6 space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-10 animate-pulse bg-gray-100 rounded" />
+                <div key={i} className="db-skeleton h-10" />
               ))}
             </div>
           ) : (
-            <table className="w-full">
-              <thead className="bg-[#f6f8fa] border-b border-gray-200">
+            <table className="db-table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Product</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Predicted Demand</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Trend</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Confidence</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Segment</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">AI Recommendation</th>
+                  <th>Product</th>
+                  <th>Predicted Demand</th>
+                  <th>Trend</th>
+                  <th>Confidence</th>
+                  <th>Segment</th>
+                  <th>AI Recommendation</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody>
                 {forecastData.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-400">
+                    <td colSpan={6} className="text-center py-10 text-gray-500">
                       No forecast data available.
                     </td>
                   </tr>
                 ) : (
                   forecastData.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{item.productName}</div>
+                    <tr key={item.id}>
+                      <td>
+                        <div className="font-medium text-gray-900">{item.productName}</div>
                         <div className="text-xs text-gray-500">{item.sku}</div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td>
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm font-semibold text-gray-900">{item.predictedDemand}</span>
+                          <span className="font-semibold text-gray-900">{item.predictedDemand}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td>
                         <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getTrendColor(item.trend)}`}>
                           {getTrendIcon(item.trend)}
                           <span className="capitalize">{item.trend}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td>
                         <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getConfidenceColor(item.confidence)}`}>
                           <BarChart3 className="w-3.5 h-3.5" />
                           {item.confidence}%
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td>
                         <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">
                           {item.segment}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td>
                         <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-[#15aaad]" />
+                          <Sparkles className="w-4 h-4 text-[#0f8c5a]" />
                           <span className="text-sm text-gray-900">{item.recommendedAction}</span>
                         </div>
                       </td>
@@ -346,38 +369,38 @@ export function AnalyticsPage() {
             </table>
           )}
         </div>
-
         {/* Pagination */}
-        <div className="p-5 border-t border-gray-200 flex items-center justify-between">
-          <span className="text-sm text-gray-500">
+        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between flex-wrap gap-3">
+          <p className="text-sm text-gray-600">
             Page {currentPage} of {totalPages} — {totalCount} total
-          </span>
+          </p>
           <div className="flex items-center gap-2">
             <button
-              className="px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-              onClick={() => setCurrentPage((p) => p - 1)}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
+              className="db-icon-btn disabled:opacity-40"
             >
-              Previous
+              ‹
             </button>
             <button
-              className="px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-              onClick={() => setCurrentPage((p) => p + 1)}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage >= totalPages}
+              className="db-icon-btn disabled:opacity-40"
             >
-              Next
+              ›
             </button>
           </div>
         </div>
       </div>
 
-      {/* Seasonal Trends */}
+      {/* Seasonal Patterns + Top Categories */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200">
-          <div className="p-5 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900">Seasonal Patterns</h3>
+        {/* Seasonal Patterns */}
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Seasonal Patterns</span>
           </div>
-          <div className="p-6">
+          <div className="p-5">
             <div className="space-y-4">
               {[
                 { season: 'Q1 2025', trend: 'High demand for office supplies', impact: '+23%', color: 'green' },
@@ -385,7 +408,7 @@ export function AnalyticsPage() {
                 { season: 'Q3 2025', trend: 'Furniture orders declining', impact: '-12%', color: 'red' },
                 { season: 'Q4 2025', trend: 'Holiday season boost', impact: '+48%', color: 'purple' },
               ].map((pattern, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                       pattern.color === 'green' ? 'bg-green-100' :
@@ -403,9 +426,7 @@ export function AnalyticsPage() {
                       <div className="text-xs text-gray-600">{pattern.trend}</div>
                     </div>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                    pattern.impact.startsWith('+') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                  }`}>
+                  <span className={`db-stat-pill ${pattern.impact.startsWith('+') ? 'pill-green' : 'pill-red'}`}>
                     {pattern.impact}
                   </span>
                 </div>
@@ -414,12 +435,12 @@ export function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Top Categories — live from Get_Top_Categories_By_Forecast */}
-        <div className="bg-white rounded-xl border border-gray-200">
-          <div className="p-5 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900">Top Categories by Forecast</h3>
+        {/* Top Categories */}
+        <div className="db-card db-fade-in">
+          <div className="db-card-header">
+            <span className="db-card-title">Top Categories by Forecast</span>
           </div>
-          <div className="p-6">
+          <div className="p-5">
             {topCategories.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-6">No category data available.</p>
             ) : (

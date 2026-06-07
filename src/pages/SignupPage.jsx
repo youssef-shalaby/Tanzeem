@@ -1,23 +1,25 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { AuthButton, AuthHeader, AuthInput, AuthLayout } from "../components/AuthLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { submitOnboarding } from "../services/onboardingApi";
+import logo from "../assets/TanzeemWhite.svg";
+
+const TanzeemLogo = () => (
+  <Link to="/">
+    <img
+      src={logo}
+      alt="Tanzeem"
+      className="h-10 w-auto"
+    />
+  </Link>
+);
 
 const initialForm = {
-  firstName: "",
-  lastName: "",
-  email: "",
-  password: "",
-  companyName: "",
-  field: "",
-  companyEmail: "",
-  companyPhone: "",
-  branchName: "",
-  location: "",
-  branchPhone: "",
-  branchEmail: "",
+  firstName: "", lastName: "", email: "", password: "",
+  companyName: "", field: "", companyEmail: "", companyPhone: "",
+  branchName: "", location: "", branchPhone: "", branchEmail: "",
 };
 
 export function SignupPage() {
@@ -27,6 +29,7 @@ export function SignupPage() {
   const [form, setForm] = useState(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const fullName = useMemo(
     () => `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
@@ -43,55 +46,30 @@ export function SignupPage() {
       if (!form.firstName || !form.lastName || !form.email || !form.password) return "Please complete your account details.";
       if (form.password.length < 8) return "Password must be at least 8 characters.";
     }
-
     if (step === 2) {
-      if (!form.companyName || !form.field || !form.companyEmail || !form.companyPhone) {
+      if (!form.companyName || !form.field || !form.companyEmail || !form.companyPhone)
         return "Please complete your company details.";
-      }
     }
-
     if (step === 3) {
-      if (!form.branchName || !form.location || !form.branchPhone || !form.branchEmail) {
+      if (!form.branchName || !form.location || !form.branchPhone || !form.branchEmail)
         return "Please complete your first branch details.";
-      }
     }
-
     return "";
   };
 
   const handleNext = async (event) => {
     event.preventDefault();
     const validationError = validateStep();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    if (step < 3) {
-      setStep((current) => current + 1);
-      return;
-    }
+    if (validationError) { setError(validationError); return; }
+    if (step < 3) { setStep((current) => current + 1); return; }
 
     const payload = {
-      signUpDto: {
-        name: fullName,
-        email: form.email,
-        password: form.password,
-      },
-      companyDto: {
-        name: form.companyName,
-        field: form.field,
-        email: form.companyEmail,
-        phone: form.companyPhone,
-      },
+      signUpDto: { name: fullName, email: form.email, password: form.password },
+      companyDto: { name: form.companyName, field: form.field, email: form.companyEmail, phone: form.companyPhone },
       branchDto: {
-        id: 0,
-        name: form.branchName,
-        location: form.location,
-        phoneNumber: form.branchPhone,
-        email: form.branchEmail,
-        createdAt: new Date().toISOString(),
-        status: "Active",
+        id: 0, name: form.branchName, location: form.location,
+        phoneNumber: form.branchPhone, email: form.branchEmail,
+        createdAt: new Date().toISOString(), status: "Active",
       },
     };
 
@@ -108,23 +86,11 @@ export function SignupPage() {
   };
 
   return (
-    <AuthLayout activeStep={step}>
+    <AuthLayout activeStep={step} logo={<TanzeemLogo />}>
       <form onSubmit={handleNext}>
         {step === 1 && (
           <>
             <AuthHeader title="Sign Up Account" copy="Enter your personal data to create your account." />
-            <button
-              type="button"
-              className="mb-7 flex w-full items-center justify-center gap-2 rounded-xl border border-[#ededed] p-3.5 text-base font-medium text-[#111] xl:mb-8 xl:p-4"
-            >
-              <span className="text-lg font-bold text-[#4285f4]">G</span>
-              Google
-            </button>
-            <div className="mb-7 flex items-center gap-4 xl:mb-8">
-              <div className="h-px flex-1 bg-[#ededed]" />
-              <span className="text-sm text-[#111]">Or</span>
-              <div className="h-px flex-1 bg-[#ededed]" />
-            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <AuthInput label="First Name" placeholder="eg. John" value={form.firstName} onChange={updateField("firstName")} />
               <AuthInput label="Last Name" placeholder="eg. Francisco" value={form.lastName} onChange={updateField("lastName")} />
@@ -132,15 +98,21 @@ export function SignupPage() {
             <AuthInput className="mt-5 xl:mt-6" label="Email" type="email" placeholder="eg. johnfrans@gmail.com" value={form.email} onChange={updateField("email")} />
             <label className="mt-5 block xl:mt-6">
               <span className="mb-2.5 block text-base font-medium leading-6 text-[#111]">Password</span>
-              <div className="flex items-center rounded-xl bg-[#f5f5f5] px-5 py-3.5 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#15aaad]/35 xl:py-4">
+              <div className="flex items-center rounded-xl bg-[#f5f5f5] px-5 py-3.5 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0f8c5a]/25 xl:py-4">
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   value={form.password}
                   onChange={updateField("password")}
                   className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[#111] outline-none placeholder:text-[#6b6b6b]"
                 />
-                <EyeOff className="h-5 w-5 text-[#6b6b6b]" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="focus:outline-none"
+                >
+                  {showPassword ? <Eye className="h-5 w-5 text-[#6b6b6b]" /> : <EyeOff className="h-5 w-5 text-[#6b6b6b]" />}
+                </button>
               </div>
               <span className="mt-2 block text-base leading-6 text-[#6b6b6b]">Must be at least 8 characters.</span>
             </label>
@@ -177,22 +149,21 @@ export function SignupPage() {
           {step > 1 && (
             <button
               type="button"
-              onClick={() => {
-                setError("");
-                setStep((current) => current - 1);
-              }}
-              className="w-32 rounded-xl border border-[#ededed] p-4 text-base font-semibold text-[#111] transition hover:bg-[#f5f5f5]"
+              onClick={() => { setError(""); setStep((current) => current - 1); }}
+              className="w-32 rounded-xl border border-[#ededed] bg-white p-4 text-base font-semibold text-[#111] transition hover:border-[#0f8c5a]/40 hover:bg-[#f5f5f5]"
             >
               Back
             </button>
           )}
-          <AuthButton disabled={isSubmitting}>{step === 3 ? (isSubmitting ? "Creating workspace..." : "Create Workspace") : "Continue"}</AuthButton>
+          <AuthButton disabled={isSubmitting}>
+            {step === 3 ? (isSubmitting ? "Creating workspace..." : "Create Workspace") : "Continue"}
+          </AuthButton>
         </div>
 
         {step === 1 && (
           <p className="mt-6 text-center text-base leading-6 text-[#4b4b4b]">
             Already have an account?{" "}
-            <Link to="/signin" className="font-semibold text-[#111]">
+            <Link to="/signin" className="font-semibold text-[#1a1a18] hover:text-[#0f8c5a] transition-colors">
               Log in
             </Link>
           </p>

@@ -1,13 +1,40 @@
 import { useState, useEffect } from 'react';
-import { Plus, Download, Upload, List, Package, ShoppingCart, AlertTriangle, Loader2 } from 'lucide-react';
+import { Plus, Download, Upload, List, Package, ShoppingCart, AlertTriangle, Loader2, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router';
+
+const INV_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  .inv-root { font-family: 'DM Sans', sans-serif; }
+  .inv-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
+  .inv-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); display:flex; align-items:center; justify-content:space-between; }
+  .inv-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .inv-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .inv-skeleton { background: linear-gradient(90deg,#f0f0ec 25%,#e8e8e4 50%,#f0f0ec 75%); background-size:200% 100%; animation: inv-shimmer 1.4s infinite; border-radius:10px; }
+  @keyframes inv-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .inv-fade-in { animation: invFadeIn .4s ease both; }
+  @keyframes invFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .inv-table th { font-size:11px; font-weight:500; color:#888; text-transform:uppercase; letter-spacing:.5px; padding:10px 20px; text-align:left; }
+  .inv-table td { padding:13px 20px; font-size:13px; color:#1a1a18; border-top:1px solid rgba(0,0,0,.05); }
+  .inv-table tr:hover td { background:#f9faf7; }
+  .inv-pill { display:inline-flex; align-items:center; font-size:11px; font-weight:500; padding:3px 8px; border-radius:100px; }
+  .pill-green  { background:#d6f5e8; color:#0a6b45; }
+  .pill-red    { background:#fde8e8; color:#9b1c1c; }
+  .pill-amber  { background:#fef3c7; color:#8b5e00; }
+  .pill-blue   { background:#dbeafe; color:#1e40af; }
+  .inv-action-card {
+    background:#fff; border-radius:16px; border:1px solid rgba(0,0,0,.07);
+    padding:24px; text-decoration:none; color:inherit;
+    transition: border-color .2s, box-shadow .2s;
+    display:block;
+  }
+  .inv-action-card:hover { border-color:#0f8c5a; box-shadow:0 4px 20px rgba(15,140,90,.08); }
+  .inv-icon-circle { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px; flex-shrink:0; }
+`;
 
 function getToken() {
   try {
     return JSON.parse(localStorage.getItem('tanzeem_auth'))?.token || null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 const authHeaders = () => {
@@ -18,25 +45,17 @@ const authHeaders = () => {
   };
 };
 
-// type: 1 = Stock In, 2 = Stock Out
 const TYPE_LABEL = { 1: 'Stock In', 2: 'Stock Out' };
-const TYPE_STYLE = {
-  1: 'bg-green-100 text-green-700',
-  2: 'bg-red-100 text-red-700',
-};
+const TYPE_PILL  = { 1: 'pill-green', 2: 'pill-red' };
 
-// status: 4 = Completed, others = Pending
 const STATUS_LABEL = (s) => (s === 4 ? 'Completed' : 'Pending');
-const STATUS_STYLE = (s) => (s === 4 ? 'text-green-600' : 'text-orange-500');
+const STATUS_PILL  = (s) => (s === 4 ? 'pill-green' : 'pill-amber');
 
 function formatDate(isoString) {
   const date = new Date(isoString);
   const now = new Date();
-  const diffMs = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
+  const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
   const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
   if (diffDays === 0) return `Today, ${timeStr}`;
   if (diffDays === 1) return `Yesterday, ${timeStr}`;
   return `${diffDays} days ago, ${timeStr}`;
@@ -47,21 +66,54 @@ function transactionLabel(tx) {
   if (items.length === 0) return `${tx.totalTransactedItems} items`;
   if (items.length === 1) {
     const item = items[0];
-    return `${item.quantityOfTransactedItem}x ${item.product?.name ?? 'Unknown'}`;
+    return `${item.quantityOfTransactedItem}× ${item.product?.name ?? 'Unknown'}`;
   }
   const first = items[0];
-  return `${first.quantityOfTransactedItem}x ${first.product?.name ?? 'Unknown'} +${items.length - 1} more`;
+  return `${first.quantityOfTransactedItem}× ${first.product?.name ?? 'Unknown'} +${items.length - 1} more`;
 }
 
-function shortId(tx) {
-  return `#TRX-${tx.id}`;
-}
+function shortId(tx) { return `#TRX-${tx.id}`; }
+
+const ACTION_CARDS = [
+  {
+    to: '/add-item',
+    icon: Plus,
+    iconColor: '#0f8c5a',
+    iconBg: 'rgba(15,140,90,.1)',
+    title: 'Add New Item',
+    desc: 'Register new SKUs into the system with detailed specifications and initial stock.',
+  },
+  {
+    to: '/add-stock',
+    icon: Download,
+    iconColor: '#0f8c5a',
+    iconBg: 'rgba(15,140,90,.1)',
+    title: 'Add Stock',
+    desc: 'Replenish inventory levels from suppliers. Log incoming shipments and adjust quantities.',
+  },
+  {
+    to: '/stock-out',
+    icon: Upload,
+    iconColor: '#ef4444',
+    iconBg: 'rgba(239,68,68,.1)',
+    title: 'Stock Out',
+    desc: 'Record sales, internal usage, or damaged goods. Deduct items from current inventory.',
+  },
+  {
+    to: '/products',
+    icon: List,
+    iconColor: '#8b5cf6',
+    iconBg: 'rgba(139,92,246,.1)',
+    title: 'Current Products',
+    desc: 'View the complete inventory list. Filter by category, status, or supplier.',
+  },
+];
 
 export function Inventory() {
   const [transactions, setTransactions] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [products,     setProducts]     = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -70,15 +122,11 @@ export function Inventory() {
       try {
         const [txRes, prodRes] = await Promise.all([
           fetch('/api/Transaction/Get-Transactions', { headers: authHeaders() }),
-          fetch('/api/Products/Get-Products', { headers: authHeaders() }),
+          fetch('/api/Products/Get-Products',        { headers: authHeaders() }),
         ]);
-
-        if (!txRes.ok) throw new Error(`Transactions: ${txRes.status}`);
+        if (!txRes.ok)   throw new Error(`Transactions: ${txRes.status}`);
         if (!prodRes.ok) throw new Error(`Products: ${prodRes.status}`);
-
         const [txData, prodData] = await Promise.all([txRes.json(), prodRes.json()]);
-
-        // Sort transactions newest first by id
         const sorted = [...(Array.isArray(txData) ? txData : [])].sort((a, b) => b.id - a.id);
         setTransactions(sorted);
         setProducts(Array.isArray(prodData) ? prodData : []);
@@ -91,154 +139,157 @@ export function Inventory() {
     load();
   }, []);
 
-  // Derived stats from real data
-  const totalSKUs = products.length;
-  const lowStockCount = products.filter(p => p.stock <= p.reorderLevel).length;
-  const pendingCount = transactions.filter(t => t.status !== 4).length;
+  const totalSKUs         = products.length;
+  const lowStockCount     = products.filter(p => p.stock <= p.reorderLevel).length;
+  const pendingCount      = transactions.filter(t => t.status !== 4).length;
   const recentTransactions = transactions.slice(0, 5);
 
+  const stats = [
+    {
+      title: 'Total SKUs',
+      value: loading ? null : totalSKUs.toLocaleString(),
+      sub: 'Active products',
+      subColor: '#888',
+      icon: Package,
+      iconColor: '#15aaad',
+      iconBg: 'rgba(21,170,173,.1)',
+    },
+    {
+      title: 'Low Stock Alerts',
+      value: loading ? null : lowStockCount,
+      sub: lowStockCount > 0 ? 'Requires attention' : 'All stocked',
+      subColor: lowStockCount > 0 ? '#f59e0b' : '#0f8c5a',
+      icon: AlertTriangle,
+      iconColor: '#f59e0b',
+      iconBg: 'rgba(245,158,11,.1)',
+    },
+    {
+      title: 'Pending Transactions',
+      value: loading ? null : pendingCount,
+      sub: pendingCount > 0 ? 'To be processed' : 'All up to date',
+      subColor: pendingCount > 0 ? '#3b82f6' : '#0f8c5a',
+      icon: ShoppingCart,
+      iconColor: '#3b82f6',
+      iconBg: 'rgba(59,130,246,.1)',
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="inv-root space-y-6">
+      <style>{INV_STYLES}</style>
+
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Inventory</h1>
+        <h1 className="inv-section-title">Inventory</h1>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">Total SKUs</div>
-            <div className="w-12 h-12 rounded-full bg-[#15aaad]/10 flex items-center justify-center">
-              <Package className="w-5 h-5 text-[#15aaad]" />
+        {stats.map((stat, i) => {
+          const Icon = stat.icon;
+          return (
+            <div
+              key={stat.title}
+              className="inv-card inv-fade-in"
+              style={{ padding: '22px 24px', animationDelay: `${i * 0.05}s` }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+                <span style={{ fontSize: 13, color: '#888', fontWeight: 400 }}>{stat.title}</span>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: stat.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon size={18} color={stat.iconColor} />
+                </div>
+              </div>
+              {stat.value === null ? (
+                <div className="inv-skeleton" style={{ height: 36, width: 80, marginBottom: 10 }} />
+              ) : (
+                <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 32, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>
+                  {stat.value}
+                </div>
+              )}
+              <div style={{ fontSize: 12, color: stat.subColor, fontWeight: 400 }}>{stat.sub}</div>
             </div>
-          </div>
-          {loading ? (
-            <div className="h-9 w-16 bg-gray-100 rounded animate-pulse mb-2" />
-          ) : (
-            <div className="text-3xl font-semibold text-gray-900 mb-2">{totalSKUs.toLocaleString()}</div>
-          )}
-          <div className="text-sm text-gray-400">Active products</div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">Low Stock Alerts</div>
-            <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-orange-600" />
-            </div>
-          </div>
-          {loading ? (
-            <div className="h-9 w-10 bg-gray-100 rounded animate-pulse mb-2" />
-          ) : (
-            <div className="text-3xl font-semibold text-gray-900 mb-2">{lowStockCount}</div>
-          )}
-          <div className="text-sm text-orange-600">{lowStockCount > 0 ? 'Requires attention' : 'All stocked'}</div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-3">
-            <div className="text-sm text-gray-600">Pending Transactions</div>
-            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-              <ShoppingCart className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
-          {loading ? (
-            <div className="h-9 w-10 bg-gray-100 rounded animate-pulse mb-2" />
-          ) : (
-            <div className="text-3xl font-semibold text-gray-900 mb-2">{pendingCount}</div>
-          )}
-          <div className="text-sm text-blue-600">{pendingCount > 0 ? 'To be processed' : 'All up to date'}</div>
-        </div>
+          );
+        })}
       </div>
 
       {/* Action Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        <Link to="/add-item" className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow">
-          <div className="w-12 h-12 rounded-full bg-[#15aaad]/10 flex items-center justify-center mb-4">
-            <Plus className="w-6 h-6 text-[#15aaad]" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Add New Item</h3>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            Register new SKUs into the system with detailed specifications and initial stock.
-          </p>
-        </Link>
-
-        <Link to="/add-stock" className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow">
-          <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
-            <Download className="w-6 h-6 text-green-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Add Stock</h3>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            Replenish inventory levels from suppliers. Log incoming shipments and adjust quantities.
-          </p>
-        </Link>
-
-        <Link to="/stock-out" className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow">
-          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
-            <Upload className="w-6 h-6 text-red-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Stock Out</h3>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            Record sales, internal usage, or damaged goods. Deduct items from current inventory.
-          </p>
-        </Link>
-
-        <Link to="/products" className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow">
-          <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-4">
-            <List className="w-6 h-6 text-purple-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Current Products</h3>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            View the complete inventory list. Filter by category, status, or supplier.
-          </p>
-        </Link>
+        {ACTION_CARDS.map((card, i) => {
+          const Icon = card.icon;
+          return (
+            <Link
+              key={card.to}
+              to={card.to}
+              className="inv-action-card inv-fade-in"
+              style={{ animationDelay: `${0.1 + i * 0.04}s` }}
+            >
+              <div className="inv-icon-circle" style={{ background: card.iconBg }}>
+                <Icon size={20} color={card.iconColor} />
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>{card.title}</div>
+              <p style={{ fontSize: 13, color: '#666', fontWeight: 300, lineHeight: 1.55, margin: 0 }}>{card.desc}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 16 }}>
+                <span style={{ fontSize: 12, color: '#0f8c5a', fontWeight: 500 }}>Go</span>
+                <ArrowRight size={12} color="#0f8c5a" />
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Recent Transactions */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="p-5 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Recent Transactions</h2>
-          <Link to="/transactions" className="text-[#15aaad] text-sm font-medium hover:underline">View all history</Link>
+      <div className="inv-card inv-fade-in" style={{ animationDelay: '.25s' }}>
+        <div className="inv-card-header">
+          <span className="inv-card-title">Recent transactions</span>
+          <Link
+            to="/transactions"
+            style={{ fontSize: 13, color: '#0f8c5a', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            View all <ArrowRight size={13} />
+          </Link>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-sm">Loading transactions...</span>
+          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="inv-skeleton" style={{ height: 40 }} />
+            ))}
           </div>
         ) : error ? (
-          <div className="px-5 py-10 text-center text-sm text-red-500">
+          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 13, color: '#ef4444' }}>
             Failed to load: {error}
           </div>
         ) : recentTransactions.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-gray-400">
+          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 13, color: '#888' }}>
             No transactions yet.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div style={{ overflowX: 'auto' }}>
+            <table className="inv-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-600 uppercase">Transaction ID</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-600 uppercase">Type</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-600 uppercase">Items</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-600 uppercase">Date</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-600 uppercase">Status</th>
+                <tr>
+                  <th>Transaction ID</th>
+                  <th>Type</th>
+                  <th>Items</th>
+                  <th>Date</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {recentTransactions.map(tx => (
-                  <tr key={tx.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-5 py-4 text-sm font-medium text-gray-900">{shortId(tx)}</td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-medium ${TYPE_STYLE[tx.type] ?? 'bg-blue-100 text-blue-700'}`}>
+                  <tr key={tx.id}>
+                    <td style={{ fontWeight: 500 }}>{shortId(tx)}</td>
+                    <td>
+                      <span className={`inv-pill ${TYPE_PILL[tx.type] ?? 'pill-blue'}`}>
                         {TYPE_LABEL[tx.type] ?? 'Adjustment'}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-sm text-gray-900">{transactionLabel(tx)}</td>
-                    <td className="px-5 py-4 text-sm text-gray-600">{formatDate(tx.createdAt)}</td>
-                    <td className={`px-5 py-4 text-sm font-medium ${STATUS_STYLE(tx.status)}`}>
-                      {STATUS_LABEL(tx.status)}
+                    <td>{transactionLabel(tx)}</td>
+                    <td style={{ color: '#666' }}>{formatDate(tx.createdAt)}</td>
+                    <td>
+                      <span className={`inv-pill ${STATUS_PILL(tx.status)}`}>
+                        {STATUS_LABEL(tx.status)}
+                      </span>
                     </td>
                   </tr>
                 ))}
