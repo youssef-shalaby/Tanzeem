@@ -602,7 +602,10 @@ export function AboutPage() {
       <section className="relative z-10 mx-auto max-w-6xl px-6 py-16">
         <div className="grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <div className="hero-badge" style={{ display: "inline-flex", marginBottom: 24 }}>
+            <div
+              className="hero-badge"
+              style={{ display: "inline-flex", marginBottom: 24 }}
+            >
               <div className="badge-dot" /> Our Story
             </div>
             <h1 className="hero-h1" style={{ fontSize: 52, maxWidth: 580 }}>
@@ -611,15 +614,17 @@ export function AboutPage() {
               the World's <span className="text-[#0f8c5a]">Inventory</span>
             </h1>
             <p className="hero-p" style={{ maxWidth: 520, marginTop: 28 }}>
-              Tanzeem was born out of a simple observation: modern businesses are
-              moving faster than ever, but their inventory systems are stuck in
-              the past. We built a platform that combines designer-grade
+              Tanzeem was born out of a simple observation: modern businesses
+              are moving faster than ever, but their inventory systems are stuck
+              in the past. We built a platform that combines designer-grade
               aesthetics with powerful, intuitive logistics.
             </p>
             <div className="mt-12 grid max-w-[480px] grid-cols-2 gap-8">
               <div>
                 <p className="text-4xl font-bold text-[#101828]">500k+</p>
-                <p className="mt-2 text-base text-[#6a7282]">Items Managed Daily</p>
+                <p className="mt-2 text-base text-[#6a7282]">
+                  Items Managed Daily
+                </p>
               </div>
               <div>
                 <p className="text-4xl font-bold text-[#101828]">99.9%</p>
@@ -638,8 +643,12 @@ export function AboutPage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0f8c5a]/10 text-[#0f8c5a]">
                 <Target className="h-6 w-6" />
               </div>
-              <h2 className="mt-4 text-base font-bold text-[#101828]">Mission Driven</h2>
-              <p className="mt-1 text-xs leading-4 text-[#6a7282]">Empowering local & global businesses.</p>
+              <h2 className="mt-4 text-base font-bold text-[#101828]">
+                Mission Driven
+              </h2>
+              <p className="mt-1 text-xs leading-4 text-[#6a7282]">
+                Empowering local & global businesses.
+              </p>
             </div>
           </div>
         </div>
@@ -648,20 +657,29 @@ export function AboutPage() {
       <section className="relative z-10 mx-auto max-w-6xl px-6 py-16 text-center">
         <h2 className="text-4xl font-bold text-[#101828]">Our Core Values</h2>
         <p className="mt-4 text-base text-[#6a7282]">
-          These principles guide every feature we build and every update we ship.
+          These principles guide every feature we build and every update we
+          ship.
         </p>
         <div className="mt-14 grid gap-8 md:grid-cols-3">
           {valueCards.map((card) => (
             <article
               key={card.title}
               className="public-card text-left"
-              style={{ background: "#fff", border: "1px solid rgba(0,0,0,.08)", borderRadius: 24 }}
+              style={{
+                background: "#fff",
+                border: "1px solid rgba(0,0,0,.08)",
+                borderRadius: 24,
+              }}
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0f8c5a]/10 text-[#0f8c5a]">
                 <card.icon className="h-6 w-6" />
               </div>
-              <h3 className="mt-6 text-xl font-bold text-[#101828]">{card.title}</h3>
-              <p className="mt-3 text-base leading-[1.6] text-[#4a5565]">{card.copy}</p>
+              <h3 className="mt-6 text-xl font-bold text-[#101828]">
+                {card.title}
+              </h3>
+              <p className="mt-3 text-base leading-[1.6] text-[#4a5565]">
+                {card.copy}
+              </p>
             </article>
           ))}
         </div>
@@ -695,13 +713,32 @@ export function FeaturesPage() {
       <PublicNav />
 
       <section className="relative z-10 mx-auto max-w-6xl px-6 pt-16 text-center">
-        <div className="hero-badge" style={{ display: "inline-flex", marginBottom: 24 }}>
+        <div
+          className="hero-badge"
+          style={{ display: "inline-flex", marginBottom: 24 }}
+        >
           <div className="badge-dot" /> Powerful features
         </div>
-        <h1 className="hero-h1" style={{ fontSize: 52, maxWidth: 740, marginLeft: "auto", marginRight: "auto" }}>
+        <h1
+          className="hero-h1"
+          style={{
+            fontSize: 52,
+            maxWidth: 740,
+            marginLeft: "auto",
+            marginRight: "auto",
+          }}
+        >
           Everything You Need to <span className="text-[#0f8c5a]">Scale</span>
         </h1>
-        <p className="hero-p" style={{ maxWidth: 740, marginLeft: "auto", marginRight: "auto", marginTop: 24 }}>
+        <p
+          className="hero-p"
+          style={{
+            maxWidth: 740,
+            marginLeft: "auto",
+            marginRight: "auto",
+            marginTop: 24,
+          }}
+        >
           From smart tracking to advanced analytics, Tanzeem provides a complete
           toolkit designed for modern inventory management teams.
         </p>
@@ -717,15 +754,23 @@ export function FeaturesPage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#d6f5e8] text-[#0f8c5a]">
                 <row.icon className="h-6 w-6" />
               </div>
-              <h2 className="mt-6 text-3xl font-bold text-[#101828] lg:text-4xl">{row.title}</h2>
-              <p className="mt-5 max-w-[500px] text-lg leading-[1.62] text-[#4a5565]">{row.copy}</p>
+              <h2 className="mt-6 text-3xl font-bold text-[#101828] lg:text-4xl">
+                {row.title}
+              </h2>
+              <p className="mt-5 max-w-[500px] text-lg leading-[1.62] text-[#4a5565]">
+                {row.copy}
+              </p>
               <div className="mt-8 space-y-4">
                 {row.bullets.map((bullet) => (
                   <FeatureBullet key={bullet}>{bullet}</FeatureBullet>
                 ))}
               </div>
             </div>
-            <ScreenshotCard src={row.image} alt={`${row.title} preview`} className="max-w-[520px]" />
+            <ScreenshotCard
+              src={row.image}
+              alt={`${row.title} preview`}
+              className="max-w-[520px]"
+            />
           </div>
         ))}
       </section>
@@ -743,7 +788,9 @@ export function FeaturesPage() {
           ))}
         </div>
         <div className="mx-auto mt-20 max-w-[880px] border-t border-white/10 pt-14 text-center">
-          <h2 className="text-3xl font-bold">Ready to transform your warehouse?</h2>
+          <h2 className="text-3xl font-bold">
+            Ready to transform your warehouse?
+          </h2>
           <Link to="/signup" className="public-btn-primary mt-8 inline-flex">
             Get Started Now
           </Link>
@@ -809,16 +856,21 @@ export function PricingPage() {
         .lp-blob-1{position:absolute;bottom:-100px;left:50%;transform:translateX(-50%);width:900px;height:500px;background:radial-gradient(ellipse,#c8f5e0 0%,#c8eee0 40%,#d4f0e8 65%,transparent 80%);filter:blur(40px);opacity:.7;pointer-events:none;}
         .lp-blob-2{position:absolute;top:-60px;right:-120px;width:400px;height:400px;background:radial-gradient(circle,#e0faf0 0%,transparent 70%);filter:blur(50px);opacity:.5;pointer-events:none;}
         .pricing-card {
-          background: #fff;
-          border: 1px solid rgba(0,0,0,.08);
-          border-radius: 24px;
-          padding: 32px;
-          transition: box-shadow 0.2s, transform 0.15s;
-        }
-        .pricing-card:hover {
-          box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
-          transform: translateY(-2px);
-        }
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 24px;
+  padding: 32px;
+  height: 100%;
+  transition: all .25s ease;
+}
+
+.pricing-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(15,140,90,.2);
+  box-shadow:
+    0 10px 25px rgba(15,140,90,.08),
+    0 20px 40px rgba(0,0,0,.08);
+}
         .pricing-badge {
           display: inline-flex;
           align-items: center;
@@ -855,12 +907,24 @@ export function PricingPage() {
 
         <div className="mt-16 grid gap-6 md:grid-cols-2">
           {pricingPlans.map((plan) => (
-            <div key={plan.name} className="pricing-card text-left">
-              {plan.banner && (
-                <div className="mb-4">
-                  <span className="pricing-badge">{plan.banner}</span>
+            <div
+              key={plan.name}
+              className={`pricing-card text-left flex flex-col h-full ${
+                plan.name === "Pro Plan"
+                  ? "ring-2 ring-[#0f8c5a] relative"
+                  : "relative"
+              }`}
+            >
+              {plan.name === "Pro Plan" && (
+                <div className="absolute top-6 right-6">
+                  <span className="pricing-badge">Most Popular</span>
                 </div>
               )}
+              <div className="mb-4 min-h-[28px]">
+                {plan.banner && (
+                  <span className="pricing-badge">{plan.banner}</span>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2 mb-4">
                 {plan.tags.map((tag) => (
                   <span
@@ -872,7 +936,7 @@ export function PricingPage() {
                 ))}
               </div>
               <h2 className="text-2xl font-bold text-gray-900">{plan.name}</h2>
-              <div className="mt-4 flex items-baseline gap-1">
+              <div className="mt-4 flex items-end gap-1 min-h-[72px]">
                 <span className="text-5xl font-bold text-gray-900">
                   {plan.price}
                 </span>
@@ -904,7 +968,7 @@ export function PricingPage() {
                   </div>
                 </>
               )}
-              <div className="mt-8">
+              <div className="mt-auto pt-8">
                 <Link
                   to={plan.name === "Pro Plan" ? "/payment" : "/signup"}
                   className={`inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition-colors ${
@@ -955,11 +1019,19 @@ export function PaymentPage() {
 
       <section className="relative z-10 mx-auto max-w-5xl px-6 py-16">
         <div className="text-center">
-          <div className="hero-badge" style={{ display: "inline-flex", marginBottom: 24 }}>
+          <div
+            className="hero-badge"
+            style={{ display: "inline-flex", marginBottom: 24 }}
+          >
             <div className="badge-dot" /> Secure payment
           </div>
-          <h1 className="hero-h1" style={{ fontSize: 52 }}>Payment</h1>
-          <p className="hero-p" style={{ maxWidth: 460, marginLeft: "auto", marginRight: "auto" }}>
+          <h1 className="hero-h1" style={{ fontSize: 52 }}>
+            Payment
+          </h1>
+          <p
+            className="hero-p"
+            style={{ maxWidth: 460, marginLeft: "auto", marginRight: "auto" }}
+          >
             Finish your setup with a billing method for your Tanzeem workspace.
           </p>
         </div>
@@ -967,17 +1039,25 @@ export function PaymentPage() {
         <div className="mt-16 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           {/* Billing Form Card */}
           <div className="public-card p-8">
-            <h2 className="text-2xl font-semibold text-gray-900">Billing details</h2>
+            <h2 className="text-2xl font-semibold text-gray-900">
+              Billing details
+            </h2>
             <div className="mt-6 grid gap-5">
-              {["Cardholder Name", "Card Number", "Expiry Date", "CVC"].map((label) => (
-                <label key={label} className="block">
-                  <span className="mb-2 block text-sm font-medium text-gray-700">{label}</span>
-                  <input
-                    className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-[#0f8c5a] focus:ring-1 focus:ring-[#0f8c5a]"
-                    placeholder={label === "Card Number" ? "1234 5678 9012 3456" : ""}
-                  />
-                </label>
-              ))}
+              {["Cardholder Name", "Card Number", "Expiry Date", "CVC"].map(
+                (label) => (
+                  <label key={label} className="block">
+                    <span className="mb-2 block text-sm font-medium text-gray-700">
+                      {label}
+                    </span>
+                    <input
+                      className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-[#0f8c5a] focus:ring-1 focus:ring-[#0f8c5a]"
+                      placeholder={
+                        label === "Card Number" ? "1234 5678 9012 3456" : ""
+                      }
+                    />
+                  </label>
+                ),
+              )}
             </div>
             <Link
               to="/signup"
@@ -1044,7 +1124,10 @@ export function WelcomePage() {
         <div className="grid min-h-[620px] items-center gap-14 lg:grid-cols-[0.9fr_1.1fr]">
           {/* Left content */}
           <div>
-            <div className="hero-badge" style={{ display: "inline-flex", marginBottom: 24 }}>
+            <div
+              className="hero-badge"
+              style={{ display: "inline-flex", marginBottom: 24 }}
+            >
               <div className="badge-dot" /> Welcome
             </div>
             <h1 className="hero-h1" style={{ fontSize: 52, maxWidth: 620 }}>
@@ -1055,17 +1138,11 @@ export function WelcomePage() {
               your branch setup, and keep every item moving with clarity.
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
-              <Link
-                to="/dashboard"
-                className="public-btn-primary"
-              >
+              <Link to="/dashboard" className="public-btn-primary">
                 Open dashboard
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link
-                to="/settings"
-                className="public-btn-secondary"
-              >
+              <Link to="/settings" className="public-btn-secondary">
                 Review settings
               </Link>
             </div>
