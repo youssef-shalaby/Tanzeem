@@ -18,15 +18,6 @@ const DB_STYLES = `
   .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
   .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
   .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
-  .db-select {
-    padding: 8px 14px; background: #fff; border: 1px solid rgba(0,0,0,.12);
-    border-radius: 100px; font-size: 13px; font-family: 'DM Sans', sans-serif;
-    color: #444; cursor: pointer; outline: none; transition: border-color .2s;
-    appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
-  }
-  .db-select:hover { border-color: #0f8c5a; }
   .db-stat-pill { display:inline-flex; align-items:center; font-size:11px; font-weight:500; padding:3px 8px; border-radius:100px; }
   .pill-green { background:#d6f5e8; color:#0a6b45; }
   .pill-red   { background:#fde8e8; color:#9b1c1c; }
@@ -97,15 +88,8 @@ export function DashboardPage() {
     <div className="db-root space-y-6" style={{ fontFamily:"'DM Sans',sans-serif" }}>
       <style>{DB_STYLES}</style>
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="db-section-title">Dashboard</h1>
-        <select className="db-select">
-          <option>Last month</option>
-          <option>Last 3 months</option>
-          <option>Last year</option>
-        </select>
-      </div>
+      {/* Header — period selector removed */}
+      <h1 className="db-section-title">Dashboard</h1>
 
       {/* Stat Cards */}
       {loading ? (
