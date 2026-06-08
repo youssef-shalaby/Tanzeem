@@ -33,9 +33,11 @@ function productToForm(p) {
     costPrice: String(p.costPrice ?? ''),
     stockLevel: String(p.stock ?? p.stockLevel ?? ''),
     reorderLevel: String(p.reorderLevel ?? ''),
-    expiryDate: p.expiryDate && p.expiryDate !== 'N/A' && p.expiryDate !== '—'
-      ? new Date(p.expiryDate).toISOString().split('T')[0]
-      : '',
+    expiryDate: (() => {
+      if (!p.expiryDate || p.expiryDate === 'N/A' || p.expiryDate === '—') return '';
+      const d = new Date(p.expiryDate);
+      return d.getFullYear() >= 2099 ? '' : d.toISOString().split('T')[0];
+    })(),
     barcode: p.barcode && p.barcode !== '—' ? p.barcode : '',
     description: p.description || '',
     status: p.status || 'Active',
@@ -54,13 +56,6 @@ export function EditProductPage() {
 
   // Fetch product by id — use router state if available to avoid extra round-trip
   useEffect(() => {
-    const stateProduct = location.state?.product;
-    if (stateProduct) {
-      setFormData(productToForm(stateProduct));
-      setLoading(false);
-      return;
-    }
-
     if (!id) { setLoading(false); return; }
 
     fetch(`/api/Products/Get-Product/${id}`, {
@@ -98,7 +93,7 @@ export function EditProductPage() {
       stock: parseInt(formData.stockLevel, 10) || 0,
       costPrice: parseFloat(formData.costPrice) || 0,
       sellingPrice: parseFloat(formData.sellingPrice) || 0,
-      expiryDate: formData.expiryDate ? new Date(formData.expiryDate).toISOString() : null,
+      expiryDate: formData.expiryDate ? new Date(formData.expiryDate).toISOString() : "2099-12-31T00:00:00.000Z",
       barcode: formData.barcode || '',
       description: formData.description,
       reorderLevel: parseInt(formData.reorderLevel, 10) || 0,
@@ -140,7 +135,7 @@ export function EditProductPage() {
       <p className="text-gray-500 mb-4">Product not found. Please go back and try again.</p>
       <button
         onClick={() => navigate('/products')}
-        className="px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors"
+        className="px-4 py-2 bg-[#0f8c5a] text-white text-sm rounded-lg hover:bg-[#0a6b45] transition-colors"
       >
         Back to Products
       </button>
@@ -187,7 +182,7 @@ export function EditProductPage() {
                     type="text"
                     value={formData.productName}
                     onChange={(e) => handleChange('productName', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
                     placeholder="Enter product name"
                     required
                   />
@@ -201,7 +196,7 @@ export function EditProductPage() {
                     type="text"
                     value={formData.sku}
                     onChange={(e) => handleChange('sku', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
                     placeholder="Enter SKU"
                     required
                   />
@@ -215,7 +210,7 @@ export function EditProductPage() {
                     type="text"
                     value={formData.category}
                     onChange={(e) => handleChange('category', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
                     placeholder="Enter category"
                     required
                   />
@@ -229,7 +224,7 @@ export function EditProductPage() {
                     type="text"
                     value={formData.barcode}
                     onChange={(e) => handleChange('barcode', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
                     placeholder="Enter barcode"
                   />
                 </div>
@@ -239,7 +234,7 @@ export function EditProductPage() {
                   <select
                     value={formData.status}
                     onChange={(e) => handleChange('status', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -253,7 +248,7 @@ export function EditProductPage() {
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
                     rows={3}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad] resize-none"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a] resize-none"
                     placeholder="Enter product description..."
                   />
                 </div>
@@ -274,7 +269,7 @@ export function EditProductPage() {
                     min="0"
                     value={formData.sellingPrice}
                     onChange={(e) => handleChange('sellingPrice', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
                     placeholder="0.00"
                     required
                   />
@@ -290,7 +285,7 @@ export function EditProductPage() {
                     min="0"
                     value={formData.costPrice}
                     onChange={(e) => handleChange('costPrice', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
                     placeholder="0.00"
                   />
                 </div>
@@ -310,7 +305,7 @@ export function EditProductPage() {
                     min="0"
                     value={formData.stockLevel}
                     onChange={(e) => handleChange('stockLevel', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
                     placeholder="0"
                     required
                   />
@@ -323,7 +318,7 @@ export function EditProductPage() {
                     min="0"
                     value={formData.reorderLevel}
                     onChange={(e) => handleChange('reorderLevel', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
                     placeholder="0"
                   />
                 </div>
@@ -334,7 +329,7 @@ export function EditProductPage() {
                     type="date"
                     value={formData.expiryDate}
                     onChange={(e) => handleChange('expiryDate', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20 focus:border-[#15aaad]"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
                   />
                 </div>
               </div>
@@ -354,7 +349,7 @@ export function EditProductPage() {
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-60"
+              className="flex items-center gap-2 px-4 py-2 bg-[#0f8c5a] text-white text-sm rounded-lg hover:bg-[#0a6b45] transition-colors disabled:opacity-60"
             >
               <Save className="w-[18px] h-[18px]" />
               {saving ? 'Saving...' : 'Save Changes'}

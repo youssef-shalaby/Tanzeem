@@ -74,7 +74,7 @@ export function SigninPage() {
   };
 
   return (
-    <AuthLayout activeStep={1} logo={<TanzeemLogo />}>
+    <AuthLayout showSteps={false} logo={<TanzeemLogo />}>
       <form onSubmit={handleSubmit}>
         <AuthHeader
           title="Welcome back"
@@ -109,9 +109,9 @@ export function SigninPage() {
               className="focus:outline-none"
             >
               {showPassword ? (
-                <Eye className="h-5 w-5 text-[#6b6b6b]" />
-              ) : (
                 <EyeOff className="h-5 w-5 text-[#6b6b6b]" />
+              ) : (
+                <Eye className="h-5 w-5 text-[#6b6b6b]" />
               )}
             </button>
           </div>

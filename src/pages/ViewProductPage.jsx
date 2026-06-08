@@ -67,9 +67,11 @@ function normalize(raw) {
     stock: raw.stock ?? 0,
     costPrice: raw.costPrice ?? 0,
     sellingPrice: raw.sellingPrice ?? raw.price ?? 0,
-    expiryDate: raw.expiryDate
-      ? new Date(raw.expiryDate).toLocaleDateString()
-      : '—',
+    expiryDate: (() => {
+      if (!raw.expiryDate) return '—';
+      const d = new Date(raw.expiryDate);
+      return d.getFullYear() >= 2099 ? '—' : d.toLocaleDateString();
+    })(),
     barcode: raw.barcode || '—',
     description: raw.description || '',
     reorderLevel: raw.reorderLevel ?? 0,
@@ -82,15 +84,11 @@ export function ViewProductPage() {
   const location = useLocation();
   const { id } = useParams();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [product, setProduct] = useState(() => {
-    const raw = location.state?.product;
-    return raw ? normalize(raw) : null;
-  });
-  const [loading, setLoading] = useState(!location.state?.product);
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (location.state?.product) return;
     if (!id) { setError('No product ID provided.'); setLoading(false); return; }
 
     fetch(`/api/Products/Get-Product/${id}`, {

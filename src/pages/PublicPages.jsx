@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router";
-import { ArrowRight, Check, CircleX, Target } from "lucide-react";
+import { ArrowRight, Check, CircleX, Target, Zap, Bell, BarChart2 } from "lucide-react";
 import {
   AccentBadge,
   CheckList,
@@ -29,13 +29,14 @@ const PUBLIC_STYLES = `
     border-radius: 100px; padding: 14px 28px; font-size: 15px; font-weight: 500;
     display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
     transition: background .2s, transform .15s;
+    text-decoration: none;
   }
   .public-btn-primary:hover { background: #0a6b45; transform: translateY(-1px); }
   .public-btn-secondary {
     background: transparent; border: 1px solid rgba(0,0,0,.12); color: #444;
     border-radius: 100px; padding: 14px 28px; font-size: 15px; font-weight: 500;
     display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
-    transition: background .15s;
+    transition: background .15s; text-decoration: none;
   }
   .public-btn-secondary:hover { background: #f5f6f3; }
   .public-card {
@@ -45,6 +46,20 @@ const PUBLIC_STYLES = `
   .public-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,.05); }
   .db-section-title { font-family: 'DM Serif Display', serif; font-size: 44px; font-weight: 600; color: #1a1a18; letter-spacing: -0.02em; }
   @media (max-width: 768px) { .db-section-title { font-size: 32px; } }
+
+  /* Shared hero classes — defined here so all pages have them without relying on LandingPage rendering first */
+  .hero-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(15,140,90,.1); border:1px solid rgba(15,140,90,.2); border-radius:100px; padding:6px 14px; font-size:13px; font-weight:500; color:#0a6b45; margin-bottom:28px; animation:fadeSlideDown .5s ease both; }
+  .badge-dot { width:7px; height:7px; background:#0f8c5a; border-radius:50%; }
+  .hero-h1 { font-family:'DM Serif Display',serif; font-size:68px; line-height:1.08; letter-spacing:-1.5px; color:#1a1a18; max-width:640px; animation:fadeSlideDown .55s .05s ease both; }
+  .hero-h1 em { font-style:italic; color:#0f8c5a; }
+  .hero-p { margin-top:22px; max-width:520px; font-size:17px; line-height:1.65; color:#555; font-weight:300; animation:fadeSlideDown .55s .1s ease both; }
+
+  /* Shared section heading — use instead of raw Tailwind text-4xl on About / Features */
+  .section-title { font-family:'DM Serif Display',serif; font-size:40px; line-height:1.12; letter-spacing:-0.02em; color:#1a1a18; font-weight:400; }
+  .section-subtitle { font-size:17px; line-height:1.65; color:#555; font-weight:300; margin-top:16px; }
+
+  @keyframes fadeSlideDown { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeSlideUp   { from{opacity:0;transform:translateY(20px)}  to{opacity:1;transform:translateY(0)} }
 `;
 
 // Reusable component for injecting styles
@@ -87,6 +102,7 @@ export function LandingPage() {
 
   return (
     <main
+      className="public-root"
       style={{
         fontFamily: "'DM Sans', sans-serif",
         background: "#f9faf7",
@@ -96,17 +112,10 @@ export function LandingPage() {
         position: "relative",
       }}
     >
+      <PublicStyle />
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
         .lp-blob-1{position:absolute;bottom:-100px;left:50%;transform:translateX(-50%);width:900px;height:500px;background:radial-gradient(ellipse,#c8f5e0 0%,#c8eee0 40%,#d4f0e8 65%,transparent 80%);filter:blur(40px);opacity:.7;pointer-events:none;}
         .lp-blob-2{position:absolute;top:-60px;right:-120px;width:400px;height:400px;background:radial-gradient(circle,#e0faf0 0%,transparent 70%);filter:blur(50px);opacity:.5;pointer-events:none;}
-        .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(15,140,90,.1);border:1px solid rgba(15,140,90,.2);border-radius:100px;padding:6px 14px;font-size:13px;font-weight:500;color:#0a6b45;margin-bottom:28px;animation:fadeSlideDown .5s ease both;}
-        .badge-dot{width:7px;height:7px;background:#0f8c5a;border-radius:50%;}
-        .hero-h1{font-family:'DM Serif Display',serif;font-size:68px;line-height:1.08;letter-spacing:-1.5px;color:#1a1a18;max-width:640px;animation:fadeSlideDown .55s .05s ease both;}
-        .hero-h1 em{font-style:italic;color:#0f8c5a;}
-        .hero-p{margin-top:22px;max-width:520px;font-size:17px;line-height:1.65;color:#555;font-weight:300;animation:fadeSlideDown .55s .1s ease both;}
-        .btn-primary{background:#1a1a18;color:#f0faf5;padding:14px 28px;border-radius:100px;font-size:15px;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:background .2s,transform .15s;border:none;cursor:pointer;}
-        .btn-primary:hover{background:#0f8c5a;transform:translateY(-1px);}
         .dashboard-wrap{animation:fadeSlideUp .65s .2s ease both;}
         .dash-sidebar-icon{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;}
         .dash-sidebar-icon.active{background:#0f8c5a;color:#fff;}
@@ -125,8 +134,6 @@ export function LandingPage() {
         .ss-out{background:#fde8e8;color:#9b1c1c;}
         .feature-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:20px;}
         .feature-icon{width:36px;height:36px;background:#d6f5e8;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;color:#0f8c5a;margin-bottom:14px;}
-        @keyframes fadeSlideDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeSlideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
 
       <div className="lp-blob-1" />
@@ -170,7 +177,7 @@ export function LandingPage() {
             animation: "fadeSlideDown .55s .15s ease both",
           }}
         >
-          <Link to="/signup" className="btn-primary">
+          <Link to="/signup" className="public-btn-primary">
             Get started free <span>→</span>
           </Link>
         </div>
@@ -528,24 +535,24 @@ export function LandingPage() {
         >
           {[
             {
-              icon: "ti-bolt",
+              Icon: Zap,
               title: "Real-time tracking",
               body: "Every movement synced instantly. Know exactly what's on the shelf before you even check.",
             },
             {
-              icon: "ti-bell",
+              Icon: Bell,
               title: "Smart alerts",
               body: "Get notified before stock runs dry — not after. Automatic reorder thresholds built in.",
             },
             {
-              icon: "ti-chart-line",
+              Icon: BarChart2,
               title: "Deep analytics",
               body: "Turn your inventory data into decisions. Spot trends, dead stock, and fast movers at a glance.",
             },
           ].map((f) => (
             <div key={f.title} className="feature-card">
               <div className="feature-icon">
-                <i className={`ti ${f.icon}`} />
+                <f.Icon size={18} />
               </div>
               <div
                 style={{
@@ -621,14 +628,14 @@ export function AboutPage() {
             </p>
             <div className="mt-12 grid max-w-[480px] grid-cols-2 gap-8">
               <div>
-                <p className="text-4xl font-bold text-[#101828]">500k+</p>
-                <p className="mt-2 text-base text-[#6a7282]">
+                <p className="text-4xl font-bold" style={{ color: "#1a1a18" }}>500k+</p>
+                <p className="mt-2 text-base" style={{ color: "#555" }}>
                   Items Managed Daily
                 </p>
               </div>
               <div>
-                <p className="text-4xl font-bold text-[#101828]">99.9%</p>
-                <p className="mt-2 text-base text-[#6a7282]">Stock Accuracy</p>
+                <p className="text-4xl font-bold" style={{ color: "#1a1a18" }}>99.9%</p>
+                <p className="mt-2 text-base" style={{ color: "#555" }}>Stock Accuracy</p>
               </div>
             </div>
           </div>
@@ -643,10 +650,10 @@ export function AboutPage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0f8c5a]/10 text-[#0f8c5a]">
                 <Target className="h-6 w-6" />
               </div>
-              <h2 className="mt-4 text-base font-bold text-[#101828]">
+              <h2 className="mt-4 text-base font-bold" style={{ color: "#1a1a18" }}>
                 Mission Driven
               </h2>
-              <p className="mt-1 text-xs leading-4 text-[#6a7282]">
+              <p className="mt-1 text-xs leading-4" style={{ color: "#555" }}>
                 Empowering local & global businesses.
               </p>
             </div>
@@ -655,8 +662,8 @@ export function AboutPage() {
       </section>
 
       <section className="relative z-10 mx-auto max-w-6xl px-6 py-16 text-center">
-        <h2 className="text-4xl font-bold text-[#101828]">Our Core Values</h2>
-        <p className="mt-4 text-base text-[#6a7282]">
+        <h2 className="section-title text-center">Our Core Values</h2>
+        <p className="section-subtitle text-center" style={{ maxWidth: 560, margin: "16px auto 0" }}>
           These principles guide every feature we build and every update we
           ship.
         </p>
@@ -674,10 +681,10 @@ export function AboutPage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0f8c5a]/10 text-[#0f8c5a]">
                 <card.icon className="h-6 w-6" />
               </div>
-              <h3 className="mt-6 text-xl font-bold text-[#101828]">
+              <h3 className="mt-6 text-xl font-bold" style={{ color: "#1a1a18" }}>
                 {card.title}
               </h3>
-              <p className="mt-3 text-base leading-[1.6] text-[#4a5565]">
+              <p className="mt-3 text-base leading-[1.6]" style={{ color: "#555" }}>
                 {card.copy}
               </p>
             </article>
@@ -754,10 +761,10 @@ export function FeaturesPage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#d6f5e8] text-[#0f8c5a]">
                 <row.icon className="h-6 w-6" />
               </div>
-              <h2 className="mt-6 text-3xl font-bold text-[#101828] lg:text-4xl">
+              <h2 className="mt-6 text-3xl font-bold lg:text-4xl" style={{ fontFamily: "'DM Serif Display', serif", color: "#1a1a18", letterSpacing: "-0.02em", fontWeight: 400 }}>
                 {row.title}
               </h2>
-              <p className="mt-5 max-w-[500px] text-lg leading-[1.62] text-[#4a5565]">
+              <p className="mt-5 max-w-[500px] text-lg leading-[1.62]" style={{ color: "#555", fontWeight: 300 }}>
                 {row.copy}
               </p>
               <div className="mt-8 space-y-4">
@@ -783,7 +790,7 @@ export function FeaturesPage() {
                 <card.icon className="h-6 w-6" />
               </div>
               <h3 className="mt-5 text-xl font-bold">{card.title}</h3>
-              <p className="mt-2 text-sm text-[#99a1af]">{card.copy}</p>
+              <p className="mt-2 text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>{card.copy}</p>
             </article>
           ))}
         </div>
@@ -971,16 +978,8 @@ export function PricingPage() {
               <div className="mt-auto pt-8">
                 <Link
                   to={plan.name === "Pro Plan" ? "/payment" : "/signup"}
-                  className={`inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition-colors ${
-                    plan.buttonClass === "bg-[#0f8c5a] text-white"
-                      ? "public-btn-primary"
-                      : "bg-[#1a1a18] text-white hover:bg-[#0f8c5a]"
-                  }`}
-                  style={
-                    plan.buttonClass === "bg-[#1a1a18] text-white"
-                      ? { background: "#1a1a18" }
-                      : {}
-                  }
+                  className={plan.name === "Pro Plan" ? "public-btn-primary w-full justify-center" : "public-btn-secondary w-full justify-center"}
+                  style={plan.name === "Pro Plan" ? {} : { borderColor: "#1a1a18", color: "#1a1a18" }}
                 >
                   {plan.button}
                 </Link>

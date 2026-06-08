@@ -91,27 +91,27 @@ export function SignupPage() {
         {step === 1 && (
           <>
             <AuthHeader title="Sign Up Account" copy="Enter your personal data to create your account." />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 mt-5 xl:mt-6">
               <AuthInput label="First Name" placeholder="eg. John" value={form.firstName} onChange={updateField("firstName")} />
               <AuthInput label="Last Name" placeholder="eg. Francisco" value={form.lastName} onChange={updateField("lastName")} />
             </div>
             <AuthInput className="mt-5 xl:mt-6" label="Email" type="email" placeholder="eg. johnfrans@gmail.com" value={form.email} onChange={updateField("email")} />
             <label className="mt-5 block xl:mt-6">
-              <span className="mb-2.5 block text-base font-medium leading-6 text-[#111]">Password</span>
+              <span className="mb-2.5 block text-base font-medium leading-6 text-[#1a1a18]">Password</span>
               <div className="flex items-center rounded-xl bg-[#f5f5f5] px-5 py-3.5 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0f8c5a]/25 xl:py-4">
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   value={form.password}
                   onChange={updateField("password")}
-                  className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[#111] outline-none placeholder:text-[#6b6b6b]"
+                  className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[#1a1a18] outline-none placeholder:text-[#6b6b6b]"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="focus:outline-none"
                 >
-                  {showPassword ? <Eye className="h-5 w-5 text-[#6b6b6b]" /> : <EyeOff className="h-5 w-5 text-[#6b6b6b]" />}
+                  {showPassword ? <EyeOff className="h-5 w-5 text-[#6b6b6b]" /> : <Eye className="h-5 w-5 text-[#6b6b6b]" />}
                 </button>
               </div>
               <span className="mt-2 block text-base leading-6 text-[#6b6b6b]">Must be at least 8 characters.</span>

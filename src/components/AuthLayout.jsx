@@ -6,105 +6,17 @@ const steps = [
   "Set up your first branch",
 ];
 
-const AUTH_STYLES = `
+const AUTH_FONT = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
   .auth-root { font-family: 'DM Sans', sans-serif; }
-  .auth-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 28px;
-    color: #1a1a18;
-    letter-spacing: -0.3px;
-    margin-bottom: 6px;
-  }
-  .auth-copy {
-    font-size: 13px;
-    color: #888;
-    font-weight: 300;
-    line-height: 1.55;
-    margin-bottom: 24px;
-  }
-  .auth-label {
-    display: block;
-    font-size: 11px;
-    font-weight: 500;
-    color: #888;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 7px;
-  }
-  .auth-input-wrap {
-    display: flex;
-    align-items: center;
-    border: 1px solid rgba(0,0,0,.12);
-    border-radius: 12px;
-    padding: 11px 14px;
-    background: #fff;
-    transition: border-color .2s, box-shadow .2s;
-  }
-  .auth-input-wrap:focus-within {
-    border-color: #0f8c5a;
-    box-shadow: 0 0 0 3px rgba(15,140,90,.08);
-  }
-  .auth-input-wrap input {
-    flex: 1;
-    min-width: 0;
-    background: transparent;
-    border: none;
-    outline: none;
-    font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
-    color: #1a1a18;
-  }
-  .auth-input-wrap input::placeholder { color: #bbb; }
-  .auth-field { margin-bottom: 16px; }
-  .auth-error {
-    margin-top: 16px;
-    background: #fde8e8;
-    border-radius: 10px;
-    padding: 12px 14px;
-    font-size: 13px;
-    color: #9b1c1c;
-    font-weight: 500;
-  }
-  .auth-btn-primary {
-    width: 100%; padding: 13px; background: #0f8c5a; color: #fff; font-size: 14px;
-    font-weight: 500; border-radius: 12px; border: none; cursor: pointer;
-    font-family: 'DM Sans', sans-serif; transition: background .2s, opacity .2s;
-    margin-top: 24px;
-  }
-  .auth-btn-primary:hover { background: #0a6b45; }
-  .auth-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  .auth-footer {
-    margin-top: 20px;
-    text-align: center;
-    font-size: 13px;
-    color: #888;
-  }
-  .auth-footer a {
-    color: #1a1a18;
-    font-weight: 600;
-    text-decoration: none;
-    transition: color .2s;
-  }
-  .auth-footer a:hover { color: #0f8c5a; }
-  .auth-toggle-pw {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #bbb;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    transition: color .2s;
-  }
-  .auth-toggle-pw:hover { color: #0f8c5a; }
 `;
 
 // Named export for AuthLayout
-export function AuthLayout({ activeStep = 1, children, logo }) {
+// showSteps: pass false on pages that aren't multi-step (e.g. SigninPage)
+export function AuthLayout({ activeStep = 1, showSteps = true, children, logo }) {
   return (
     <main className="auth-root min-h-screen">
-      <style>{AUTH_STYLES}</style>
+      <style>{AUTH_FONT}</style>
       <div className="flex min-h-screen flex-col lg:flex-row">
 
         {/* Left panel (gradient) */}
@@ -126,40 +38,51 @@ export function AuthLayout({ activeStep = 1, children, logo }) {
               )}
 
               <div className="max-w-[520px]">
-                <div className="mb-5 grid gap-5 sm:grid-cols-[1fr_220px] sm:items-end xl:mb-8">
-                  <h1 style={{ fontFamily: "'DM Serif Display', serif" }} className="text-4xl font-medium leading-tight md:text-[40px]">
-                    Get Started with Us
-                  </h1>
-                  <p className="text-lg leading-7 text-white/80">Complete these easy steps to register your account.</p>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {steps.map((step, index) => {
-                    const stepNumber = index + 1;
-                    const isActive   = stepNumber === activeStep;
-                    const isComplete = stepNumber < activeStep;
-                    return (
-                      <div
-                        key={step}
-                        className={`rounded-2xl p-4 backdrop-blur xl:p-5 ${
-                          isActive
-                            ? "border border-white/30 bg-white text-[#1a1a18] shadow-md"
-                            : "bg-white/10 text-white/70"
-                        }`}
-                      >
-                        <div
-                          className={`mb-4 flex h-6 w-6 items-center justify-center rounded-full text-sm font-medium xl:mb-6 ${
-                            isActive   ? "bg-[#0f8c5a] text-white" :
-                            isComplete ? "bg-white/30 text-white"  :
-                                         "bg-white/15 text-white"
-                          }`}
-                        >
-                          {isComplete ? "✓" : stepNumber}
-                        </div>
-                        <p className="text-sm leading-6">{step}</p>
-                      </div>
-                    );
-                  })}
-                </div>
+                {showSteps ? (
+                  <>
+                    <div className="mb-5 grid gap-5 sm:grid-cols-[1fr_220px] sm:items-end xl:mb-8">
+                      <h1 style={{ fontFamily: "'DM Serif Display', serif" }} className="text-4xl font-medium leading-tight md:text-[40px]">
+                        Get Started with Us
+                      </h1>
+                      <p className="text-lg leading-7 text-white/80">Complete these easy steps to register your account.</p>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {steps.map((step, index) => {
+                        const stepNumber = index + 1;
+                        const isActive   = stepNumber === activeStep;
+                        const isComplete = stepNumber < activeStep;
+                        return (
+                          <div
+                            key={step}
+                            className={`rounded-2xl p-4 backdrop-blur xl:p-5 ${
+                              isActive
+                                ? "border border-white/30 bg-white text-[#1a1a18] shadow-md"
+                                : "bg-white/10 text-white/70"
+                            }`}
+                          >
+                            <div
+                              className={`mb-4 flex h-6 w-6 items-center justify-center rounded-full text-sm font-medium xl:mb-6 ${
+                                isActive   ? "bg-[#0f8c5a] text-white" :
+                                isComplete ? "bg-[#0f8c5a]/25 text-[#0f8c5a]" :
+                                             "bg-white/15 text-white"
+                              }`}
+                            >
+                              {isComplete ? "✓" : stepNumber}
+                            </div>
+                            <p className="text-sm leading-6">{step}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <h1 style={{ fontFamily: "'DM Serif Display', serif" }} className="text-4xl font-medium leading-tight md:text-[40px]">
+                      Welcome back
+                    </h1>
+                    <p className="mt-4 text-lg leading-7 text-white/80">Sign in to your Tanzeem workspace.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

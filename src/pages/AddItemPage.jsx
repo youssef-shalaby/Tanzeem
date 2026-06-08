@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, ScanLine, Sparkles, Loader2, Plus, Trash2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { X, ScanLine, Sparkles, Loader2, Plus, Trash2, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 // ============================
@@ -52,6 +52,17 @@ const ADD_ITEM_STYLES = `
   .db-badge-teal { background: #e6f7f5; color: #0f8c5a; }
   .db-fade-in { animation: dbFadeIn .4s ease both; }
   @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .cat-combobox { position: relative; width: 100%; }
+  .cat-input-wrap { display: flex; align-items: center; width: 100%; padding: 9px 14px; padding-right: 36px; background: #fff; border: 1px solid rgba(0,0,0,.12); border-radius: 12px; font-size: 13px; font-family: 'DM Sans',sans-serif; color: #1a1a18; transition: border-color .2s; box-sizing: border-box; cursor: text; }
+  .cat-input-wrap:focus-within { border-color: #0f8c5a; box-shadow: 0 0 0 2px rgba(15,140,90,.1); }
+  .cat-input-wrap input { flex: 1; border: none; outline: none; background: transparent; font-size: 13px; font-family: 'DM Sans',sans-serif; color: #1a1a18; min-width: 0; }
+  .cat-chevron { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none; transition: transform .2s; }
+  .cat-chevron.open { transform: translateY(-50%) rotate(180deg); }
+  .cat-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50; background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.1); overflow: hidden; max-height: 220px; overflow-y: auto; }
+  .cat-option { padding: 9px 14px; font-size: 13px; font-family: 'DM Sans',sans-serif; color: #1a1a18; cursor: pointer; transition: background .12s; }
+  .cat-option:hover { background: #f9faf7; }
+  .cat-option.new-hint { color: #0f8c5a; font-weight: 500; }
+  .cat-option.new-hint:hover { background: rgba(15,140,90,.06); }
 `;
 
 function getToken() {
@@ -83,11 +94,82 @@ const emptyProduct = () => ({
   category: '',
   description: '',
   unitPrice: '',
+  costPrice: '',
   stock: '',
   reorderLevel: '',
   expiryDate: '',
   status: 'Active',
 });
+
+
+function CategoryCombobox({ value, onChange, categories, onAddCategory }) {
+  const [open, setOpen] = useState(false);
+  const [inputVal, setInputVal] = useState(value || '');
+  const wrapRef = useRef(null);
+
+  // Sync inputVal when value changes externally (e.g. AI suggest apply)
+  useEffect(() => { setInputVal(value || ''); }, [value]);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = inputVal.trim()
+    ? categories.filter(c => c.toLowerCase().includes(inputVal.toLowerCase()))
+    : categories;
+
+  const isNew = inputVal.trim() && !categories.some(c => c.toLowerCase() === inputVal.trim().toLowerCase());
+
+  const select = (cat) => {
+    onChange(cat);
+    setInputVal(cat);
+    setOpen(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const trimmed = inputVal.trim();
+      if (!trimmed) return;
+      if (isNew) onAddCategory(trimmed);
+      select(trimmed);
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className="cat-combobox" ref={wrapRef}>
+      <div className="cat-input-wrap" onClick={() => setOpen(true)}>
+        <input
+          type="text"
+          value={inputVal}
+          placeholder="Select or type a category…"
+          onChange={(e) => { setInputVal(e.target.value); onChange(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={handleKeyDown}
+          required
+        />
+      </div>
+      <ChevronDown size={14} className={`cat-chevron${open ? ' open' : ''}`} />
+      {open && (filtered.length > 0 || isNew) && (
+        <div className="cat-dropdown">
+          {filtered.map(c => (
+            <div key={c} className="cat-option" onMouseDown={() => select(c)}>{c}</div>
+          ))}
+          {isNew && (
+            <div className="cat-option new-hint" onMouseDown={() => { onAddCategory(inputVal.trim()); select(inputVal.trim()); }}>
+              + Add "{inputVal.trim()}"
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function AddItemPage() {
   const navigate = useNavigate();
@@ -96,6 +178,11 @@ export function AddItemPage() {
   const [aiSuggestions, setAiSuggestions] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [categories, setCategories] = useState(CATEGORIES);
+
+  const handleAddCategory = (cat) => {
+    setCategories(prev => prev.includes(cat) ? prev : [...prev, cat]);
+  };
 
   const handleChange = (id, field, value) => {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
@@ -186,9 +273,9 @@ Category:`,
             sku: product.sku,
             category: product.category,
             stock: parseInt(product.stock, 10) || 0,
-            costPrice: 0,
+            costPrice: parseFloat(product.costPrice) || 0,
             sellingPrice: parseFloat(product.unitPrice) || 0,
-            expiryDate: product.expiryDate ? new Date(product.expiryDate).toISOString() : null,
+            expiryDate: product.expiryDate ? new Date(product.expiryDate).toISOString() : "2099-12-31T00:00:00.000Z",
             barcode: product.barcode || '',
             description: product.description || '',
             reorderLevel: parseInt(product.reorderLevel, 10) || 0,
@@ -325,17 +412,12 @@ Category:`,
                     )}
                   </button>
                 </div>
-                <select
+                <CategoryCombobox
                   value={product.category}
-                  onChange={(e) => handleChange(product.id, 'category', e.target.value)}
-                  required
-                  className="db-select w-full"
-                >
-                  <option value="">Select category</option>
-                  {CATEGORIES.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                  onChange={(val) => handleChange(product.id, 'category', val)}
+                  categories={categories}
+                  onAddCategory={handleAddCategory}
+                />
 
                 {aiSuggestions[product.id] && (
                   <div className="mt-3 p-3 bg-[#0f8c5a]/10 border border-[#0f8c5a]/20 rounded-lg">
@@ -385,6 +467,22 @@ Category:`,
                       type="number"
                       value={product.unitPrice}
                       onChange={(e) => handleChange(product.id, 'unitPrice', e.target.value)}
+                      required
+                      step="0.01"
+                      min="0"
+                      className="flex-1 py-2 pr-3 text-sm bg-transparent focus:outline-none"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Cost Price <span className="text-red-500">*</span></label>
+                  <div className="flex items-center gap-2 border border-gray-200 rounded-lg focus-within:ring-2 focus-within:ring-[#0f8c5a]/20 focus-within:border-[#0f8c5a] bg-white">
+                    <span className="pl-3 text-gray-500 text-sm">$</span>
+                    <input
+                      type="number"
+                      value={product.costPrice}
+                      onChange={(e) => handleChange(product.id, 'costPrice', e.target.value)}
                       required
                       step="0.01"
                       min="0"
