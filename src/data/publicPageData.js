@@ -1,9 +1,14 @@
 import { Grid3X3, LineChart, Package, ShieldCheck, Truck, Users } from "lucide-react";
 
-export const landingDashboardImage = "https://www.figma.com/api/mcp/asset/214947db-43fd-44d9-905d-04aba2f383b8";
-export const aboutAnalyticsImage = "https://www.figma.com/api/mcp/asset/83ae285d-0161-4e52-b290-9f158c37bcc9";
-export const featuresInventoryImage = "https://www.figma.com/api/mcp/asset/73732a3c-261e-4bfc-bdbd-c3e95ec8e392";
-export const featuresAnalyticsImage = "https://www.figma.com/api/mcp/asset/20299c53-9870-4dfa-8a9a-dd86f8eaff2c";
+import landingDashboardImg from "../assets/landing-dashboard.png";
+import aboutAnalyticsImg from "../assets/about-analytics.png";
+import featuresInventoryImg from "../assets/features-inventory.png";
+import featuresAnalyticsImg from "../assets/features-analytics.png";
+
+export const landingDashboardImage = landingDashboardImg;
+export const aboutAnalyticsImage = aboutAnalyticsImg;
+export const featuresInventoryImage = featuresInventoryImg;
+export const featuresAnalyticsImage = featuresAnalyticsImg;
 
 export const valueCards = [
   { icon: Package, title: "Efficiency First", copy: "Every second saved in the warehouse is a second spent growing your business." },
