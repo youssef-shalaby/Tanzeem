@@ -17,7 +17,7 @@ const TanzeemLogo = () => (
 );
 
 const initialForm = {
-  firstName: "", lastName: "", email: "", password: "",
+  firstName: "", lastName: "", email: "", phoneNumber: "", password: "",
   companyName: "", field: "", companyEmail: "", companyPhone: "",
   branchName: "", location: "", branchPhone: "", branchEmail: "",
 };
@@ -43,7 +43,7 @@ export function SignupPage() {
 
   const validateStep = () => {
     if (step === 1) {
-      if (!form.firstName || !form.lastName || !form.email || !form.password) return "Please complete your account details.";
+      if (!form.firstName || !form.lastName || !form.email || !form.phoneNumber || !form.password) return "Please complete your account details.";
       if (form.password.length < 8) return "Password must be at least 8 characters.";
     }
     if (step === 2) {
@@ -64,7 +64,7 @@ export function SignupPage() {
     if (step < 3) { setStep((current) => current + 1); return; }
 
     const payload = {
-      signUpDto: { name: fullName, email: form.email, password: form.password },
+      signUpDto: { name: fullName, email: form.email, password: form.password, phoneNumber: form.phoneNumber },
       companyDto: { name: form.companyName, field: form.field, email: form.companyEmail, phone: form.companyPhone },
       branchDto: {
         id: 0, name: form.branchName, location: form.location,
@@ -76,7 +76,9 @@ export function SignupPage() {
     try {
       setIsSubmitting(true);
       const response = await submitOnboarding(payload);
-      setSession(response, form.email);
+      if (response && typeof response !== "string") {
+        await setSession(response);
+      }
       navigate("/welcome", { replace: true, state: { name: fullName || form.companyName } });
     } catch (submissionError) {
       setError(submissionError.message);
@@ -96,6 +98,7 @@ export function SignupPage() {
               <AuthInput label="Last Name" placeholder="eg. Francisco" value={form.lastName} onChange={updateField("lastName")} />
             </div>
             <AuthInput className="mt-5 xl:mt-6" label="Email" type="email" placeholder="eg. johnfrans@gmail.com" value={form.email} onChange={updateField("email")} />
+            <AuthInput className="mt-5 xl:mt-6" label="Phone Number" type="tel" placeholder="eg. +20 100 000 0000" value={form.phoneNumber} onChange={updateField("phoneNumber")} />
             <label className="mt-5 block xl:mt-6">
               <span className="mb-2.5 block text-base font-medium leading-6 text-[#1a1a18]">Password</span>
               <div className="flex items-center rounded-xl bg-[#f5f5f5] px-5 py-3.5 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0f8c5a]/25 xl:py-4">

@@ -31,7 +31,9 @@ export function DeleteProductModal({ isOpen, onClose, onConfirm, productName, pr
       if (!res.ok) {
         const text = await res.text();
         let msg = 'Failed to delete product.';
-        try { msg = JSON.parse(text)?.message || msg; } catch {}
+        try { msg = JSON.parse(text)?.message || msg; } catch {
+          // Keep the fallback message when the API returns non-JSON text.
+        }
         throw new Error(msg);
       }
 
@@ -52,21 +54,22 @@ export function DeleteProductModal({ isOpen, onClose, onConfirm, productName, pr
       />
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div className="app-card max-w-md w-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+              <div className="app-stat-icon bg-red-100">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">Delete Product</h2>
+              <h2 className="app-card-title">Delete Product</h2>
             </div>
             <button
               onClick={onClose}
               disabled={deleting}
-              className="p-1 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="db-icon-btn disabled:opacity-50"
+              aria-label="Close delete product dialog"
             >
-              <X className="w-5 h-5 text-gray-600" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
@@ -80,9 +83,9 @@ export function DeleteProductModal({ isOpen, onClose, onConfirm, productName, pr
             </p>
 
             {error && (
-              <div className="mt-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                {error}
-              </div>
+                <div className="app-alert-danger mt-4">
+                  {error}
+                </div>
             )}
           </div>
 
@@ -91,14 +94,14 @@ export function DeleteProductModal({ isOpen, onClose, onConfirm, productName, pr
             <button
               onClick={onClose}
               disabled={deleting}
-              className="px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="db-secondary-btn disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors disabled:opacity-60"
+              className="db-danger-btn disabled:opacity-60"
             >
               {deleting ? 'Deleting...' : 'Delete Product'}
             </button>

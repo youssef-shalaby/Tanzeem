@@ -40,6 +40,35 @@ const VIEW_ISSUE_STYLES = `
   .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
   .db-fade-in { animation: dbFadeIn .4s ease both; }
   @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .issue-item-panel {
+    border: 1px solid rgba(245,158,11,.2);
+    border-radius: 14px;
+    background:
+      linear-gradient(135deg, rgba(245,158,11,.08), rgba(245,158,11,.035)),
+      #fffdf6;
+    padding: 20px;
+  }
+  .issue-metric {
+    border: 1px solid var(--app-line);
+    border-radius: 12px;
+    background: var(--app-panel);
+    padding: 12px;
+  }
+  .issue-breakdown {
+    border: 1px solid var(--app-line);
+    border-radius: 12px;
+    background: var(--app-panel);
+    padding: 16px;
+  }
+  :root[data-theme="dark"] .issue-item-panel {
+    border-color: rgba(245,158,11,.16);
+    background: rgba(245,158,11,.055);
+  }
+  :root[data-theme="dark"] .issue-metric,
+  :root[data-theme="dark"] .issue-breakdown {
+    background: var(--app-panel-raised);
+    border-color: var(--app-line);
+  }
 `;
 
 function getToken() {
@@ -114,21 +143,21 @@ export function ViewDeliveryIssuePage() {
       <style>{VIEW_ISSUE_STYLES}</style>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="app-page-header">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="db-icon-btn">
+          <button onClick={() => navigate(-1)} className="db-icon-btn" aria-label="Back to delivery issues">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="db-section-title">Issue Details</h1>
-            <p className="text-sm text-gray-600 mt-1">
+          <div className="app-page-heading">
+            <h1 className="app-page-title">Issue Details</h1>
+            <p className="app-page-subtitle">
               Issue {issue.stringId} • Order ORD-{issue.orderId}
             </p>
           </div>
         </div>
         <button
           onClick={() => navigate(`/orders/${issue.orderId}`)}
-          className="flex items-center gap-2 px-4 py-2 text-sm text-[#0f8c5a] border border-[#0f8c5a] rounded-full hover:bg-[#0f8c5a]/10 transition-colors"
+          className="db-secondary-btn"
         >
           View Order
         </button>
@@ -180,7 +209,7 @@ export function ViewDeliveryIssuePage() {
                 const totalIssueQty = item.issues?.reduce((sum, i) => sum + i.quantity, 0) || 0;
                 const received = item.orderedQuantity - totalIssueQty;
                 return (
-                  <div key={index} className="rounded-xl p-5 bg-orange-50 border border-orange-200">
+                  <div key={index} className="issue-item-panel">
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <div className="flex items-center gap-3 mb-2">
@@ -194,22 +223,22 @@ export function ViewDeliveryIssuePage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 mb-4">
-                      <div className="bg-white rounded-lg p-3 border border-gray-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                      <div className="issue-metric">
                         <p className="text-xs text-gray-600 mb-1">Ordered</p>
                         <p className="text-lg font-semibold text-gray-900">{item.orderedQuantity}</p>
                       </div>
-                      <div className="bg-white rounded-lg p-3 border border-green-300">
+                      <div className="issue-metric">
                         <p className="text-xs text-green-600 mb-1">Received (Good)</p>
                         <p className="text-lg font-semibold text-green-600">{received}</p>
                       </div>
-                      <div className="bg-white rounded-lg p-3 border border-orange-300">
+                      <div className="issue-metric">
                         <p className="text-xs text-orange-600 mb-1">Total Issues</p>
                         <p className="text-lg font-semibold text-orange-600">{totalIssueQty}</p>
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <div className="issue-breakdown">
                       <p className="text-xs font-medium text-gray-900 mb-3">Issue Breakdown:</p>
                       <div className="flex flex-wrap gap-2">
                         {item.issues?.map((iss, idx) => {
@@ -309,7 +338,7 @@ export function ViewDeliveryIssuePage() {
               <textarea
                 rows={4}
                 placeholder="Add notes about the resolution..."
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 resize-none"
+                className="db-input resize-none"
                 value={resolutionNotes}
                 onChange={(e) => setResolutionNotes(e.target.value)}
               />

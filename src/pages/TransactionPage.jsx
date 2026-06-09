@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Search, ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown,
-  RefreshCw, Eye, Loader2,
+  RefreshCw, Loader2,
 } from "lucide-react";
 import { Link } from "react-router";
 
@@ -149,12 +149,12 @@ export function TransactionsPage() {
       <style>{TRANSACTIONS_STYLES}</style>
 
       {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="app-page-header">
+        <div className="app-page-heading">
           <h1 className="db-section-title">Transaction History</h1>
-          <p className="text-sm text-gray-600 mt-1">Complete record of all inventory movements and adjustments</p>
+          <p className="app-page-subtitle">Review stock movements, adjustments, values, and source reasons.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="app-page-actions">
           <Link to="/add-stock" className="db-secondary-btn">
             <ArrowUpCircle className="w-4 h-4" /> Stock In
           </Link>
@@ -315,8 +315,8 @@ export function TransactionsPage() {
                       <td className="text-gray-600">{txn.source}</td>
                       <td>{txn.performedBy}</td>
                       <td className="text-center">
-                        <Link to={`/transactions/${txn.id}`} className="inline-flex p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                          <Eye className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                        <Link to={`/transactions/${txn.id}`} className="db-secondary-btn" style={{ padding: "6px 12px", fontSize: "12px" }}>
+                          View
                         </Link>
                       </td>
                     </tr>

@@ -1,20 +1,23 @@
 import { Link, useLocation } from "react-router";
-import { ArrowRight, Check, CircleX, Target, Zap, Bell, BarChart2 } from "lucide-react";
 import {
-  AccentBadge,
+  ArrowRight,
+  CircleX,
+  CreditCard,
+  Zap,
+  Bell,
+  BarChart2,
+} from "lucide-react";
+import { PublicFooter } from "../components/PublicFooter";
+import { useAuth } from "../contexts/AuthContext";
+import {
   CheckList,
   FeatureBullet,
-  PageFrame,
   PublicNav,
   ScreenshotCard,
-  TanzeemNavLogo,
-  TealIcon,
 } from "../components/PublicPageLayout";
 import {
   aboutAnalyticsImage,
-  capabilityCards,
   featureRows,
-  landingDashboardImage,
   valueCards,
 } from "../data/publicPageData";
 
@@ -44,19 +47,45 @@ const PUBLIC_STYLES = `
     padding: 20px; transition: box-shadow .2s;
   }
   .public-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,.05); }
-  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 44px; font-weight: 600; color: #1a1a18; letter-spacing: -0.02em; }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 44px; font-weight: 600; color: #1a1a18; letter-spacing: 0; }
   @media (max-width: 768px) { .db-section-title { font-size: 32px; } }
 
   /* Shared hero classes — defined here so all pages have them without relying on LandingPage rendering first */
-  .hero-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(15,140,90,.1); border:1px solid rgba(15,140,90,.2); border-radius:100px; padding:6px 14px; font-size:13px; font-weight:500; color:#0a6b45; margin-bottom:28px; animation:fadeSlideDown .5s ease both; }
-  .badge-dot { width:7px; height:7px; background:#0f8c5a; border-radius:50%; }
-  .hero-h1 { font-family:'DM Serif Display',serif; font-size:68px; line-height:1.08; letter-spacing:-1.5px; color:#1a1a18; max-width:640px; animation:fadeSlideDown .55s .05s ease both; }
+  .hero-h1 { font-family:'DM Serif Display',serif; font-size:68px; line-height:1.08; letter-spacing:0; color:#1a1a18; max-width:640px; animation:fadeSlideDown .55s .05s ease both; }
   .hero-h1 em { font-style:italic; color:#0f8c5a; }
   .hero-p { margin-top:22px; max-width:520px; font-size:17px; line-height:1.65; color:#555; font-weight:300; animation:fadeSlideDown .55s .1s ease both; }
 
   /* Shared section heading — use instead of raw Tailwind text-4xl on About / Features */
-  .section-title { font-family:'DM Serif Display',serif; font-size:40px; line-height:1.12; letter-spacing:-0.02em; color:#1a1a18; font-weight:400; }
+  .section-title { font-family:'DM Serif Display',serif; font-size:40px; line-height:1.12; letter-spacing:0; color:#1a1a18; font-weight:400; }
   .section-subtitle { font-size:17px; line-height:1.65; color:#555; font-weight:300; margin-top:16px; }
+  .public-wash-panel {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(15,140,90,.12);
+    border-radius: 28px;
+    background:
+      linear-gradient(135deg, rgba(15,140,90,.085), rgba(255,255,255,0) 58%),
+      rgba(255,255,255,.82);
+    box-shadow: 0 22px 60px rgba(15,23,42,.07);
+  }
+  .public-wash-panel::after {
+    content:"";
+    position:absolute;
+    right:28px;
+    bottom:0;
+    width:180px;
+    height:3px;
+    border-radius:999px;
+    background:linear-gradient(90deg,rgba(15,140,90,0),rgba(15,140,90,.34));
+  }
+  .public-wash-panel > * { position:relative; z-index:1; }
+  .public-step-card {
+    background: rgba(255,255,255,.78);
+    border: 1px solid rgba(15,140,90,.12);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 8px 26px rgba(15,23,42,.04);
+  }
 
   @keyframes fadeSlideDown { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:translateY(0)} }
   @keyframes fadeSlideUp   { from{opacity:0;transform:translateY(20px)}  to{opacity:1;transform:translateY(0)} }
@@ -114,9 +143,10 @@ export function LandingPage() {
     >
       <PublicStyle />
       <style>{`
-        .lp-blob-1{position:absolute;bottom:-100px;left:50%;transform:translateX(-50%);width:900px;height:500px;background:radial-gradient(ellipse,#c8f5e0 0%,#c8eee0 40%,#d4f0e8 65%,transparent 80%);filter:blur(40px);opacity:.7;pointer-events:none;}
-        .lp-blob-2{position:absolute;top:-60px;right:-120px;width:400px;height:400px;background:radial-gradient(circle,#e0faf0 0%,transparent 70%);filter:blur(50px);opacity:.5;pointer-events:none;}
+        .lp-blob-1{position:absolute;bottom:-110px;left:0;right:0;margin:auto;width:min(900px,100%);height:500px;background:radial-gradient(ellipse,#c8f5e0 0%,#d4f0e8 55%,transparent 82%);filter:blur(44px);opacity:.58;pointer-events:none;}
+        .lp-blob-2{position:absolute;top:-80px;right:0;width:min(420px,72vw);height:420px;background:radial-gradient(circle,#e0faf0 0%,transparent 70%);filter:blur(54px);opacity:.42;pointer-events:none;}
         .dashboard-wrap{animation:fadeSlideUp .65s .2s ease both;}
+        .dashboard-card{background:#fff;border-radius:20px;border:1px solid rgba(0,0,0,.1);box-shadow:0 2px 40px rgba(0,0,0,.08);overflow:hidden;}
         .dash-sidebar-icon{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;}
         .dash-sidebar-icon.active{background:#0f8c5a;color:#fff;}
         .metric-badge{display:inline-flex;align-items:center;font-size:9px;font-weight:500;padding:2px 6px;border-radius:100px;margin-top:3px;}
@@ -132,17 +162,27 @@ export function LandingPage() {
         .ss-ok{background:#d6f5e8;color:#0a6b45;}
         .ss-low{background:#fef3c7;color:#8b5e00;}
         .ss-out{background:#fde8e8;color:#9b1c1c;}
-        .feature-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:20px;}
-        .feature-icon{width:36px;height:36px;background:#d6f5e8;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;color:#0f8c5a;margin-bottom:14px;}
+        .feature-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:20px;}
+        .feature-icon{width:36px;height:36px;background:#d6f5e8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;color:#0f8c5a;margin-bottom:14px;}
+        @media (max-width: 860px){
+          .landing-dashboard-main{height:auto !important;}
+          .landing-metrics{grid-template-columns:repeat(2,1fr) !important;}
+          .landing-dashboard-grid{grid-template-columns:1fr !important;}
+          .landing-features{grid-template-columns:1fr !important;}
+        }
+        @media (max-width: 560px){
+          .hero-h1{font-size:48px !important;}
+          .hero-p{font-size:16px !important;}
+          .landing-metrics{grid-template-columns:1fr !important;}
+          .dashboard-wrap{padding:0 14px !important;}
+        }
       `}</style>
 
       <div className="lp-blob-1" />
       <div className="lp-blob-2" />
 
-      {/* Nav — unified PublicNav with TanzeemNavLogo */}
       <PublicNav />
 
-      {/* Hero */}
       <section
         style={{
           position: "relative",
@@ -154,10 +194,6 @@ export function LandingPage() {
           padding: "52px 24px 0",
         }}
       >
-        <div className="hero-badge">
-          <div className="badge-dot" />
-          Inventory management, simplified
-        </div>
         <h1 className="hero-h1">
           Stock Smarter,
           <br />
@@ -183,7 +219,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Dashboard mockup */}
       <div
         className="dashboard-wrap"
         style={{
@@ -195,15 +230,7 @@ export function LandingPage() {
           padding: "0 24px",
         }}
       >
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 20,
-            border: "1px solid rgba(0,0,0,.1)",
-            boxShadow: "0 2px 40px rgba(0,0,0,.08)",
-            overflow: "hidden",
-          }}
-        >
+        <div className="dashboard-card">
           <div
             style={{
               display: "flex",
@@ -243,8 +270,8 @@ export function LandingPage() {
               tanzeem.runasp.net/dashboard
             </div>
           </div>
-          <div style={{ display: "flex", height: 340 }}>
-            {/* Mini sidebar with logo mark */}
+
+          <div className="landing-dashboard-main" style={{ display: "flex", height: 340 }}>
             <div
               style={{
                 width: 52,
@@ -286,6 +313,7 @@ export function LandingPage() {
                 </div>
               ))}
             </div>
+
             <div
               style={{
                 flex: 1,
@@ -303,9 +331,7 @@ export function LandingPage() {
                 }}
               >
                 <div>
-                  <div
-                    style={{ fontSize: 15, fontWeight: 600, color: "#1a1a18" }}
-                  >
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a18" }}>
                     Overview
                   </div>
                   <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
@@ -327,7 +353,9 @@ export function LandingPage() {
                   + Add item
                 </button>
               </div>
+
               <div
+                className="landing-metrics"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(4,1fr)",
@@ -336,12 +364,7 @@ export function LandingPage() {
                 }}
               >
                 {[
-                  {
-                    l: "Total SKUs",
-                    v: "1,284",
-                    b: "↑ 12%",
-                    bc: "badge-green",
-                  },
+                  { l: "Total SKUs", v: "1,284", b: "↑ 12%", bc: "badge-green" },
                   { l: "In stock", v: "94%", b: "↑ 3%", bc: "badge-green" },
                   { l: "Low stock", v: "38", b: "↑ 7", bc: "badge-red" },
                   { l: "Orders today", v: "52", b: "↑ 18%", bc: "badge-green" },
@@ -351,7 +374,7 @@ export function LandingPage() {
                     style={{
                       background: "#fff",
                       border: "1px solid rgba(0,0,0,.07)",
-                      borderRadius: 10,
+                      borderRadius: 8,
                       padding: "10px 12px",
                     }}
                   >
@@ -366,20 +389,16 @@ export function LandingPage() {
                     >
                       {m.l}
                     </div>
-                    <div
-                      style={{
-                        fontSize: 18,
-                        fontWeight: 600,
-                        color: "#1a1a18",
-                      }}
-                    >
+                    <div style={{ fontSize: 18, fontWeight: 600, color: "#1a1a18" }}>
                       {m.v}
                     </div>
                     <div className={`metric-badge ${m.bc}`}>{m.b}</div>
                   </div>
                 ))}
               </div>
+
               <div
+                className="landing-dashboard-grid"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
@@ -390,28 +409,14 @@ export function LandingPage() {
                   style={{
                     background: "#fff",
                     border: "1px solid rgba(0,0,0,.07)",
-                    borderRadius: 10,
+                    borderRadius: 8,
                     padding: 12,
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color: "#444",
-                      marginBottom: 10,
-                    }}
-                  >
+                  <div style={{ fontSize: 11, fontWeight: 500, color: "#444", marginBottom: 10 }}>
                     Stock movement — this week
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-end",
-                      gap: 6,
-                      height: 80,
-                    }}
-                  >
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 80 }}>
                     {bars.map((h, i) => (
                       <div
                         key={i}
@@ -420,49 +425,27 @@ export function LandingPage() {
                       />
                     ))}
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginTop: 4,
-                    }}
-                  >
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
                     {barDays.map((d, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          flex: 1,
-                          textAlign: "center",
-                          fontSize: 8,
-                          color: "#bbb",
-                        }}
-                      >
+                      <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 8, color: "#bbb" }}>
                         {d}
                       </div>
                     ))}
                   </div>
                 </div>
+
                 <div
                   style={{
                     background: "#fff",
                     border: "1px solid rgba(0,0,0,.07)",
-                    borderRadius: 10,
+                    borderRadius: 8,
                     padding: 12,
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color: "#444",
-                      marginBottom: 10,
-                    }}
-                  >
+                  <div style={{ fontSize: 11, fontWeight: 500, color: "#444", marginBottom: 10 }}>
                     Recent items
                   </div>
-                  <div
-                    style={{ display: "flex", flexDirection: "column", gap: 6 }}
-                  >
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {stockItems.map((item) => (
                       <div
                         key={item.sku}
@@ -479,27 +462,13 @@ export function LandingPage() {
                           {item.initials}
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 500,
-                              color: "#1a1a18",
-                            }}
-                          >
+                          <div style={{ fontSize: 11, fontWeight: 500, color: "#1a1a18" }}>
                             {item.name}
                           </div>
-                          <div style={{ fontSize: 9, color: "#888" }}>
-                            {item.sku}
-                          </div>
+                          <div style={{ fontSize: 9, color: "#888" }}>{item.sku}</div>
                         </div>
                         <div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#1a1a18",
-                            }}
-                          >
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a18" }}>
                             {item.qty}
                           </div>
                           <div className={`stock-status ${item.statusClass}`}>
@@ -516,7 +485,6 @@ export function LandingPage() {
         </div>
       </div>
 
-      {/* Features */}
       <div
         style={{
           position: "relative",
@@ -527,6 +495,7 @@ export function LandingPage() {
         }}
       >
         <div
+          className="landing-features"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3,1fr)",
@@ -542,42 +511,30 @@ export function LandingPage() {
             {
               Icon: Bell,
               title: "Smart alerts",
-              body: "Get notified before stock runs dry — not after. Automatic reorder thresholds built in.",
+              body: "Get notified before stock runs dry. Automatic reorder thresholds built in.",
             },
             {
               Icon: BarChart2,
               title: "Deep analytics",
-              body: "Turn your inventory data into decisions. Spot trends, dead stock, and fast movers at a glance.",
+              body: "Turn your inventory data into decisions. Spot trends and fast movers at a glance.",
             },
           ].map((f) => (
             <div key={f.title} className="feature-card">
               <div className="feature-icon">
                 <f.Icon size={18} />
               </div>
-              <div
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#1a1a18",
-                  marginBottom: 6,
-                }}
-              >
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a18", marginBottom: 6 }}>
                 {f.title}
               </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: "#666",
-                  lineHeight: 1.6,
-                  fontWeight: 300,
-                }}
-              >
+              <div style={{ fontSize: 13, color: "#666", lineHeight: 1.6, fontWeight: 300 }}>
                 {f.body}
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      <PublicFooter />
     </main>
   );
 }
@@ -609,12 +566,6 @@ export function AboutPage() {
       <section className="relative z-10 mx-auto max-w-6xl px-6 py-16">
         <div className="grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <div
-              className="hero-badge"
-              style={{ display: "inline-flex", marginBottom: 24 }}
-            >
-              <div className="badge-dot" /> Our Story
-            </div>
             <h1 className="hero-h1" style={{ fontSize: 52, maxWidth: 580 }}>
               Organizing
               <br />
@@ -646,17 +597,6 @@ export function AboutPage() {
               alt="Tanzeem analytics preview"
               className="absolute right-0 top-8 w-full max-w-[610px] rotate-3"
             />
-            <div className="absolute bottom-0 left-0 w-[192px] rounded-2xl border border-white/80 bg-white/90 p-6 shadow-[0_20px_25px_rgba(0,0,0,0.1)]">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0f8c5a]/10 text-[#0f8c5a]">
-                <Target className="h-6 w-6" />
-              </div>
-              <h2 className="mt-4 text-base font-bold" style={{ color: "#1a1a18" }}>
-                Mission Driven
-              </h2>
-              <p className="mt-1 text-xs leading-4" style={{ color: "#555" }}>
-                Empowering local & global businesses.
-              </p>
-            </div>
           </div>
         </div>
       </section>
@@ -691,6 +631,8 @@ export function AboutPage() {
           ))}
         </div>
       </section>
+
+      <PublicFooter />
     </main>
   );
 }
@@ -720,12 +662,6 @@ export function FeaturesPage() {
       <PublicNav />
 
       <section className="relative z-10 mx-auto max-w-6xl px-6 pt-16 text-center">
-        <div
-          className="hero-badge"
-          style={{ display: "inline-flex", marginBottom: 24 }}
-        >
-          <div className="badge-dot" /> Powerful features
-        </div>
         <h1
           className="hero-h1"
           style={{
@@ -782,39 +718,35 @@ export function FeaturesPage() {
         ))}
       </section>
 
-      <section className="relative z-10 mx-auto max-w-6xl mt-28 mb-16 overflow-hidden rounded-[48px] bg-[#111614] px-8 py-20 text-white md:px-20">
-        <div className="grid gap-10 md:grid-cols-4">
-          {capabilityCards.map((card) => (
-            <article key={card.title}>
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
-                <card.icon className="h-6 w-6" />
-              </div>
-              <h3 className="mt-5 text-xl font-bold">{card.title}</h3>
-              <p className="mt-2 text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>{card.copy}</p>
-            </article>
-          ))}
-        </div>
-        <div className="mx-auto mt-20 max-w-[880px] border-t border-white/10 pt-14 text-center">
-          <h2 className="text-3xl font-bold">
-            Ready to transform your warehouse?
-          </h2>
-          <Link to="/signup" className="public-btn-primary mt-8 inline-flex">
-            Get Started Now
-          </Link>
+      <section className="relative z-10 mx-auto mb-16 mt-28 max-w-6xl px-6">
+        <div className="public-wash-panel px-8 py-12 md:px-14">
+          <div className="grid items-center gap-8 md:grid-cols-[1fr_auto]">
+            <div>
+              <h2 className="section-title">Start with the inventory work that matters.</h2>
+              <p className="section-subtitle max-w-[620px]">
+                Create products, record stock movement, review orders, and keep alerts visible from the first day your workspace opens.
+              </p>
+            </div>
+            <Link to="/signup" className="public-btn-primary justify-center">
+              Create workspace
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </section>
+
+      <PublicFooter />
     </main>
   );
 }
 
 const pricingPlans = [
   {
-    name: "Free subscription",
-    price: "0LE",
-    note: "Free Plan",
-    tags: ["Solo Designers", "Small Teams"],
-    button: "Start free 30-day trial",
-    buttonClass: "bg-[#0f8c5a] text-white",
+    name: "Starter",
+    price: "0 LE",
+    note: "Free forever",
+    tags: ["Small teams", "First branch"],
+    button: "Create free workspace",
     includes: [
       "Basic inventory management",
       "Add and manage items",
@@ -828,12 +760,11 @@ const pricingPlans = [
   },
   {
     name: "Pro Plan",
-    price: "999LE",
+    price: "999 LE",
     note: "Paid Yearly",
-    tags: ["Business Plan"],
-    banner: "Save 500LE",
-    button: "Buy now",
-    buttonClass: "bg-[#1a1a18] text-white",
+    tags: ["Growing teams"],
+    banner: "Yearly billing",
+    button: "Review Pro checkout",
     includes: [
       "Unlimited users",
       "API access",
@@ -896,12 +827,6 @@ export function PricingPage() {
       <PublicNav />
 
       <section className="relative z-10 mx-auto max-w-[1100px] px-6 py-16 text-center">
-        <div
-          className="hero-badge"
-          style={{ display: "inline-flex", marginBottom: 24 }}
-        >
-          <div className="badge-dot" /> Simple pricing
-        </div>
         <h1 className="hero-h1" style={{ fontSize: 52, maxWidth: "none" }}>
           Plans and Pricing
         </h1>
@@ -909,7 +834,7 @@ export function PricingPage() {
           className="hero-p"
           style={{ maxWidth: 600, marginLeft: "auto", marginRight: "auto" }}
         >
-          Receive unlimited credits when you pay yearly, and save on your plan.
+          Start with the basics, then add advanced team controls and workflow support when your operation grows.
         </p>
 
         <div className="mt-16 grid gap-6 md:grid-cols-2">
@@ -948,7 +873,7 @@ export function PricingPage() {
                   {plan.price}
                 </span>
                 <span className="text-gray-500">
-                  /{plan.note === "Free Plan" ? "month" : "year"}
+                  /{plan.note === "Free forever" ? "month" : "year"}
                 </span>
               </div>
               <p className="mt-1 text-sm text-gray-500">{plan.note}</p>
@@ -987,7 +912,10 @@ export function PricingPage() {
             </div>
           ))}
         </div>
+
       </section>
+
+      <PublicFooter />
     </main>
   );
 }
@@ -1016,63 +944,48 @@ export function PaymentPage() {
 
       <PublicNav />
 
-      <section className="relative z-10 mx-auto max-w-5xl px-6 py-16">
-        <div className="text-center">
-          <div
-            className="hero-badge"
-            style={{ display: "inline-flex", marginBottom: 24 }}
-          >
-            <div className="badge-dot" /> Secure payment
+      <section className="relative z-10 mx-auto max-w-6xl px-6 py-20">
+        <div className="grid items-end gap-10 lg:grid-cols-[1fr_340px]">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#cfe7d9] bg-white/75 px-4 py-2 text-sm font-semibold text-[#0a6b45]">
+              <CreditCard className="h-4 w-4" />
+              Payment setup required
+            </div>
+            <h1 className="hero-h1 mt-6" style={{ fontSize: 56 }}>
+              Upgrade to Pro
+            </h1>
+            <p className="hero-p" style={{ maxWidth: 560 }}>
+              Pro is ready for your team. Create your workspace now, then connect a payment provider from billing when checkout is enabled.
+            </p>
           </div>
-          <h1 className="hero-h1" style={{ fontSize: 52 }}>
-            Payment
-          </h1>
-          <p
-            className="hero-p"
-            style={{ maxWidth: 460, marginLeft: "auto", marginRight: "auto" }}
-          >
-            Finish your setup with a billing method for your Tanzeem workspace.
-          </p>
+
+          <div className="rounded-2xl border border-[#dfe8e2] bg-white/80 p-5">
+            <div className="text-sm font-semibold text-[#555]">Amount due today</div>
+            <div className="mt-2 text-4xl font-semibold tracking-tight text-[#111827]">0 LE</div>
+            <div className="mt-2 text-sm leading-6 text-[#66736d]">
+              No card is charged on this screen.
+            </div>
+          </div>
         </div>
 
-        <div className="mt-16 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          {/* Billing Form Card */}
+        <div className="mt-14 grid gap-8 lg:grid-cols-[1fr_420px]">
           <div className="public-card p-8">
-            <h2 className="text-2xl font-semibold text-gray-900">
-              Billing details
-            </h2>
-            <div className="mt-6 grid gap-5">
-              {["Cardholder Name", "Card Number", "Expiry Date", "CVC"].map(
-                (label) => (
-                  <label key={label} className="block">
-                    <span className="mb-2 block text-sm font-medium text-gray-700">
-                      {label}
-                    </span>
-                    <input
-                      className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-[#0f8c5a] focus:ring-1 focus:ring-[#0f8c5a]"
-                      placeholder={
-                        label === "Card Number" ? "1234 5678 9012 3456" : ""
-                      }
-                    />
-                  </label>
-                ),
-              )}
+            <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold text-[#111827]">Pro Plan</h2>
+                <p className="mt-2 text-sm leading-6 text-[#66736d]">
+                  Built for growing teams that need more control, support, and API access.
+                </p>
+              </div>
+              <div className="text-left sm:text-right">
+                <div className="text-5xl font-semibold tracking-tight text-[#111827]">999 LE</div>
+                <div className="mt-1 text-sm text-[#66736d]">per year</div>
+              </div>
             </div>
-            <Link
-              to="/signup"
-              className="public-btn-primary mt-8 w-full justify-center"
-            >
-              Continue to signup
-            </Link>
-          </div>
 
-          {/* Pro Plan Summary Card */}
-          <div className="public-card p-8 bg-[#f9faf7] border-[#0f8c5a]/20">
-            <h2 className="text-xl font-semibold text-gray-900">Pro Plan</h2>
-            <p className="mt-4 text-4xl font-bold text-gray-900">999LE</p>
-            <p className="mt-1 text-sm text-gray-500">Paid Yearly</p>
-            <div className="mt-6 h-px bg-gray-200" />
-            <div className="mt-6">
+            <div className="mt-8 h-px bg-[#e6ebe7]" />
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <CheckList
                 items={[
                   "Unlimited users",
@@ -1082,20 +995,66 @@ export function PaymentPage() {
                 ]}
               />
             </div>
-            <div className="mt-6 rounded-lg bg-green-50 p-3 text-xs text-green-700">
-              🔒 Your payment info is encrypted and secure.
+
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+              <Link to="/signup" className="public-btn-primary justify-center">
+                Create workspace <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link to="/#pricing" className="public-btn-secondary justify-center">
+                Back to pricing
+              </Link>
             </div>
           </div>
+
+          <aside className="public-card p-8">
+            <h2 className="text-xl font-semibold text-[#111827]">Checkout status</h2>
+            <div className="mt-6 space-y-5">
+              {[
+                { label: "Payment provider", value: "Not connected" },
+                { label: "Card collection", value: "Disabled" },
+                { label: "Next step", value: "Create workspace" },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center justify-between gap-6 border-b border-[#edf1ee] pb-5 last:border-b-0 last:pb-0">
+                  <span className="text-sm text-[#66736d]">{row.label}</span>
+                  <span className="text-sm font-semibold text-[#1a1a18]">{row.value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 rounded-xl bg-[#eef8f2] p-4 text-sm leading-6 text-[#0a6b45]">
+              A provider-hosted checkout can be connected later without changing the Pro plan.
+            </div>
+          </aside>
         </div>
       </section>
+
+      <PublicFooter />
     </main>
   );
 }
 
+function getWelcomeName(currentUser, fallbackName) {
+  const rawName = currentUser?.name || fallbackName || "there";
+  const withoutEmailDomain = String(rawName).split("@")[0];
+  const cleaned = withoutEmailDomain
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) return "there";
+
+  return cleaned
+    .split(" ")
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
 export function WelcomePage() {
   const location = useLocation();
-  const name = location.state?.name || "there";
-
+  const { currentUser, getDefaultRoute } = useAuth();
+  const name = getWelcomeName(currentUser, location.state?.name);
+  const startPath = currentUser ? getDefaultRoute() : "/signin";
+  const firstName = String(name).split(" ")[0] || "there";
   return (
     <main
       className="public-root"
@@ -1109,64 +1068,37 @@ export function WelcomePage() {
       }}
     >
       <PublicStyle />
-      {/* Background blobs (same as LandingPage) */}
       <style>{`
-        .lp-blob-1{position:absolute;bottom:-100px;left:50%;transform:translateX(-50%);width:900px;height:500px;background:radial-gradient(ellipse,#c8f5e0 0%,#c8eee0 40%,#d4f0e8 65%,transparent 80%);filter:blur(40px);opacity:.7;pointer-events:none;}
-        .lp-blob-2{position:absolute;top:-60px;right:-120px;width:400px;height:400px;background:radial-gradient(circle,#e0faf0 0%,transparent 70%);filter:blur(50px);opacity:.5;pointer-events:none;}
+        .welcome-bg{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,#f9faf7 0%,#f6fbf8 48%,#eef8f2 100%);}
+        .welcome-wash{position:absolute;left:50%;top:104px;transform:translateX(-50%);width:min(840px,88vw);height:520px;border-radius:999px;background:radial-gradient(ellipse,rgba(15,140,90,.16),rgba(15,140,90,.055) 50%,transparent 74%);filter:blur(36px);pointer-events:none;}
+        .welcome-shell{position:relative;z-index:10;min-height:calc(100vh - 82px);display:grid;align-items:start;padding:clamp(138px,18vh,218px) 24px 96px;}
+        .welcome-panel{width:min(560px,100%);margin:0 auto;}
+        .welcome-hero{position:relative;}
+        .welcome-title{font-family:'DM Serif Display',serif;font-size:58px;line-height:1.02;letter-spacing:0;color:#1a1a18;max-width:560px;}
+        .welcome-copy{margin-top:20px;max-width:520px;color:#59615c;font-size:17px;line-height:1.72;font-weight:300;}
+        .welcome-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px;}
+        @media (max-width:900px){.welcome-wash{top:90px;height:420px}.welcome-shell{padding-top:88px}.welcome-title{font-size:44px}.welcome-copy{font-size:16px}}
       `}</style>
-      <div className="lp-blob-1" />
-      <div className="lp-blob-2" />
+      <div className="welcome-bg" />
+      <div className="welcome-wash" />
 
       <PublicNav />
 
-      <section className="relative z-10 mx-auto max-w-6xl px-6 py-16">
-        <div className="grid min-h-[620px] items-center gap-14 lg:grid-cols-[0.9fr_1.1fr]">
-          {/* Left content */}
-          <div>
-            <div
-              className="hero-badge"
-              style={{ display: "inline-flex", marginBottom: 24 }}
-            >
-              <div className="badge-dot" /> Welcome
-            </div>
-            <h1 className="hero-h1" style={{ fontSize: 52, maxWidth: 620 }}>
-              Welcome, <span className="text-[#0f8c5a]">{name}</span>
-            </h1>
-            <p className="hero-p" style={{ maxWidth: 560, marginTop: 28 }}>
-              Your Tanzeem workspace is ready. Start from the dashboard, review
-              your branch setup, and keep every item moving with clarity.
+      <section className="welcome-shell">
+        <div className="welcome-panel">
+          <div className="welcome-hero">
+            <h1 className="welcome-title">Welcome, {firstName}.</h1>
+            <p className="welcome-copy">
+              Your Tanzeem workspace is ready. Start from the area your role can access, then finish the setup work that makes daily inventory operations reliable.
             </p>
-            <div className="mt-10 flex flex-wrap gap-4">
-              <Link to="/dashboard" className="public-btn-primary">
-                Open dashboard
+            <div className="welcome-actions">
+              <Link to={startPath} className="public-btn-primary">
+                Open workspace
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link to="/settings" className="public-btn-secondary">
-                Review settings
+              <Link to={currentUser ? "/settings" : "/signin"} className="public-btn-secondary">
+                Review setup
               </Link>
-            </div>
-          </div>
-
-          {/* Right card - Next steps */}
-          <div className="rounded-[32px] bg-[#111614] p-8 text-white shadow-xl lg:p-10">
-            <h2 className="text-2xl font-bold lg:text-3xl">Next steps</h2>
-            <div className="mt-8 grid gap-4">
-              {[
-                "Review your company profile",
-                "Add or import products",
-                "Invite managers and staff",
-                "Tune alert thresholds",
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="flex items-center gap-4 rounded-xl bg-white/10 p-4 transition hover:bg-white/15"
-                >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0f8c5a]">
-                    <Check className="h-4 w-4" />
-                  </span>
-                  <span className="font-medium">{item}</span>
-                </div>
-              ))}
             </div>
           </div>
         </div>

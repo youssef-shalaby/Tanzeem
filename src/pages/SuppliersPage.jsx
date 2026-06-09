@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   Search,
@@ -7,11 +8,15 @@ import {
   Edit,
   Trash2,
   MoreVertical,
+  Users,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { DeleteSupplierModal } from '../ui/DeleteSupplierModal';
 import { CSVUploadModal } from '../ui/CSVUploadModal';
 import { CSVReviewModal } from '../ui/CSVReviewModal';
+import { StatCard } from '../components/StatCard';
 
 // ============================
 // Helper functions
@@ -71,6 +76,34 @@ function getToken() {
   } catch {
     return null;
   }
+}
+
+function SupplierActionMenu({ position, onClose, onView, onEdit, onDelete }) {
+  if (!position) return null;
+
+  return createPortal(
+    <>
+      <button className="fixed inset-0 z-40 cursor-default" onClick={onClose} aria-label="Close supplier actions" />
+      <div
+        className="app-menu fixed z-50 w-56 py-1"
+        style={{ top: position.top, left: position.left }}
+      >
+        <button onClick={onView} className="app-menu-item">
+          <Eye className="w-4 h-4" />
+          View Details
+        </button>
+        <button onClick={onEdit} className="app-menu-item">
+          <Edit className="w-4 h-4" />
+          Edit Supplier
+        </button>
+        <button onClick={onDelete} className="app-menu-item danger">
+          <Trash2 className="w-4 h-4" />
+          Delete
+        </button>
+      </div>
+    </>,
+    document.body
+  );
 }
 
 // ============================
@@ -141,12 +174,14 @@ export function SuppliersPage() {
   const navigate = useNavigate();
 
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [menuPosition, setMenuPosition] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(null);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [importedData, setImportedData] = useState([]);
 
   const [suppliersList, setSuppliersList] = useState([]);
+  const [supplierStats, setSupplierStats] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
@@ -156,14 +191,11 @@ export function SuppliersPage() {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const hasLoadedSuppliers = useRef(false);
 
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    setLoading((prev) => (suppliersList.length === 0 ? true : prev));
-    setSearching(true);
-    setError(null);
-
+  const fetchSuppliers = useCallback(() => {
     const params = new URLSearchParams({
       page: currentPage,
       page_size: itemsPerPage,
@@ -188,6 +220,7 @@ export function SuppliersPage() {
         setSuppliersList(mapped);
         setTotalCount(data.totalCount || 0);
         setTotalPages(data.totalPages > 0 ? data.totalPages : 1);
+        hasLoadedSuppliers.current = true;
         setLoading(false);
         setSearching(false);
       })
@@ -196,7 +229,29 @@ export function SuppliersPage() {
         setLoading(false);
         setSearching(false);
       });
-  }, [currentPage, searchQuery]);
+  }, [currentPage, itemsPerPage, searchQuery]);
+
+  useEffect(() => {
+    fetchSuppliers();
+  }, [fetchSuppliers]);
+
+  useEffect(() => {
+    fetch('/api/Supplier/mini_dashboard', {
+      headers: {
+        "Content-Type": "application/json",
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch supplier dashboard');
+        return res.json();
+      })
+      .then(setSupplierStats)
+      .catch((error) => {
+        console.error("Supplier dashboard error:", error);
+        setSupplierStats(null);
+      });
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -234,8 +289,29 @@ export function SuppliersPage() {
 
   const getSupplierById = (id) => suppliersList.find((s) => s.id === id);
 
-  const activeCount = suppliersList.filter((s) => s.status === 'Active').length;
-  const inactiveCount = suppliersList.length - activeCount;
+  const activeCount = supplierStats?.activeSuppliers ?? supplierStats?.active ?? supplierStats?.activeCount ?? suppliersList.filter((s) => s.status === 'Active').length;
+  const inactiveCount = supplierStats?.inactiveSuppliers ?? supplierStats?.inactive ?? supplierStats?.inactiveCount ?? suppliersList.length - activeCount;
+  const displayedTotalSuppliers = supplierStats?.totalSuppliers ?? supplierStats?.total ?? supplierStats?.totalCount ?? totalCount;
+
+  const toggleActionMenu = (supplierId, event) => {
+    if (openDropdown === supplierId) {
+      setOpenDropdown(null);
+      setMenuPosition(null);
+      return;
+    }
+
+    const menuWidth = 224;
+    const menuHeight = 132;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - menuWidth - 12, Math.max(12, rect.right - menuWidth));
+    const preferredTop = rect.top;
+    const top = preferredTop + menuHeight > window.innerHeight - 12
+      ? Math.max(12, rect.top - menuHeight - 8)
+      : preferredTop;
+
+    setOpenDropdown(supplierId);
+    setMenuPosition({ top, left });
+  };
 
   if (loading) {
     return (
@@ -258,9 +334,12 @@ export function SuppliersPage() {
       <style>{SUPPLIERS_STYLES}</style>
 
       {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <h1 className="db-section-title">Suppliers</h1>
-        <div className="flex items-center gap-3">
+      <div className="app-page-header">
+        <div className="app-page-heading">
+          <h1 className="db-section-title">Suppliers</h1>
+          <p className="app-page-subtitle">Manage supplier records, reliability, and contact details.</p>
+        </div>
+        <div className="app-page-actions">
           <button onClick={() => setCsvModalOpen(true)} className="db-secondary-btn">
             <Upload className="w-[18px] h-[18px]" />
             Import CSV
@@ -274,30 +353,9 @@ export function SuppliersPage() {
 
       {/* STATS CARDS (Dashboard style) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Total Suppliers</span>
-          </div>
-          <div className="p-5">
-            <div className="text-2xl font-semibold text-gray-900">{totalCount}</div>
-          </div>
-        </div>
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Active Suppliers</span>
-          </div>
-          <div className="p-5">
-            <div className="text-2xl font-semibold text-green-600">{activeCount}</div>
-          </div>
-        </div>
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Inactive Suppliers</span>
-          </div>
-          <div className="p-5">
-            <div className="text-2xl font-semibold text-gray-400">{inactiveCount}</div>
-          </div>
-        </div>
+        <StatCard title="Total Suppliers" value={displayedTotalSuppliers} sub="Supplier records" icon={Users} iconColor="#0f8c5a" iconBgColor="bg-[#0f8c5a]/10" className="db-fade-in" />
+        <StatCard title="Active Suppliers" value={activeCount} sub="Available partners" subColor="#0a6b45" icon={CheckCircle} iconColor="#22c55e" iconBgColor="bg-green-100" className="db-fade-in" />
+        <StatCard title="Inactive Suppliers" value={inactiveCount} sub="Paused records" icon={XCircle} iconColor="#66706a" iconBgColor="bg-gray-100" className="db-fade-in" />
       </div>
 
       {/* MAIN TABLE CARD */}
@@ -377,47 +435,35 @@ export function SuppliersPage() {
                     <td>
                       <div className="relative">
                         <button
-                          onClick={() => setOpenDropdown(openDropdown === supplier.id ? null : supplier.id)}
+                          onClick={(event) => toggleActionMenu(supplier.id, event)}
                           className="db-icon-btn"
+                          aria-label={`Open actions for ${supplier.name}`}
                         >
                           <MoreVertical className="w-5 h-5" />
                         </button>
                         {openDropdown === supplier.id && (
-                          <>
-                            <div className="fixed inset-0 z-10" onClick={() => setOpenDropdown(null)} />
-                            <div className="absolute right-0 top-full z-50 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-                              <button
-                                onClick={() => {
-                                  setOpenDropdown(null);
-                                  navigate(`/suppliers/view-supplier/${supplier.id}`);
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                              >
-                                <Eye className="w-4 h-4" />
-                                View Details
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setOpenDropdown(null);
-                                  navigate(`/suppliers/edit-supplier/${supplier.id}`);
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                              >
-                                <Edit className="w-4 h-4" />
-                                Edit Supplier
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setOpenDropdown(null);
-                                  setDeleteModalOpen(supplier.id);
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Delete
-                              </button>
-                            </div>
-                          </>
+                          <SupplierActionMenu
+                            position={menuPosition}
+                            onClose={() => {
+                              setOpenDropdown(null);
+                              setMenuPosition(null);
+                            }}
+                            onView={() => {
+                              setOpenDropdown(null);
+                              setMenuPosition(null);
+                              navigate(`/suppliers/view-supplier/${supplier.id}`);
+                            }}
+                            onEdit={() => {
+                              setOpenDropdown(null);
+                              setMenuPosition(null);
+                              navigate(`/suppliers/edit-supplier/${supplier.id}`);
+                            }}
+                            onDelete={() => {
+                              setOpenDropdown(null);
+                              setMenuPosition(null);
+                              setDeleteModalOpen(supplier.id);
+                            }}
+                          />
                         )}
                       </div>
                     </td>

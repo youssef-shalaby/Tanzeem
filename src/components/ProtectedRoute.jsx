@@ -3,19 +3,20 @@ import { useAuth } from "../contexts/AuthContext";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
 
 /**
- * Checks authentication first, then optionally checks a feature gate.
- * The feature gate uses the probed results from AuthContext — no API call needed here.
+ * Checks authentication first, then checks a named feature or permission.
  */
-export default function ProtectedRoute({ children, feature }) {
-  const { currentUser, isFeatureAllowed, allowedFeatures } = useAuth();
+export default function ProtectedRoute({ children, feature, permission }) {
+  const { currentUser, isFeatureAllowed, can } = useAuth();
 
   if (!currentUser) {
     return <Navigate to="/signin" replace />;
   }
 
-  // If a feature is specified and probing is done (allowedFeatures !== null),
-  // block immediately before the page renders anything
-  if (feature && allowedFeatures !== null && !isFeatureAllowed(feature)) {
+  if (feature && !isFeatureAllowed(feature)) {
+    return <UnauthorizedPage />;
+  }
+
+  if (permission && !can(permission)) {
     return <UnauthorizedPage />;
   }
 

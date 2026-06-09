@@ -55,6 +55,11 @@ const VIEW_SUPPLIER_STYLES = `
     color: #666; cursor: pointer; transition: background .15s, color .15s;
   }
   .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .supplier-detail-stack { overflow: hidden; }
+  .supplier-detail-item {
+    border-top: 1px solid var(--app-line);
+  }
+  .supplier-detail-item:first-child { border-top: 0; }
   .db-fade-in { animation: dbFadeIn .4s ease both; }
   @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 `;
@@ -129,7 +134,11 @@ export function ViewSupplierPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    setLoading(true);
+    let isCancelled = false;
+    const loadingTimer = window.setTimeout(() => {
+      if (!isCancelled) setLoading(true);
+    }, 0);
+
     fetch(`/api/Supplier/${supplierId}`, {
       headers: {
         "Content-Type": "application/json",
@@ -141,6 +150,7 @@ export function ViewSupplierPage() {
         return res.json();
       })
       .then((data) => {
+        if (isCancelled) return;
         setSupplier({
           id: data.id,
           name: data.supplierName || 'N/A',
@@ -162,9 +172,15 @@ export function ViewSupplierPage() {
         setLoading(false);
       })
       .catch((err) => {
+        if (isCancelled) return;
         setError(err.message);
         setLoading(false);
       });
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(loadingTimer);
+    };
   }, [supplierId]);
 
   const handleDelete = () => {
@@ -199,14 +215,14 @@ export function ViewSupplierPage() {
       <style>{VIEW_SUPPLIER_STYLES}</style>
 
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="app-page-header">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/suppliers')} className="db-icon-btn">
+          <button onClick={() => navigate('/suppliers')} className="db-icon-btn" aria-label="Back to suppliers">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="app-page-heading">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="db-section-title">{supplier.name}</h1>
+              <h1 className="app-page-title">{supplier.name}</h1>
               <span className={`db-stat-pill ${supplier.status === 'Active' ? 'pill-green' : 'bg-gray-100 text-gray-500'}`}>
                 {supplier.status}
               </span>
@@ -217,11 +233,11 @@ export function ViewSupplierPage() {
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">Supplier Details</p>
+            <p className="app-page-subtitle">Supplier details.</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="app-page-actions">
           <Link
             to={`/suppliers/edit-supplier/${supplier.id}`}
             className="db-secondary-btn"
@@ -309,9 +325,9 @@ export function ViewSupplierPage() {
             <div className="db-card-header">
               <span className="db-card-title">Contact Information</span>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="supplier-detail-stack">
               {supplier.email && (
-                <div className="flex items-center gap-4 px-6 py-4">
+                <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
                   <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
                     <Mail className="w-4 h-4 text-[#0f8c5a]" />
                   </div>
@@ -326,7 +342,7 @@ export function ViewSupplierPage() {
               )}
 
               {supplier.phone && (
-                <div className="flex items-center gap-4 px-6 py-4">
+                <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
                   <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
                     <Phone className="w-4 h-4 text-[#0f8c5a]" />
                   </div>
@@ -344,7 +360,7 @@ export function ViewSupplierPage() {
               )}
 
               {addressLine && (
-                <div className="flex items-center gap-4 px-6 py-4">
+                <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
                   <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
                     <MapPin className="w-4 h-4 text-[#0f8c5a]" />
                   </div>
@@ -357,7 +373,7 @@ export function ViewSupplierPage() {
               )}
 
               {supplier.website && (
-                <div className="flex items-center gap-4 px-6 py-4">
+                <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
                   <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
                     <Globe className="w-4 h-4 text-[#0f8c5a]" />
                   </div>
@@ -396,9 +412,9 @@ export function ViewSupplierPage() {
             <div className="db-card-header">
               <span className="db-card-title">Business Details</span>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="supplier-detail-stack">
               {supplier.contactPerson && (
-                <div className="flex items-center gap-3 px-6 py-4">
+                <div className="supplier-detail-item flex items-center gap-3 px-6 py-4">
                   <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
                     <User className="w-4 h-4 text-gray-500" />
                   </div>
@@ -409,7 +425,7 @@ export function ViewSupplierPage() {
                 </div>
               )}
               {supplier.taxId && (
-                <div className="flex items-center gap-3 px-6 py-4">
+                <div className="supplier-detail-item flex items-center gap-3 px-6 py-4">
                   <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
                     <Hash className="w-4 h-4 text-gray-500" />
                   </div>

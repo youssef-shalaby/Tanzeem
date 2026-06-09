@@ -52,6 +52,25 @@ const STOCK_OUT_STYLES = `
   .db-badge-teal { background: #e6f7f5; color: #0f8c5a; }
   .db-fade-in { animation: dbFadeIn .4s ease both; }
   @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .stock-flow-search {
+    display: flex; align-items: center; gap: 8px;
+    min-height: 40px; border: 1px solid rgba(0,0,0,.12);
+    border-radius: 12px; background: #fff; transition: border-color .2s, box-shadow .2s;
+  }
+  .stock-flow-search:focus-within { border-color: #0f8c5a; box-shadow: 0 0 0 2px rgba(15,140,90,.1); }
+  .stock-flow-item {
+    position: relative; border: 1px solid rgba(0,0,0,.08);
+    border-radius: 14px; background: #fafbf8; padding: 20px;
+  }
+  .stock-flow-readonly {
+    display: flex; align-items: center; gap: 8px; min-height: 40px;
+    border: 1px solid rgba(0,0,0,.08); border-radius: 12px;
+    background: #fff; padding: 8px 12px; font-size: 13px; color: #1a1a18;
+  }
+  .stock-flow-summary {
+    border: 1px solid rgba(0,0,0,.08); border-radius: 14px;
+    background: #fafbf8; padding: 20px;
+  }
 `;
 
 function getToken() {
@@ -183,9 +202,8 @@ function ProductSearchInput({ item, onProductSelect }) {
 
   return (
     <div ref={wrapperRef} className="relative">
-      <label className="text-sm font-medium text-gray-900 mb-2 block">Product</label>
-      {/* Use flex container instead of absolute positioning */}
-      <div className="flex items-center gap-2 border border-gray-200 rounded-lg focus-within:ring-2 focus-within:ring-[#0f8c5a]/20 focus-within:border-[#0f8c5a] bg-white">
+      <label className="app-form-label">Product</label>
+      <div className="stock-flow-search">
         <div className="pl-3">
           <Search className="w-4 h-4 text-gray-400" />
         </div>
@@ -205,7 +223,7 @@ function ProductSearchInput({ item, onProductSelect }) {
         )}
       </div>
       {showDropdown && (results.length > 0 || isLoading) && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+        <div className="app-menu absolute z-20 mt-1 w-full max-h-56 overflow-y-auto">
           {isLoading && results.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-500">Searching...</div>
           ) : results.length === 0 ? (
@@ -217,7 +235,7 @@ function ProductSearchInput({ item, onProductSelect }) {
                 <button
                   key={p.id || p.sku}
                   onClick={() => handleSelect(product)}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
+                  className="app-menu-item w-full text-left"
                 >
                   <div className="text-sm font-medium text-gray-900">{p.name}</div>
                   <div className="text-xs text-gray-500 mt-0.5">
@@ -372,13 +390,13 @@ export function Stockoutpage() {
     <div className="stockout-root space-y-6">
       <style>{STOCK_OUT_STYLES}</style>
 
-      {/* Header (identical to Addstockpage) */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="db-section-title">Stock Out</h1>
-          <p className="text-sm text-gray-600 mt-1">Search for items to remove from inventory and track reasons.</p>
+      {/* Header */}
+      <div className="app-page-header">
+        <div className="app-page-heading">
+          <h1 className="app-page-title">Stock Out</h1>
+          <p className="app-page-subtitle">Search for items to remove from inventory and track reasons.</p>
         </div>
-        <button onClick={() => navigate('/inventory')} className="db-icon-btn">
+        <button onClick={() => navigate('/inventory')} className="db-icon-btn" aria-label="Close stock out">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -396,18 +414,19 @@ export function Stockoutpage() {
               <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">
                 Items to Remove ({stockOutItems.length})
               </div>
-              <button onClick={handleAddSlot} className="text-sm text-[#0f8c5a] hover:text-[#0a6b45] font-medium flex items-center gap-1 transition-colors">
+              <button onClick={handleAddSlot} className="db-secondary-btn">
                 <Plus className="w-4 h-4" />
                 Add Another Item
               </button>
             </div>
 
             {stockOutItems.map((item, index) => (
-              <div key={item.id} className="relative border border-gray-200 rounded-xl p-5 bg-white">
+              <div key={item.id} className="stock-flow-item db-fade-in">
                 {stockOutItems.length > 1 && (
                   <button
                     onClick={() => handleRemoveItem(item.id)}
-                    className="absolute top-4 right-4 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                    className="db-icon-btn absolute top-4 right-4 text-red-600"
+                    aria-label={`Remove item ${index + 1}`}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -422,15 +441,15 @@ export function Stockoutpage() {
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-sm font-medium text-gray-900 mb-2 block">Barcode</label>
-                          <div className="flex items-center gap-2 border border-gray-200 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                          <label className="app-form-label">Barcode</label>
+                          <div className="stock-flow-readonly">
                             <span className="flex-1">{item.barcode || '—'}</span>
                             <span className="text-gray-400 text-xs">#</span>
                           </div>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-900 mb-2 block">Unit Price (Selling)</label>
-                          <div className="flex items-center gap-2 border border-gray-200 rounded-lg bg-gray-50 px-3 py-2">
+                          <label className="app-form-label">Unit Price (Selling)</label>
+                          <div className="stock-flow-readonly">
                             <span className="text-gray-500">$</span>
                             <span className="flex-1 text-sm text-gray-900">{item.unitPrice.toFixed(2)}</span>
                           </div>
@@ -439,7 +458,7 @@ export function Stockoutpage() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-sm font-medium text-gray-900 mb-2 block">Quantity to Remove</label>
+                          <label className="app-form-label">Quantity to Remove</label>
                           <div className="relative">
                             <input
                               type="number"
@@ -466,8 +485,8 @@ export function Stockoutpage() {
                           </div>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-900 mb-2 block">Total Value</label>
-                          <div className="flex items-center gap-2 border border-gray-200 rounded-lg bg-gray-50 px-3 py-2">
+                          <label className="app-form-label">Total Value</label>
+                          <div className="stock-flow-readonly">
                             <span className="text-gray-500">$</span>
                             <span className="flex-1 text-sm text-gray-900">{item.totalPrice.toFixed(2)}</span>
                             <span className="text-xs text-gray-400">Calculated</span>
@@ -476,7 +495,7 @@ export function Stockoutpage() {
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium text-gray-900 mb-2 block">Batch Number <span className="text-gray-400 font-normal">(Optional)</span></label>
+                        <label className="app-form-label">Batch Number <span className="text-gray-400 font-normal">(Optional)</span></label>
                         <input
                           type="text"
                           value={item.batchNumber}
@@ -487,7 +506,7 @@ export function Stockoutpage() {
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium text-gray-900 mb-2 block">Reason for Stock Out</label>
+                        <label className="app-form-label">Reason for Stock Out</label>
                         <div className="relative">
                           <select
                             value={item.reason}
@@ -514,7 +533,7 @@ export function Stockoutpage() {
 
           {/* Summary Section */}
           <div className="border-t border-gray-100 pt-6">
-            <div className="bg-gray-50 rounded-xl p-5 space-y-3">
+            <div className="stock-flow-summary space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">Total Items:</span>
                 <span className="font-semibold text-gray-900">{stockOutItems.length}</span>
@@ -534,7 +553,7 @@ export function Stockoutpage() {
 
           {/* Date Removed */}
           <div>
-            <label className="text-sm font-medium text-gray-900 mb-2 block">Date Removed</label>
+            <label className="app-form-label">Date Removed</label>
             <div className="relative">
               <input
                 type="text"
@@ -548,7 +567,7 @@ export function Stockoutpage() {
 
           {/* Notes */}
           <div>
-            <label className="text-sm font-medium text-gray-900 mb-2 block">Notes (Optional)</label>
+            <label className="app-form-label">Notes (Optional)</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -559,12 +578,12 @@ export function Stockoutpage() {
           </div>
 
           {submitError && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <div className="app-alert-danger">
               {submitError}
             </div>
           )}
           {submitSuccess && (
-            <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+            <div className="app-success-panel">
               Stock deducted successfully! Redirecting...
             </div>
           )}
@@ -572,7 +591,7 @@ export function Stockoutpage() {
 
         {/* Action Buttons (exactly like Addstockpage) */}
         <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
-          <Link to="/products" className="db-secondary-btn">Cancel</Link>
+          <Link to="/inventory" className="db-secondary-btn">Cancel</Link>
           <button
             onClick={handleConfirm}
             disabled={isSubmitting || !allSelected}

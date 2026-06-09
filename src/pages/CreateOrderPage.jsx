@@ -1,46 +1,21 @@
 import { useState, useEffect } from "react";
-import { X, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { X, Plus, Trash2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router";
 import { apiRequest, ForbiddenError } from "../services/api";
 import UnauthorizedPage from "./UnauthorizedPage";
 
 const CO_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
   .co-root { font-family: 'DM Sans', sans-serif; }
-  .co-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
-  .co-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
-  .co-card-header { font-size: 14px; font-weight: 600; color: #1a1a18; padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .co-label { display:block; font-size:11px; font-weight:500; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
-  .co-input {
-    width:100%; padding:10px 14px; border:1px solid rgba(0,0,0,.12); border-radius:10px;
-    font-size:13px; font-family:'DM Sans',sans-serif; color:#1a1a18; outline:none;
-    transition: border-color .2s; background:#fff; box-sizing:border-box;
-  }
-  .co-input:focus { border-color:#0f8c5a; }
-  .co-select {
-    width:100%; padding:10px 14px; border:1px solid rgba(0,0,0,.12); border-radius:10px;
-    font-size:13px; font-family:'DM Sans',sans-serif; color:#1a1a18; outline:none;
-    transition: border-color .2s; background:#fff; cursor:pointer;
-    appearance:none; -webkit-appearance:none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat:no-repeat; background-position:right 12px center; padding-right:32px;
-    box-sizing:border-box;
-  }
-  .co-select:focus { border-color:#0f8c5a; }
-  .co-textarea {
-    width:100%; padding:10px 14px; border:1px solid rgba(0,0,0,.12); border-radius:10px;
-    font-size:13px; font-family:'DM Sans',sans-serif; color:#1a1a18; outline:none;
-    transition: border-color .2s; resize:vertical; box-sizing:border-box;
-  }
-  .co-textarea:focus { border-color:#0f8c5a; }
-  .co-line-item { background:#f9faf7; border-radius:12px; padding:16px; border:1px solid rgba(0,0,0,.05); }
-  .co-btn-add {
-    display:inline-flex; align-items:center; gap:6px; padding:8px 14px;
-    font-size:13px; font-weight:500; color:#0f8c5a; border-radius:100px;
-    border:1px solid rgba(15,140,90,.2); background:transparent; cursor:pointer;
-    font-family:'DM Sans',sans-serif; transition: background .2s, border-color .2s;
-  }
-  .co-btn-add:hover { background:rgba(15,140,90,.06); border-color:rgba(15,140,90,.4); }
+  .co-card { background: var(--app-panel); border: 1px solid var(--app-line) !important; border-radius: var(--app-radius-card) !important; box-shadow: var(--app-shadow-card); overflow: hidden; }
+  .co-card-header { font-size: 14px; font-weight: 600; color: var(--app-ink); padding: 16px 20px; border-bottom: 1px solid var(--app-line); background: linear-gradient(180deg,var(--app-panel),var(--app-soft)); }
+  .co-label { display:block; color: var(--app-muted); font-size:12px; font-weight:600; margin-bottom:6px; }
+  .co-input, .co-textarea { width:100%; min-height:42px; padding:9px 14px; background:var(--app-panel); border:1px solid var(--app-line-strong); border-radius:var(--app-radius-control); font-size:13px; font-family:'DM Sans',sans-serif; color:var(--app-ink); outline:none; transition:border-color .2s, box-shadow .2s; box-sizing:border-box; }
+  .co-input:focus, .co-textarea:focus { border-color:var(--app-green); box-shadow:0 0 0 3px rgba(15,140,90,.1); }
+  .co-select { width:100%; min-height:42px; padding:9px 32px 9px 14px; background-color:var(--app-panel); border:1px solid var(--app-line-strong); border-radius:var(--app-radius-control); font-size:13px; font-family:'DM Sans',sans-serif; color:var(--app-ink); outline:none; cursor:pointer; appearance:none; -webkit-appearance:none; transition:border-color .2s, box-shadow .2s; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; box-sizing:border-box; }
+  .co-select:focus { border-color:var(--app-green); box-shadow:0 0 0 3px rgba(15,140,90,.1); }
+  .co-line-item { background:var(--app-soft); border-radius:12px; padding:16px; border:1px solid var(--app-line); }
+  .co-btn-add { display:inline-flex; align-items:center; gap:6px; min-height:34px; padding:7px 13px; font-size:13px; font-weight:600; color:var(--app-green); border-radius:var(--app-radius-pill); border:1px solid rgba(15,140,90,.22); background:var(--app-panel); cursor:pointer; font-family:'DM Sans',sans-serif; transition:background .2s, border-color .2s; }
+  .co-btn-add:hover { background:var(--app-success-bg); border-color:rgba(15,140,90,.34); }
   .co-btn-remove {
     width:34px; height:34px; border-radius:8px; border:none; display:flex; align-items:center;
     justify-content:center; cursor:pointer; background:transparent; transition:background .2s;
@@ -48,25 +23,52 @@ const CO_STYLES = `
   }
   .co-btn-remove:hover { background:rgba(239,68,68,.08); }
   .co-btn-remove:disabled { opacity:.3; cursor:not-allowed; }
-  .co-btn-close {
-    width:36px; height:36px; border-radius:10px; border:1px solid rgba(0,0,0,.1);
-    background:#fff; display:flex; align-items:center; justify-content:center;
-    cursor:pointer; transition:border-color .2s, background .2s;
-  }
-  .co-btn-close:hover { border-color:rgba(0,0,0,.2); background:#f9faf7; }
-  .co-btn-submit {
-    width:100%; padding:13px; background:#0f8c5a; color:#fff; font-size:14px;
-    font-weight:500; border-radius:12px; border:none; cursor:pointer;
-    font-family:'DM Sans',sans-serif; transition:background .2s, opacity .2s;
-  }
-  .co-btn-submit:hover { background:#0a7048; }
+  .co-btn-submit { width:100%; min-height:42px; padding:10px 16px; background:var(--app-green); color:#fff; font-size:13px; font-weight:600; border-radius:var(--app-radius-pill); border:none; cursor:pointer; font-family:'DM Sans',sans-serif; transition:background .2s, opacity .2s, box-shadow .2s; box-shadow:0 8px 18px rgba(15,140,90,.16); }
+  .co-btn-submit:hover { background:var(--app-green-dark); }
   .co-btn-submit:disabled { opacity:.5; cursor:not-allowed; }
-  .co-divider { border:none; border-top:1px solid rgba(0,0,0,.06); margin:0; }
-  .co-total-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:#666; }
+  .co-divider { border:none; border-top:1px solid var(--app-line); margin:0; }
+  .co-total-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--app-muted); }
   .co-grand-total { display:flex; justify-content:space-between; align-items:center; }
-  .co-fade-in { animation: coFadeIn .4s ease both; }
-  @keyframes coFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .co-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; align-items:start; }
+  .co-items-grid { display:grid; grid-template-columns:minmax(0,1fr) 120px 140px 36px; gap:12px; align-items:end; }
+  .co-fade-in { animation: appFadeIn .4s ease both; }
+  @media (max-width: 980px) {
+    .co-layout { grid-template-columns:1fr; }
+    .co-summary { position:static !important; }
+  }
+  @media (max-width: 720px) {
+    .co-items-grid { grid-template-columns:1fr; }
+    .co-btn-remove { width:100%; border:1px solid rgba(239,68,68,.18); }
+  }
 `;
+
+function createInitialOrderItems(reorder) {
+  if (reorder?.items?.length) {
+    return reorder.items.map((item, index) => ({ id: `reorder-${index}`, ...item }));
+  }
+
+  return [{ id: "order-item-1", productId: "", quantity: 1, price: 0 }];
+}
+
+function getProductId(product) {
+  return product.id ?? product.Id ?? "";
+}
+
+function getProductName(product) {
+  return product.name ?? product.Name ?? "";
+}
+
+function getProductUnitPrice(product) {
+  const rawPrice = product.costPrice
+    ?? product.CostPrice
+    ?? product.price
+    ?? product.Price
+    ?? product.sellingPrice
+    ?? product.SellingPrice
+    ?? 0;
+
+  return Number(rawPrice) || 0;
+}
 
 export function CreateOrderPage() {
   const navigate  = useNavigate();
@@ -86,11 +88,7 @@ export function CreateOrderPage() {
     taxes:                0,
   });
 
-  const [orderItems, setOrderItems] = useState(
-    reorder?.items?.length
-      ? reorder.items.map((item) => ({ id: Date.now() + Math.random(), ...item }))
-      : [{ id: Date.now(), productId: "", quantity: 1, price: 0 }]
-  );
+  const [orderItems, setOrderItems] = useState(() => createInitialOrderItems(reorder));
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -123,11 +121,22 @@ export function CreateOrderPage() {
   const removeOrderItem = (id) => { if (orderItems.length > 1) setOrderItems((prev) => prev.filter((i) => i.id !== id)); };
   const updateOrderItem = (id, field, value) =>
     setOrderItems((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, [field]: field === "productId" ? parseInt(value) || "" : parseFloat(value) || 0 }
-          : item
-      )
+      prev.map((item) => {
+        if (item.id !== id) return item;
+
+        if (field === "productId") {
+          const productId = parseInt(value) || "";
+          const selectedProduct = productsDropdown.find((product) => getProductId(product) === productId);
+
+          return {
+            ...item,
+            productId,
+            price: selectedProduct ? getProductUnitPrice(selectedProduct) : 0,
+          };
+        }
+
+        return { ...item, [field]: parseFloat(value) || 0 };
+      })
     );
 
   const calculateSubtotal = () => orderItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
@@ -165,15 +174,18 @@ export function CreateOrderPage() {
       <style>{CO_STYLES}</style>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <h1 className="co-section-title">Create Purchase Order</h1>
-        <button className="co-btn-close" onClick={() => navigate("/orders")} aria-label="Close">
-          <X size={16} color="#555" />
+      <div className="app-page-header" style={{ marginBottom: 24 }}>
+        <div className="app-page-heading">
+          <h1 className="app-page-title">Create Purchase Order</h1>
+          <p className="app-page-subtitle">Build a purchase order for supplier replenishment.</p>
+        </div>
+        <button className="db-icon-btn" onClick={() => navigate("/orders")} aria-label="Close create order">
+          <X size={16} />
         </button>
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20, alignItems: "start" }}>
+        <div className="co-layout">
 
           {/* ── Left column ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -211,13 +223,16 @@ export function CreateOrderPage() {
                 </button>
               </div>
               <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
-                {orderItems.map((item, idx) => (
-                  <div key={item.id} className="co-line-item" style={{ display: "grid", gridTemplateColumns: "1fr 120px 140px 36px", gap: 12, alignItems: "end" }}>
+                {orderItems.map((item) => (
+                  <div key={item.id} className="co-line-item co-items-grid">
                     <div>
                       <label className="co-label">Product</label>
                       <select value={item.productId} onChange={(e) => updateOrderItem(item.id, "productId", e.target.value)} required className="co-select">
                         <option value="">Choose product…</option>
-                        {productsDropdown.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        {productsDropdown.map((p) => {
+                          const productId = getProductId(p);
+                          return <option key={productId} value={productId}>{getProductName(p)}</option>;
+                        })}
                       </select>
                     </div>
                     <div>
@@ -252,14 +267,14 @@ export function CreateOrderPage() {
           </div>
 
           {/* ── Right sidebar: Order Total ── */}
-          <div className="co-card co-fade-in" style={{ position: "sticky", top: 24, animationDelay: ".06s" }}>
+          <div className="co-card co-summary co-fade-in" style={{ position: "sticky", top: 24, animationDelay: ".06s" }}>
             <div className="co-card-header">Order Total</div>
             <div style={{ padding: "20px" }}>
 
               {/* Subtotal */}
               <div className="co-total-row" style={{ marginBottom: 16 }}>
                 <span>Subtotal</span>
-                <span style={{ fontWeight: 600, color: "#1a1a18", fontSize: 14 }}>${calculateSubtotal().toFixed(2)}</span>
+                <span style={{ fontWeight: 600, color: "var(--app-ink)", fontSize: 14 }}>${calculateSubtotal().toFixed(2)}</span>
               </div>
 
               {/* Shipping */}
@@ -282,8 +297,8 @@ export function CreateOrderPage() {
 
               {/* Grand total */}
               <div className="co-grand-total" style={{ marginBottom: 20 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a18" }}>Grand Total</span>
-                <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 26, color: "#1a1a18" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--app-ink)" }}>Grand Total</span>
+                <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 26, color: "var(--app-ink)" }}>
                   ${calculateTotal().toFixed(2)}
                 </span>
               </div>

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Plus,
   Search,
@@ -9,12 +10,16 @@ import {
   Eye,
   Edit,
   Trash2,
+  Package,
+  Tags,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { CSVUploadModal } from "../ui/CSVUploadModal";
 import { CSVReviewModal } from "../ui/CSVReviewModal";
 import { DeleteProductModal } from "../ui/DeleteProductModal";
+import { useAuth } from "../contexts/AuthContext";
+import { StatCard } from "../components/StatCard";
 
 const ITEMS_PER_PAGE = 8;
 
@@ -26,68 +31,44 @@ function getToken() {
   }
 }
 
-// Shared design system styles – green accent (#0f8c5a)
-const PRODUCTS_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
-  .products-root { font-family: 'DM Sans', sans-serif; }
-  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
-  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
-  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
-  .db-select {
-    padding: 8px 14px; background: #fff; border: 1px solid rgba(0,0,0,.12);
-    border-radius: 100px; font-size: 13px; font-family: 'DM Sans', sans-serif;
-    color: #444; cursor: pointer; outline: none; transition: border-color .2s;
-    appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
-  }
-  .db-select:hover { border-color: #0f8c5a; }
-  .db-table { width: 100%; border-collapse: collapse; }
-  .db-table th { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: .5px; padding: 10px 16px; text-align: left; background: #f9faf7; }
-  .db-table td { padding: 12px 16px; font-size: 13px; color: #1a1a18; border-top: 1px solid rgba(0,0,0,.05); }
-  .db-table tr:hover td { background: #f9faf7; }
-  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
-  .pill-green { background: #d6f5e8; color: #0a6b45; }
-  .pill-blue { background: #e8f0fe; color: #2c5f8a; }
-  .pill-amber { background: #fef3c7; color: #8b5e00; }
-  .pill-gray { background: #f3f4f6; color: #4b5563; }
-  .db-search-input {
-    width: 100%; padding: 9px 14px 9px 36px;
-    background: #f5f6f3; border: 1px solid transparent;
-    border-radius: 100px; font-size: 13.5px; font-family: 'DM Sans', sans-serif;
-    color: #1a1a18; outline: none; transition: border-color .2s, background .2s;
-  }
-  .db-search-input::placeholder { color: #aaa; }
-  .db-search-input:focus { background: #fff; border-color: rgba(15,140,90,.3); }
-  .db-icon-btn {
-    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
-    display: inline-flex; align-items: center; justify-content: center;
-    color: #666; cursor: pointer; transition: background .15s, color .15s;
-  }
-  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
-  .db-primary-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 16px; background: #0f8c5a; color: white;
-    border-radius: 100px; font-size: 13px; font-weight: 500;
-    border: none; cursor: pointer; transition: background .15s;
-  }
-  .db-primary-btn:hover { background: #0a6b45; }
-  .db-secondary-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
-    border-radius: 100px; font-size: 13px; font-weight: 500;
-    color: #444; cursor: pointer; transition: background .15s;
-  }
-  .db-secondary-btn:hover { background: #f5f6f3; }
-  .db-fade-in { animation: dbFadeIn .4s ease both; }
-  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  .db-skeleton { background: linear-gradient(90deg,#f0f0ec 25%,#e8e8e4 50%,#f0f0ec 75%); background-size:200% 100%; animation: shimmer 1.4s infinite; border-radius:10px; }
-  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-`;
+function ProductActionMenu({ position, onClose, onView, onEdit, onDelete, canEdit, canDelete }) {
+  if (!position) return null;
+
+  return createPortal(
+    <>
+      <button className="fixed inset-0 z-40 cursor-default" onClick={onClose} aria-label="Close product actions" />
+      <div
+        className="app-menu fixed z-50 w-48 py-1"
+        style={{ top: position.top, left: position.left }}
+      >
+        <button onClick={onView} className="app-menu-item">
+          <Eye className="w-4 h-4" />
+          View Details
+        </button>
+        {canEdit && (
+          <button onClick={onEdit} className="app-menu-item">
+            <Edit className="w-4 h-4" />
+            Edit Product
+          </button>
+        )}
+        {canDelete && (
+          <button onClick={onDelete} className="app-menu-item danger">
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </button>
+        )}
+      </div>
+    </>,
+    document.body
+  );
+}
 
 export function ProductsPage() {
   const navigate = useNavigate();
+  const { can } = useAuth();
+  const canCreateProducts = can("create_products");
+  const canEditProducts = can("edit_products");
+  const canDeleteProducts = can("delete_products");
 
   const [productsList, setProductsList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +81,7 @@ export function ProductsPage() {
   const [categories, setCategories] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [menuPosition, setMenuPosition] = useState(null);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [importedData, setImportedData] = useState([]);
@@ -109,9 +91,6 @@ export function ProductsPage() {
   // FETCH PRODUCTS FROM DATABASE
   // ================================
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-
     let url = "/api/Products/Get-Products";
     const params = new URLSearchParams();
 
@@ -122,52 +101,66 @@ export function ProductsPage() {
     const query = params.toString();
     if (query) url += `?${query}`;
 
-    fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error(`Server returned status: ${res.status}`);
-        return res.json();
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setError(null);
+
+      fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
       })
-      .then((data) => {
-        const rawArray = Array.isArray(data) ? data : (data?.data || []);
+        .then((res) => {
+          if (!res.ok) throw new Error(`Server returned status: ${res.status}`);
+          return res.json();
+        })
+        .then((data) => {
+          if (cancelled) return;
+          const rawArray = Array.isArray(data) ? data : (data?.data || []);
 
-        const normalizedProducts = rawArray.map((product, index) => ({
-          id: product.id || index + 1,
-          name: product.name || "Unnamed Product",
-          sku: product.sku || "—",
-          category: product.category || "Uncategorized",
-          stockLevel: product.stock !== null && product.stock !== undefined ? product.stock : 0,
-          price: product.sellingPrice ?? product.price ?? 0,
-          costPrice: product.costPrice ?? 0,
-          expiryDate: product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : "N/A",
-          status: product.status || "Active",
-          barcode: product.barcode || "—",
-          description: product.description || "",
-          reorderLevel: product.reorderLevel ?? 0,
-        }));
+          const normalizedProducts = rawArray.map((product, index) => ({
+            id: product.id || index + 1,
+            name: product.name || "Unnamed Product",
+            sku: product.sku || "—",
+            category: product.category || "Uncategorized",
+            stockLevel: product.stock !== null && product.stock !== undefined ? product.stock : 0,
+            price: product.sellingPrice ?? product.price ?? 0,
+            costPrice: product.costPrice ?? 0,
+            expiryDate: product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : "N/A",
+            status: product.status || "Active",
+            barcode: product.barcode || "—",
+            description: product.description || "",
+            reorderLevel: product.reorderLevel ?? 0,
+          }));
 
-        setProductsList(normalizedProducts);
+          setProductsList(normalizedProducts);
 
-        if (filterId === "all") {
-          const unique = [...new Map(
-            rawArray
-              .filter((p) => p.categoryId && p.category)
-              .map((p) => [p.categoryId, { id: p.categoryId, name: p.category }])
-          ).values()];
-          setCategories(unique);
-        }
+          if (filterId === "all") {
+            const unique = [...new Map(
+              rawArray
+                .filter((p) => p.categoryId && p.category)
+                .map((p) => [p.categoryId, { id: p.categoryId, name: p.category }])
+            ).values()];
+            setCategories(unique);
+          }
 
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Fetch operation error:", err);
-        setError(err.message || "Failed to process product data.");
-        setLoading(false);
-      });
+          setLoading(false);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.error("Fetch operation error:", err);
+          setError(err.message || "Failed to process product data.");
+          setLoading(false);
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [searchQuery, filterId, sortId]);
 
   // ================================
@@ -217,55 +210,116 @@ export function ProductsPage() {
 
   // Stats cards data
   const totalCategories = [...new Set(productsList.map((p) => p.category))].length;
+  const activeProducts = productsList.filter((product) => product.status === "Active").length;
+
+  const toggleActionMenu = (productId, event) => {
+    if (openDropdown === productId) {
+      setOpenDropdown(null);
+      setMenuPosition(null);
+      return;
+    }
+
+    const menuWidth = 192;
+    const menuHeight = 44 + (canEditProducts ? 44 : 0) + (canDeleteProducts ? 44 : 0);
+    const rect = event.currentTarget.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - menuWidth - 12, Math.max(12, rect.right - menuWidth));
+    const preferredTop = rect.top;
+    const top = preferredTop + menuHeight > window.innerHeight - 12
+      ? Math.max(12, rect.top - menuHeight - 8)
+      : preferredTop;
+
+    setOpenDropdown(productId);
+    setMenuPosition({ top, left });
+  };
+
+  const productStats = [
+    {
+      title: "Total products",
+      value: productsList.length.toLocaleString(),
+      sub: "Tracked SKUs",
+      icon: Package,
+      iconColor: "#0f8c5a",
+      iconBg: "#e9f8f1",
+      subColor: "#66706a",
+    },
+    {
+      title: "Categories",
+      value: totalCategories,
+      sub: "Product groups",
+      icon: Tags,
+      iconColor: "#2c5f8a",
+      iconBg: "#e8f0fe",
+      subColor: "#66706a",
+    },
+    {
+      title: "Active products",
+      value: activeProducts.toLocaleString(),
+      sub: "Available for operations",
+      icon: Eye,
+      iconColor: "#5b21b6",
+      iconBg: "#f1ebff",
+      subColor: "#0a6b45",
+    },
+  ];
 
   return (
     <div className="products-root space-y-6">
-      <style>{PRODUCTS_STYLES}</style>
-
       {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <h1 className="db-section-title">Products</h1>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setCsvModalOpen(true)} className="db-secondary-btn">
-            <Upload className="w-[18px] h-[18px]" />
-            Import CSV
-          </button>
-          <Link to="/add-item" className="db-primary-btn">
-            <Plus className="w-[18px] h-[18px]" />
-            Add Product
-          </Link>
+      <div className="app-page-header">
+        <div className="app-page-heading">
+          <h1 className="db-section-title">Products</h1>
+          <p className="app-page-subtitle">Maintain item records, SKUs, categories, stock levels, and pricing.</p>
+        </div>
+        <div className="app-page-actions">
+          {canCreateProducts && (
+            <>
+              <button onClick={() => setCsvModalOpen(true)} className="db-secondary-btn">
+                <Upload className="w-[18px] h-[18px]" />
+                Import CSV
+              </button>
+              <Link to="/add-item" className="db-primary-btn">
+                <Plus className="w-[18px] h-[18px]" />
+                Add Product
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
-      {/* STATS CARDS (matching Dashboard) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Total Products</span>
-          </div>
-          <div className="p-5">
-            <div className="text-2xl font-semibold text-gray-900">
-              {loading ? <div className="db-skeleton w-20 h-8" /> : productsList.length.toLocaleString()}
-            </div>
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Categories</span>
-          </div>
-          <div className="p-5">
-            <div className="text-2xl font-semibold text-gray-900">
-              {loading ? <div className="db-skeleton w-20 h-8" /> : totalCategories}
-            </div>
-          </div>
-        </div>
+      {/* STATS CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {productStats.map((stat, index) => (
+          <StatCard
+            key={stat.title}
+            title={stat.title}
+            value={stat.value}
+            sub={stat.sub}
+            subColor={stat.subColor}
+            icon={stat.icon}
+            iconColor={stat.iconColor}
+            iconBg={stat.iconBg}
+            loading={loading}
+            className="db-fade-in"
+            style={{ animationDelay: `${index * 0.05}s` }}
+          />
+        ))}
       </div>
+
+      {error && (
+        <div className="app-alert-danger">
+          Error loading product data: {error}
+        </div>
+      )}
 
       {/* SEARCH + FILTER + SORT */}
       <div className="db-card db-fade-in">
         <div className="db-card-header">
-          <span className="db-card-title">Filter & Sort</span>
+          <div>
+            <span className="db-card-title">Find products</span>
+            <div style={{ color: "#66706a", fontSize: 12, marginTop: 3 }}>
+              Search, filter, and sort the product catalog.
+            </div>
+          </div>
         </div>
         <div className="p-5">
           <div className="flex flex-wrap items-center gap-3">
@@ -322,7 +376,7 @@ export function ProductsPage() {
       {/* PRODUCTS TABLE CARD */}
       <div className="db-card db-fade-in">
         <div className="db-card-header">
-          <span className="db-card-title">Product List</span>
+          <span className="db-card-title">Product list</span>
         </div>
         <div className="overflow-x-auto">
           {loading ? (
@@ -332,7 +386,7 @@ export function ProductsPage() {
               <div className="db-skeleton h-10 mb-3" />
             </div>
           ) : error ? (
-            <div className="p-10 text-center text-red-500">Error loading data: {error}</div>
+            <div className="app-empty">Product data could not be loaded.</div>
           ) : (
             <table className="db-table w-full">
               <thead>
@@ -372,47 +426,37 @@ export function ProductsPage() {
                     <td>
                       <div className="relative">
                         <button
-                          onClick={() => setOpenDropdown(openDropdown === product.id ? null : product.id)}
+                          onClick={(event) => toggleActionMenu(product.id, event)}
                           className="db-icon-btn"
+                          aria-label={`Open actions for ${product.name}`}
                         >
                           <MoreVertical className="w-5 h-5" />
                         </button>
                         {openDropdown === product.id && (
-                          <>
-                            <div className="fixed inset-0 z-10" onClick={() => setOpenDropdown(null)} />
-                            <div className="absolute right-0 top-full z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-                              <button
-                                onClick={() => {
-                                  setOpenDropdown(null);
-                                  navigate(`/products/view-product/${product.id}`, { state: { product } });
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                              >
-                                <Eye className="w-4 h-4" />
-                                View Details
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setOpenDropdown(null);
-                                  navigate(`/products/edit-product/${product.id}`);
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                              >
-                                <Edit className="w-4 h-4" />
-                                Edit Product
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setOpenDropdown(null);
-                                  setDeleteModal({ isOpen: true, product });
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Delete
-                              </button>
-                            </div>
-                          </>
+                          <ProductActionMenu
+                            position={menuPosition}
+                            canEdit={canEditProducts}
+                            canDelete={canDeleteProducts}
+                            onClose={() => {
+                              setOpenDropdown(null);
+                              setMenuPosition(null);
+                            }}
+                            onView={() => {
+                              setOpenDropdown(null);
+                              setMenuPosition(null);
+                              navigate(`/products/view-product/${product.id}`, { state: { product } });
+                            }}
+                            onEdit={() => {
+                              setOpenDropdown(null);
+                              setMenuPosition(null);
+                              navigate(`/products/edit-product/${product.id}`);
+                            }}
+                            onDelete={() => {
+                              setOpenDropdown(null);
+                              setMenuPosition(null);
+                              setDeleteModal({ isOpen: true, product });
+                            }}
+                          />
                         )}
                       </div>
                     </td>
@@ -448,7 +492,7 @@ export function ProductsPage() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  className={`min-w-9 h-9 px-3 text-sm rounded-[10px] transition-colors ${
                     currentPage === page
                       ? "bg-[#0f8c5a] text-white"
                       : "border border-gray-200 hover:bg-gray-50"
@@ -461,7 +505,7 @@ export function ProductsPage() {
               {totalPages > 3 && (
                 <button
                   onClick={() => setCurrentPage(totalPages)}
-                  className={`px-3 py-1.5 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 ${
+                  className={`min-w-9 h-9 px-3 text-sm rounded-[10px] border border-gray-200 hover:bg-gray-50 ${
                     currentPage === totalPages ? "bg-[#0f8c5a] text-white border-[#0f8c5a]" : ""
                   }`}
                 >

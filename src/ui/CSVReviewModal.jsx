@@ -84,43 +84,43 @@ export function CSVReviewModal({ isOpen, onClose, data, type, onConfirmImport })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-xl">
+      <div className="app-card w-full max-w-6xl max-h-[90vh] flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="app-card-header">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="app-card-title">
               Review Imported {type === 'products' ? 'Products' : 'Suppliers'}
             </h2>
-            <p className="text-sm text-gray-600 mt-1">Review and select items to add to your inventory</p>
+            <p className="app-page-subtitle">Review and select items to add to your inventory.</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-gray-600" />
+          <button onClick={onClose} className="db-icon-btn" aria-label="Close import review">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Summary */}
         <div className="px-6 pt-6 pb-4 border-b border-gray-200">
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="text-sm text-blue-700 mb-1">Total Imported</div>
-              <div className="text-2xl font-semibold text-blue-900">{reviewData.length}</div>
+            <div className="db-card app-stat-card">
+              <div className="app-stat-label mb-2">Total Imported</div>
+              <div className="app-stat-value">{reviewData.length}</div>
             </div>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="text-sm text-green-700 mb-1">Selected for Import</div>
-              <div className="text-2xl font-semibold text-green-900">{selectedItems.size}</div>
+            <div className="db-card app-stat-card">
+              <div className="app-stat-label mb-2">Selected for Import</div>
+              <div className="app-stat-value">{selectedItems.size}</div>
             </div>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <div className="text-sm text-gray-700 mb-1">Will be Added</div>
-              <div className="text-2xl font-semibold text-gray-900">{selectedItems.size}</div>
+            <div className="db-card app-stat-card">
+              <div className="app-stat-label mb-2">Will be Added</div>
+              <div className="app-stat-value">{selectedItems.size}</div>
             </div>
           </div>
         </div>
 
         {/* Table */}
         <div className="flex-1 overflow-auto p-6">
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <table className="w-full">
+          <div className="app-card">
+            <table className="app-table">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
                   <th className="px-4 py-3 text-left">
@@ -128,7 +128,7 @@ export function CSVReviewModal({ isOpen, onClose, data, type, onConfirmImport })
                       type="checkbox"
                       checked={selectedItems.size === reviewData.length && reviewData.length > 0}
                       onChange={toggleSelectAll}
-                      className="w-4 h-4 text-[#15aaad] border-gray-300 rounded focus:ring-[#15aaad]"
+                      className="w-4 h-4 accent-[var(--app-green)]"
                     />
                   </th>
                   {fields.map(field => (
@@ -147,7 +147,7 @@ export function CSVReviewModal({ isOpen, onClose, data, type, onConfirmImport })
                         type="checkbox"
                         checked={selectedItems.has(index)}
                         onChange={() => toggleSelectItem(index)}
-                        className="w-4 h-4 text-[#15aaad] border-gray-300 rounded focus:ring-[#15aaad]"
+                        className="w-4 h-4 accent-[var(--app-green)]"
                       />
                     </td>
                     {fields.map(field => (
@@ -173,14 +173,14 @@ export function CSVReviewModal({ isOpen, onClose, data, type, onConfirmImport })
           </div>
 
           {reviewData.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-gray-400 mb-2">
+            <div className="app-empty app-context-panel">
+              <div className="text-[var(--app-green)] mb-2">
                 <CheckCircle2 className="w-12 h-12 mx-auto" />
               </div>
-              <p className="text-gray-600">All items have been removed</p>
+              <p className="text-[var(--app-ink)] font-semibold">All items have been removed</p>
               <button
                 onClick={onClose}
-                className="mt-4 text-sm text-[#15aaad] hover:text-[#0d8082]"
+                className="app-link mt-4"
               >
                 Close and start over
               </button>
@@ -196,14 +196,14 @@ export function CSVReviewModal({ isOpen, onClose, data, type, onConfirmImport })
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="db-secondary-btn"
             >
               Cancel Import
             </button>
             <button
               onClick={handleConfirm}
               disabled={selectedItems.size === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="db-primary-btn disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="w-[18px] h-[18px]" />
               Add {selectedItems.size} {type === 'products' ? 'Products' : 'Suppliers'}

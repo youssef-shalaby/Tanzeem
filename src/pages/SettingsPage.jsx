@@ -1,276 +1,52 @@
+import { createElement, useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Store,
-  Shield,
-  Bell,
-  Users,
-  MapPin,
-  ChevronDown,
-  UserPlus,
-  Edit2,
-  Trash2,
-  Key,
-  Smartphone,
-  Clock,
+  Activity,
   AlertCircle,
-  Mail,
-  Check,
-  Plus,
-  Sparkles,
-  Zap,
+  Bell,
   Bot,
+  Building2,
+  CheckCircle2,
+  ClipboardList,
+  Key,
+  Mail,
+  MapPin,
+  Phone,
+  Plus,
+  RefreshCcw,
+  Save,
+  Search,
+  Shield,
+  SlidersHorizontal,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  UserCog,
+  Users,
+  X,
+  Zap,
 } from "lucide-react";
-import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { ROLE_IDS, ROLE_KEYS, getRoleLabel, normalizeRoleKey, roleToId } from "../config/permissions";
+import "../styles/account.css";
 
-// ============================
-// Design system styles (green accent)
-// ============================
-const SETTINGS_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
-  .settings-root { font-family: 'DM Sans', sans-serif; }
-  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
-  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
-  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
-  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
-  .pill-green { background: #d6f5e8; color: #0a6b45; }
-  .pill-yellow { background: #fef3c7; color: #8b5e00; }
-  .pill-red { background: #fde8e8; color: #9b1c1c; }
-  .pill-blue { background: #e8f0fe; color: #2c5f8a; }
-  .db-primary-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 16px; background: #0f8c5a; color: white;
-    border-radius: 100px; font-size: 13px; font-weight: 500;
-    border: none; cursor: pointer; transition: background .15s;
-  }
-  .db-primary-btn:hover { background: #0a6b45; }
-  .db-secondary-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
-    border-radius: 100px; font-size: 13px; font-weight: 500;
-    color: #444; cursor: pointer; transition: background .15s;
-  }
-  .db-secondary-btn:hover { background: #f5f6f3; }
-  .db-select {
-    padding: 8px 14px; background: #fff; border: 1px solid rgba(0,0,0,.12);
-    border-radius: 100px; font-size: 13px; font-family: 'DM Sans', sans-serif;
-    color: #444; cursor: pointer; outline: none; transition: border-color .2s;
-    appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
-  }
-  .db-select:hover { border-color: #0f8c5a; }
-  .db-input {
-    width: 100%; padding: 9px 14px;
-    background: #fff; border: 1px solid rgba(0,0,0,.12);
-    border-radius: 12px; font-size: 13px; font-family: 'DM Sans', sans-serif;
-    color: #1a1a18; outline: none; transition: border-color .2s;
-  }
-  .db-input:focus { border-color: #0f8c5a; box-shadow: 0 0 0 2px rgba(15,140,90,.1); }
-  .db-table { width: 100%; border-collapse: collapse; }
-  .db-table th { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: .5px; padding: 10px 16px; text-align: left; background: #f9faf7; }
-  .db-table td { padding: 12px 16px; font-size: 13px; color: #1a1a18; border-top: 1px solid rgba(0,0,0,.05); }
-  .db-table tr:hover td { background: #f9faf7; }
-  .db-icon-btn {
-    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
-    display: inline-flex; align-items: center; justify-content: center;
-    color: #666; cursor: pointer; transition: background .15s, color .15s;
-  }
-  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
-  .db-fade-in { animation: dbFadeIn .4s ease both; }
-  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-`;
+const ROLE_OPTIONS = [
+  { id: ROLE_IDS.ADMIN, label: "Admin" },
+  { id: ROLE_IDS.MANAGER, label: "Manager" },
+  { id: ROLE_IDS.STAFF, label: "Staff" },
+];
 
-// ─── Shared Toggle Component ───────────────────────────────────────────────
-const Toggle = ({ checked, onChange, disabled = false }) => (
-  <label
-    className={`relative inline-flex items-center ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-  >
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={onChange}
-      disabled={disabled}
-      className="sr-only peer"
-    />
-    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#0f8c5a]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0f8c5a]" />
-  </label>
-);
+const AUDIT_PAGE_SIZE = 5;
 
-// ─── View-Only Banner ──────────────────────────────────────────────────────
-const ViewOnlyBanner = ({ message }) => (
-  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-    <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-    <div>
-      <p className="text-sm font-medium text-blue-900">View Only Access</p>
-      <p className="text-xs text-blue-700 mt-1">{message}</p>
-    </div>
-  </div>
-);
-
-// ─── Shared Tab Bar ────────────────────────────────────────────────────────
-const TabBar = ({ tabs, activeTab, setActiveTab }) => (
-  <div className="px-8">
-    <div className="flex gap-1 border-b border-gray-200">
-      {tabs.map(({ id, icon: Icon, label }) => {
-        const isActive = activeTab === id;
-        return (
-          <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors relative ${
-              isActive ? "text-[#0f8c5a]" : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            <Icon className="w-5 h-5" />
-            <span>{label}</span>
-            {isActive && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0f8c5a] rounded-full" />
-            )}
-          </button>
-        );
-      })}
-    </div>
-  </div>
-);
-
-// ─── Shared: Security Tab ──────────────────────────────────────────────────
-const SecurityTab = ({ sessions }) => {
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  return (
-    <div className="space-y-6">
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">Security</h2>
-        <p className="text-sm text-gray-600">
-          Manage your password and security preferences.
-        </p>
-      </div>
-
-      {/* Change Password */}
-      <div className="db-card db-fade-in">
-        <div className="db-card-header">
-          <span className="db-card-title">Change Password</span>
-        </div>
-        <div className="p-6 space-y-4">
-          <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
-            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-              <Key className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">
-                Update your password regularly to keep your account secure
-              </p>
-            </div>
-          </div>
-          {["Current Password", "New Password", "Confirm New Password"].map(
-            (label) => (
-              <div key={label}>
-                <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
-                  {label}
-                </label>
-                <input
-                  type="password"
-                  placeholder={`Enter ${label.toLowerCase()}`}
-                  className="db-input"
-                />
-              </div>
-            ),
-          )}
-          <button className="db-primary-btn">Update Password</button>
-        </div>
-      </div>
-
-      {/* 2FA */}
-      <div className="db-card db-fade-in">
-        <div className="db-card-header">
-          <span className="db-card-title">Two-Factor Authentication</span>
-        </div>
-        <div className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <Smartphone className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  Add an extra layer of security
-                </p>
-                <p className="text-xs text-gray-600">
-                  Protect your account with two-factor authentication
-                </p>
-              </div>
-            </div>
-            <Toggle
-              checked={twoFactorEnabled}
-              onChange={(e) => setTwoFactorEnabled(e.target.checked)}
-            />
-          </div>
-          {twoFactorEnabled && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-blue-800 font-medium">
-                    2FA is enabled
-                  </p>
-                  <p className="text-xs text-blue-700 mt-0.5">
-                    You'll need a verification code from your authenticator app
-                    on sign-in.
-                  </p>
-                  <button className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800">
-                    View Recovery Codes
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Active Sessions */}
-      <div className="db-card db-fade-in">
-        <div className="db-card-header">
-          <span className="db-card-title">Active Sessions</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="db-table">
-            <thead>
-              <tr>
-                <th>Device</th>
-                <th>Location</th>
-                <th>Last Active</th>
-                <th className="text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.map((session) => (
-                <tr key={session.id}>
-                  <td className="font-medium">{session.device}</td>
-                  <td>{session.location}</td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${session.status === "active" ? "bg-green-500" : "bg-gray-300"}`}
-                      />
-                      <span>{session.lastActive}</span>
-                    </div>
-                  </td>
-                  <td className="text-right">
-                    <button className="text-sm text-red-600 hover:text-red-700 font-medium">
-                      Revoke
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
+const INITIAL_STORE_INFO = {
+  storeName: "Tanzeem Global Logistics",
+  location: "Dubai, UAE",
+  timezone: "GST (UTC+4)",
+  supportEmail: "support@tanzeemlogistics.com",
+  phone: "+971-4-123-4567",
+  status: "Active",
 };
 
-// ─── Helper: getToken ──────────────────────────────────────────────────────
 function getToken() {
   try {
     return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
@@ -279,1611 +55,1330 @@ function getToken() {
   }
 }
 
-// ─── ADMIN Settings ────────────────────────────────────────────────────────
-function AdminSettings() {
-  const [activeTab, setActiveTab] = useState("store-info");
-  const [formData, setFormData] = useState({
-    storeName: "Tanzeem Global Logistics",
-    location: "Dubai, UAE",
-    timezone: "GST (UTC+4)",
-    supportEmail: "support@tanzeemlogistics.com",
-  });
-  const [managers, setManagers] = useState([
-    {
-      id: 1,
-      name: "David Chen",
-      email: "david.c@tanzeem.com",
-      role: "MANAGER",
-      avatar: "👨‍💼",
-    },
-  ]);
-  const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [showEditUserModal, setShowEditUserModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      userId: "USR001",
-      firstName: "John",
-      lastName: "Admin",
-      email: "john@tanzeem.com",
-      phone: "+971-50-123-4567",
-      role: "admin",
-      status: "active",
-      lastActive: "2 hours ago",
-    },
-    {
-      id: 2,
-      userId: "USR002",
-      firstName: "Sarah",
-      lastName: "Manager",
-      email: "sarah@tanzeem.com",
-      phone: "+971-50-234-5678",
-      role: "manager",
-      status: "active",
-      lastActive: "5 hours ago",
-    },
-    {
-      id: 3,
-      userId: "USR003",
-      firstName: "Mike",
-      lastName: "Staff",
-      email: "mike@tanzeem.com",
-      phone: "+971-50-345-6789",
-      role: "staff",
-      status: "active",
-      lastActive: "1 day ago",
-    },
-  ]);
-  const [newUser, setNewUser] = useState({
-    userId: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    role: "staff",
-  });
-  const [sessions] = useState([
-    {
-      id: 1,
-      device: "Chrome on Windows",
-      location: "Dubai, UAE",
-      lastActive: "Active now",
-      status: "active",
-    },
-    {
-      id: 2,
-      device: "Safari on MacBook Pro",
-      location: "Dubai, UAE",
-      lastActive: "2 hours ago",
-      status: "active",
-    },
-    {
-      id: 3,
-      device: "Mobile App on iPhone",
-      location: "Abu Dhabi, UAE",
-      lastActive: "1 day ago",
-      status: "inactive",
-    },
-  ]);
-  const [alertSettings, setAlertSettings] = useState(null);
-  const [alertSaving, setAlertSaving] = useState(false);
-  const [alertSaveMsg, setAlertSaveMsg] = useState("");
-  const [aiSettings, setAiSettings] = useState(null);
-  const [aiSaving, setAiSaving] = useState(false);
-  const [aiSaveMsg, setAiSaveMsg] = useState("");
-
-  useEffect(() => {
-    fetch("/api/AlertConfigurations", {
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data) setAlertSettings(data);
-      })
-      .catch(() => {});
-    fetch("/api/AIConfigurations", {
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data) setAiSettings(data);
-      })
-      .catch(() => {});
-  }, []);
-
-  const handleSaveAlertSettings = () => {
-    if (!alertSettings) return;
-    setAlertSaving(true);
-    fetch("/api/AlertConfigurations", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-      body: JSON.stringify(alertSettings),
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(() => {
-        setAlertSaveMsg("Saved!");
-        setTimeout(() => setAlertSaveMsg(""), 2000);
-      })
-      .catch(() => {
-        setAlertSaveMsg("Failed to save.");
-        setTimeout(() => setAlertSaveMsg(""), 3000);
-      })
-      .finally(() => setAlertSaving(false));
+function authHeaders() {
+  const token = getToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+}
 
-  const handleSaveAiSettings = () => {
-    if (!aiSettings) return;
-    setAiSaving(true);
-    fetch("/api/AIConfigurations", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-      body: JSON.stringify(aiSettings),
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(() => {
-        setAiSaveMsg("Saved!");
-        setTimeout(() => setAiSaveMsg(""), 2000);
-      })
-      .catch(() => {
-        setAiSaveMsg("Failed to save.");
-        setTimeout(() => setAiSaveMsg(""), 3000);
-      })
-      .finally(() => setAiSaving(false));
-  };
+function getCurrentCompanyId() {
+  try {
+    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.currentUser?.companyId || null;
+  } catch {
+    return null;
+  }
+}
 
-  const tabs = [
-    { id: "store-info", icon: Store, label: "Store Info" },
-    { id: "security", icon: Shield, label: "Security" },
-    { id: "alert-configurations", icon: Bell, label: "Alert Configurations" },
-    { id: "user-management", icon: Users, label: "User Management" },
-    { id: "ai-features", icon: Sparkles, label: "AI Features" },
-  ];
+async function apiFetch(url, options = {}) {
+  const response = await fetch(url, { ...options, headers: { ...authHeaders(), ...options.headers } });
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
 
-  const getRoleBadgeStyle = (role) =>
-    ({
-      admin: "bg-purple-100 text-purple-700",
-      manager: "bg-blue-100 text-blue-700",
-      staff: "bg-green-100 text-green-700",
-    })[role] || "bg-gray-100 text-gray-700";
-  const getRolePermissions = (role) =>
-    ({
-      admin: "Full system access",
-      manager: "Manage inventory, orders, suppliers",
-      staff: "View/edit inventory, create orders",
-    })[role] || "";
+function statusClass(status) {
+  return String(status || "").toLowerCase() === "active" ? "pill-green" : "pill-gray";
+}
 
-  const handleAddUser = () => {
-    if (
-      !newUser.userId ||
-      !newUser.firstName ||
-      !newUser.lastName ||
-      !newUser.email ||
-      !newUser.phone
-    ) {
-      alert("Please fill in all required fields");
-      return;
-    }
-    const user = {
-      id: users.length + 1,
-      ...newUser,
-      status: "active",
-      lastActive: "Just now",
-    };
-    setUsers([user, ...users]);
-    setNewUser({
-      userId: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      role: "staff",
-    });
-    setShowAddUserModal(false);
-    alert(
-      `User "${user.firstName} ${user.lastName}" has been added successfully!`,
-    );
-  };
+function actionPill(action) {
+  const normalized = String(action || "").toLowerCase();
+  if (normalized.includes("create") || normalized.includes("insert") || normalized.includes("add")) return "pill-green";
+  if (normalized.includes("delete") || normalized.includes("remove")) return "pill-red";
+  if (normalized.includes("update") || normalized.includes("edit")) return "pill-amber";
+  return "pill-blue";
+}
 
-  const handleEditUser = () => {
-    if (!selectedUser) return;
-    setUsers(users.map((u) => (u.id === selectedUser.id ? selectedUser : u)));
-    setShowEditUserModal(false);
-    setSelectedUser(null);
-    alert("User updated successfully!");
-  };
+function formatTime(value, now = Date.now()) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const diff = Math.floor((now - date.getTime()) / 60000);
+  if (diff < 1) return "Just now";
+  if (diff < 60) return `${diff}m ago`;
+  if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
+  return date.toLocaleDateString();
+}
 
-  const handleDeleteUser = (userId) => {
-    const user = users.find((u) => u.id === userId);
-    if (
-      confirm(
-        `Are you sure you want to delete ${user?.firstName} ${user?.lastName}?`,
-      )
-    ) {
-      setUsers(users.filter((u) => u.id !== userId));
-    }
-  };
-
-  const handleToggleStatus = (userId) => {
-    setUsers(
-      users.map((u) =>
-        u.id === userId
-          ? { ...u, status: u.status === "active" ? "inactive" : "active" }
-          : u,
-      ),
-    );
+function IconBubble({ icon: Icon, tone = "green" }) {
+  const tones = {
+    green: "bg-[#d6f5e8] text-[#0a6b45]",
+    blue: "bg-blue-100 text-blue-700",
+    purple: "bg-purple-100 text-purple-700",
+    amber: "bg-amber-100 text-amber-700",
+    red: "bg-red-100 text-red-700",
+    gray: "bg-gray-100 text-gray-600",
   };
 
   return (
-    <div className="settings-root">
-      <style>{SETTINGS_STYLES}</style>
-      <TabBar tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
-      <div className="flex-1 overflow-y-auto bg-[#f6f8fa]">
-        <div className="max-w-5xl mx-auto p-8 space-y-6">
-          {/* Store Info */}
-          {activeTab === "store-info" && (
-            <>
-              <div>
-                <h2 className="db-section-title">Store Information</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Update your logistics center details and operational workspace
-                  settings.
-                </p>
-              </div>
-              <div className="db-card db-fade-in">
-                <div className="db-card-header">
-                  <span className="db-card-title">Store Details</span>
-                </div>
-                <div className="p-6 space-y-5">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
-                      Store Name
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.storeName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, storeName: e.target.value })
-                      }
-                      className="db-input"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
-                        Location
-                      </label>
-                      <div className="flex items-center gap-2 border border-gray-200 rounded-lg focus-within:ring-2 focus-within:ring-[#0f8c5a]/20 focus-within:border-[#0f8c5a] bg-white">
-                        <div className="pl-3">
-                          <MapPin className="w-4 h-4 text-[#0f8c5a]" />
-                        </div>
-                        <input
-                          type="text"
-                          value={formData.location}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              location: e.target.value,
-                            })
-                          }
-                          className="flex-1 py-2 pr-3 text-sm bg-transparent focus:outline-none"
-                          style={{ fontFamily: "'DM Sans', sans-serif" }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
-                        Timezone
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={formData.timezone}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              timezone: e.target.value,
-                            })
-                          }
-                          className="db-select w-full"
-                        >
-                          <option>GST (UTC+4)</option>
-                          <option>EST (UTC-5)</option>
-                          <option>PST (UTC-8)</option>
-                          <option>GMT (UTC+0)</option>
-                          <option>IST (UTC+5:30)</option>
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
-                      Support Email
-                    </label>
-                    <input
-                      type="email"
-                      value={formData.supportEmail}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          supportEmail: e.target.value,
-                        })
-                      }
-                      className="db-input"
-                    />
-                  </div>
-                </div>
-              </div>
+    <span className={`settings-nav-icon ${tones[tone] || tones.green}`}>
+      {createElement(Icon, { className: "w-4 h-4" })}
+    </span>
+  );
+}
 
-              {/* Key Contacts */}
-              <div className="db-card db-fade-in">
-                <div className="db-card-header flex items-center justify-between">
-                  <span className="db-card-title">Key Contacts</span>
-                  <button className="db-primary-btn">
-                    <UserPlus className="w-4 h-4" /> Add Manager
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="db-table">
-                    <thead>
-                      <tr>
-                        <th>User</th>
-                        <th>Role</th>
-                        <th className="text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {managers.map((manager) => (
-                        <tr key={manager.id}>
-                          <td>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-lg">
-                                {manager.avatar}
-                              </div>
-                              <div>
-                                <div className="font-medium">
-                                  {manager.name}
-                                </div>
-                                <div className="text-xs text-gray-600">
-                                  {manager.email}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="db-stat-pill bg-[#0f8c5a]/10 text-[#0f8c5a]">
-                              {manager.role}
-                            </span>
-                          </td>
-                          <td className="text-right">
-                            <button className="db-icon-btn">
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+function Toggle({ checked, onChange, disabled }) {
+  return (
+    <label className="account-toggle">
+      <input type="checkbox" checked={checked} onChange={onChange} disabled={disabled} />
+      <span />
+    </label>
+  );
+}
 
-              <div className="flex items-center justify-between pt-4">
-                <p className="text-sm text-gray-600">
-                  Last updated: October 24, 2023
-                </p>
-                <div className="flex gap-3">
-                  <button className="db-secondary-btn">Discard</button>
-                  <button className="db-primary-btn">Save Changes</button>
-                </div>
-              </div>
-            </>
-          )}
-
-          {activeTab === "security" && <SecurityTab sessions={sessions} />}
-
-          {/* Alert Configurations */}
-          {activeTab === "alert-configurations" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="db-section-title">Alert Configurations</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Set up notifications and alert thresholds for inventory
-                  levels.
-                </p>
-              </div>
-              {!alertSettings ? (
-                <div className="text-sm text-gray-500 p-6">
-                  Loading alert configurations...
-                </div>
-              ) : (
-                <>
-                  <div className="db-card db-fade-in">
-                    <div className="db-card-header">
-                      <span className="db-card-title">
-                        Stock Level Thresholds
-                      </span>
-                    </div>
-                    <div className="p-6 space-y-5">
-                      {[
-                        {
-                          key: "lowStockThreshold",
-                          label: "Low Stock Threshold",
-                          unit: "units",
-                          hint: "Alert when stock falls below this quantity",
-                        },
-                        {
-                          key: "daysBeforeExpiry",
-                          label: "Expiry Warning Period",
-                          unit: "days before expiry",
-                          hint: "Alert when products are nearing expiration date",
-                        },
-                        {
-                          key: "daysWithoutMovement",
-                          label: "Dead Stock Threshold",
-                          unit: "days without movement",
-                          hint: "Alert when products have no movement for this period",
-                        },
-                      ].map(({ key, label, unit, hint }) => (
-                        <div key={key}>
-                          <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
-                            {label}
-                          </label>
-                          <div className="flex items-center gap-4">
-                            <input
-                              type="number"
-                              value={alertSettings[key] ?? ""}
-                              onChange={(e) =>
-                                setAlertSettings({
-                                  ...alertSettings,
-                                  [key]: parseInt(e.target.value) || 0,
-                                })
-                              }
-                              className="db-input flex-1"
-                            />
-                            <span className="text-sm text-gray-600 whitespace-nowrap">
-                              {unit}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-600 mt-2">{hint}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="db-card db-fade-in">
-                    <div className="db-card-header">
-                      <span className="db-card-title">
-                        Notification Channels
-                      </span>
-                    </div>
-                    <div className="p-6 space-y-4">
-                      {[
-                        {
-                          key: "isActive_InAppNotifiation",
-                          icon: Bell,
-                          iconBg: "bg-purple-100",
-                          iconColor: "text-purple-600",
-                          label: "In-App Notifications",
-                          desc: "Alerts inside the dashboard",
-                        },
-                        {
-                          key: "isActive_EmailNotifiation",
-                          icon: Mail,
-                          iconBg: "bg-green-100",
-                          iconColor: "text-green-600",
-                          label: "Email Notifications",
-                          desc: "Receive alerts via email",
-                        },
-                      ].map(
-                        ({
-                          key,
-                          icon: Icon,
-                          iconBg,
-                          iconColor,
-                          label,
-                          desc,
-                        }) => (
-                          <div
-                            key={key}
-                            className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`w-10 h-10 rounded-full ${iconBg} flex items-center justify-center`}
-                              >
-                                <Icon className={`w-5 h-5 ${iconColor}`} />
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {label}
-                                </div>
-                                <div className="text-xs text-gray-600 mt-1">
-                                  {desc}
-                                </div>
-                              </div>
-                            </div>
-                            <Toggle
-                              checked={!!alertSettings[key]}
-                              onChange={(e) =>
-                                setAlertSettings({
-                                  ...alertSettings,
-                                  [key]: e.target.checked,
-                                })
-                              }
-                            />
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="db-card db-fade-in">
-                    <div className="db-card-header">
-                      <span className="db-card-title">Alert Types</span>
-                    </div>
-                    <div className="p-6 space-y-3">
-                      {[
-                        {
-                          key: "isActive_LowAlert",
-                          label: "Low Stock Alerts",
-                          desc: "Get notified when items fall below threshold",
-                        },
-                        {
-                          key: "isActive_OutAlert",
-                          label: "Out of Stock Alerts",
-                          desc: "Urgent notification when stock reaches zero",
-                        },
-                        {
-                          key: "isActive_ExpiryAlert",
-                          label: "Expiry Date Warnings",
-                          desc: "Alert before products expire",
-                        },
-                        {
-                          key: "isActive_DeadAlert",
-                          label: "Dead Stock Alerts",
-                          desc: "Items with no movement for extended period",
-                        },
-                        {
-                          key: "isActive_NewOrderAlert",
-                          label: "New Order Alerts",
-                          desc: "Notify when new orders are placed",
-                        },
-                        {
-                          key: "isActive_OrderUpdateAlert",
-                          label: "Order Update Alerts",
-                          desc: "Track order fulfillment progress",
-                        },
-                      ].map(({ key, label, desc }) => (
-                        <div
-                          key={key}
-                          className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-                        >
-                          <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-900">
-                              {label}
-                            </div>
-                            <div className="text-xs text-gray-600 mt-1">
-                              {desc}
-                            </div>
-                          </div>
-                          <Toggle
-                            checked={!!alertSettings[key]}
-                            onChange={(e) =>
-                              setAlertSettings({
-                                ...alertSettings,
-                                [key]: e.target.checked,
-                              })
-                            }
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-3 pt-4">
-                    {alertSaveMsg && (
-                      <span
-                        className={`text-sm font-medium ${alertSaveMsg === "Saved!" ? "text-green-600" : "text-red-600"}`}
-                      >
-                        {alertSaveMsg}
-                      </span>
-                    )}
-                    <button
-                      onClick={handleSaveAlertSettings}
-                      disabled={alertSaving}
-                      className="db-primary-btn"
-                    >
-                      {alertSaving ? "Saving..." : "Save Alert Settings"}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* User Management */}
-          {activeTab === "user-management" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="db-section-title">User Management</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Add, edit, and manage user accounts and permissions.
-                </p>
-              </div>
-              <div className="db-card db-fade-in">
-                <div className="db-card-header">
-                  <span className="db-card-title">Role Permissions</span>
-                </div>
-                <div className="p-6">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="p-4 border border-purple-200 bg-purple-50 rounded-lg">
-                      <span className="db-stat-pill bg-purple-100 text-purple-700">
-                        Admin
-                      </span>
-                      <p className="text-xs text-gray-700 mt-2">
-                        Full system access, can manage users and settings
-                      </p>
-                    </div>
-                    <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg">
-                      <span className="db-stat-pill bg-blue-100 text-blue-700">
-                        Manager
-                      </span>
-                      <p className="text-xs text-gray-700 mt-2">
-                        Manage inventory, orders, and suppliers
-                      </p>
-                    </div>
-                    <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
-                      <span className="db-stat-pill bg-green-100 text-green-700">
-                        Staff
-                      </span>
-                      <p className="text-xs text-gray-700 mt-2">
-                        View and edit inventory, create orders
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="db-card db-fade-in">
-                <div className="db-card-header flex items-center justify-between">
-                  <span className="db-card-title">Team Members</span>
-                  <button
-                    onClick={() => setShowAddUserModal(true)}
-                    className="db-primary-btn"
-                  >
-                    <Plus className="w-4 h-4" /> Add User
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="db-table">
-                    <thead>
-                      <tr>
-                        <th>User</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Last Active</th>
-                        <th className="text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((user) => (
-                        <tr key={user.id}>
-                          <td>
-                            <div className="font-medium">
-                              {user.firstName} {user.lastName}
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {user.email}
-                            </div>
-                          </td>
-                          <td>
-                            <span
-                              className={`db-stat-pill ${getRoleBadgeStyle(user.role)}`}
-                            >
-                              {user.role.charAt(0).toUpperCase() +
-                                user.role.slice(1)}
-                            </span>
-                          </td>
-                          <td>
-                            <button
-                              onClick={() => handleToggleStatus(user.id)}
-                              className={`db-stat-pill ${user.status === "active" ? "pill-green" : "bg-gray-100 text-gray-600"} cursor-pointer`}
-                            >
-                              {user.status === "active" ? "Active" : "Inactive"}
-                            </button>
-                          </td>
-                          <td>{user.lastActive}</td>
-                          <td className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => {
-                                  setSelectedUser(user);
-                                  setShowEditUserModal(true);
-                                }}
-                                className="db-icon-btn"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteUser(user.id)}
-                                className="db-icon-btn hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4 text-red-600" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="p-4 bg-gray-50 border-t border-gray-100 text-sm text-gray-600">
-                  Total Users:{" "}
-                  <span className="font-medium">{users.length}</span> • Active:{" "}
-                  <span className="font-medium text-green-600">
-                    {users.filter((u) => u.status === "active").length}
-                  </span>{" "}
-                  • Inactive:{" "}
-                  <span className="font-medium text-gray-500">
-                    {users.filter((u) => u.status === "inactive").length}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* AI Features */}
-          {activeTab === "ai-features" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="db-section-title">AI Features</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Configure AI-powered features for demand forecasting and
-                  intelligent automation.
-                </p>
-              </div>
-              <div className="db-card db-fade-in">
-                <div className="db-card-header">
-                  <span className="db-card-title">
-                    AI-Powered Inventory Intelligence
-                  </span>
-                </div>
-                <div className="p-6 flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-[#0f8c5a]/10 flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-[#0f8c5a]" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">
-                      Leverage machine learning to predict demand patterns and
-                      automate product categorization.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              {!aiSettings ? (
-                <div className="text-sm text-gray-500 p-6">
-                  Loading AI configurations...
-                </div>
-              ) : (
-                <>
-                  <div className="db-card db-fade-in">
-                    <div className="db-card-header flex items-center justify-between">
-                      <span className="db-card-title">Demand Forecasting</span>
-                      <Toggle
-                        checked={!!aiSettings.demandForecasting}
-                        onChange={(e) =>
-                          setAiSettings({
-                            ...aiSettings,
-                            demandForecasting: e.target.checked,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="db-card db-fade-in">
-                    <div className="db-card-header flex items-center justify-between">
-                      <span className="db-card-title">Auto Categorization</span>
-                      <Toggle
-                        checked={!!aiSettings.autoCategorization}
-                        onChange={(e) =>
-                          setAiSettings({
-                            ...aiSettings,
-                            autoCategorization: e.target.checked,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-end gap-3 pt-4">
-                    {aiSaveMsg && (
-                      <span
-                        className={`text-sm font-medium ${aiSaveMsg === "Saved!" ? "text-green-600" : "text-red-600"}`}
-                      >
-                        {aiSaveMsg}
-                      </span>
-                    )}
-                    <button
-                      onClick={handleSaveAiSettings}
-                      disabled={aiSaving}
-                      className="db-primary-btn"
-                    >
-                      {aiSaving ? "Saving..." : "Save AI Settings"}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+function EmptyState({ icon: Icon = ClipboardList, title, copy }) {
+  return (
+    <div className="account-empty app-context-panel">
+      <div className="account-empty-icon">
+        {createElement(Icon, { className: "w-5 h-5" })}
       </div>
-
-      {/* Add User Modal */}
-      {showAddUserModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-md shadow-xl">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Add New User
-              </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Create a new team member account
-              </p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  User ID <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="USR001"
-                  value={newUser.userId}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, userId: e.target.value })
-                  }
-                  className="db-input"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    First Name *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="John"
-                    value={newUser.firstName}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, firstName: e.target.value })
-                    }
-                    className="db-input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Last Name *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Doe"
-                    value={newUser.lastName}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, lastName: e.target.value })
-                    }
-                    className="db-input"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  placeholder="user@tanzeem.com"
-                  value={newUser.email}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, email: e.target.value })
-                  }
-                  className="db-input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  placeholder="+971-50-123-4567"
-                  value={newUser.phone}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, phone: e.target.value })
-                  }
-                  className="db-input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role *
-                </label>
-                <select
-                  value={newUser.role}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, role: e.target.value })
-                  }
-                  className="db-select w-full"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="manager">Manager</option>
-                  <option value="staff">Staff</option>
-                </select>
-                <p className="text-xs text-gray-600 mt-2">
-                  {getRolePermissions(newUser.role)}
-                </p>
-              </div>
-            </div>
-            <div className="p-6 border-t border-gray-200 flex items-center justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowAddUserModal(false);
-                  setNewUser({
-                    userId: "",
-                    firstName: "",
-                    lastName: "",
-                    email: "",
-                    phone: "",
-                    role: "staff",
-                  });
-                }}
-                className="db-secondary-btn"
-              >
-                Cancel
-              </button>
-              <button onClick={handleAddUser} className="db-primary-btn">
-                Add User
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit User Modal */}
-      {showEditUserModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-md shadow-xl">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Edit User</h2>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  User ID
-                </label>
-                <input
-                  type="text"
-                  value={selectedUser.userId}
-                  onChange={(e) =>
-                    setSelectedUser({ ...selectedUser, userId: e.target.value })
-                  }
-                  className="db-input"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    First Name
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedUser.firstName}
-                    onChange={(e) =>
-                      setSelectedUser({
-                        ...selectedUser,
-                        firstName: e.target.value,
-                      })
-                    }
-                    className="db-input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedUser.lastName}
-                    onChange={(e) =>
-                      setSelectedUser({
-                        ...selectedUser,
-                        lastName: e.target.value,
-                      })
-                    }
-                    className="db-input"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={selectedUser.email}
-                  onChange={(e) =>
-                    setSelectedUser({ ...selectedUser, email: e.target.value })
-                  }
-                  className="db-input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={selectedUser.phone}
-                  onChange={(e) =>
-                    setSelectedUser({ ...selectedUser, phone: e.target.value })
-                  }
-                  className="db-input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role
-                </label>
-                <select
-                  value={selectedUser.role}
-                  onChange={(e) =>
-                    setSelectedUser({ ...selectedUser, role: e.target.value })
-                  }
-                  className="db-select w-full"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="manager">Manager</option>
-                  <option value="staff">Staff</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={selectedUser.status}
-                  onChange={(e) =>
-                    setSelectedUser({ ...selectedUser, status: e.target.value })
-                  }
-                  className="db-select w-full"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-            <div className="p-6 border-t border-gray-200 flex items-center justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowEditUserModal(false);
-                  setSelectedUser(null);
-                }}
-                className="db-secondary-btn"
-              >
-                Cancel
-              </button>
-              <button onClick={handleEditUser} className="db-primary-btn">
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="account-empty-title">{title}</div>
+      {copy && <div className="account-empty-copy">{copy}</div>}
     </div>
   );
 }
 
-// ─── MANAGER Settings ──────────────────────────────────────────────────────
-function ManagerSettings() {
-  const [activeTab, setActiveTab] = useState("store-info");
-  const [formData] = useState({
-    storeName: "Tanzeem Global Logistics",
-    location: "Dubai, UAE",
-    timezone: "GST (UTC+4)",
-    supportEmail: "support@tanzeemlogistics.com",
-  });
-  const [sessions] = useState([
-    {
-      id: 1,
-      device: "Chrome on Windows",
-      location: "Dubai, UAE",
-      lastActive: "Active now",
-      status: "active",
-    },
-    {
-      id: 2,
-      device: "Safari on MacBook Pro",
-      location: "Dubai, UAE",
-      lastActive: "2 hours ago",
-      status: "active",
-    },
-    {
-      id: 3,
-      device: "Mobile App on iPhone",
-      location: "Abu Dhabi, UAE",
-      lastActive: "1 day ago",
-      status: "inactive",
-    },
-  ]);
-  const [alertSettings, setAlertSettings] = useState({
-    lowStockThreshold: "20",
-    criticalStockThreshold: "5",
-    expiryWarningDays: "30",
-    emailNotifications: true,
-    pushNotifications: true,
-    smsNotifications: false,
-  });
-  const [aiSettings, setAiSettings] = useState(null);
-  useEffect(() => {
-    fetch("/api/AIConfigurations", {
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data) setAiSettings(data);
-      })
-      .catch(() => {});
-  }, []);
+function SectionHead({ title, copy, action }) {
+  return (
+    <div className="account-section-head">
+      <div>
+        <h2 className="account-section-title">{title}</h2>
+        {copy && <p className="account-section-copy">{copy}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
 
-  const tabs = [
-    { id: "store-info", icon: Store, label: "Store Info" },
-    { id: "security", icon: Shield, label: "Security" },
-    { id: "alert-configurations", icon: Bell, label: "Alert Configurations" },
-    { id: "ai-features", icon: Sparkles, label: "AI Features" },
-  ];
+function ViewOnlyBanner({ children }) {
+  return (
+    <div className="account-banner">
+      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function NumberStepper({ value, readOnly, onChange }) {
+  const numericValue = Number(value) || 0;
+  const update = (nextValue) => onChange(Math.max(0, nextValue));
 
   return (
-    <div className="settings-root">
-      <style>{SETTINGS_STYLES}</style>
-      <TabBar tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
-      <div className="flex-1 overflow-y-auto bg-[#f6f8fa]">
-        <div className="max-w-5xl mx-auto p-8 space-y-6">
-          {activeTab === "store-info" && (
-            <>
-              <div>
-                <h2 className="db-section-title">Store Information</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  View your logistics center details.
-                </p>
-              </div>
-              <div className="db-card db-fade-in">
-                <div className="db-card-header">
-                  <span className="db-card-title">Store Details</span>
-                </div>
-                <div className="p-6 space-y-5">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
-                      Store Name
-                    </label>
-                    <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
-                      {formData.storeName}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
-                        Location
-                      </label>
-                      <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900">
-                        <MapPin className="w-4 h-4 text-[#0f8c5a]" />
-                        <span>{formData.location}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
-                        Timezone
-                      </label>
-                      <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
-                        {formData.timezone}
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
-                      Support Email
-                    </label>
-                    <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
-                      {formData.supportEmail}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <ViewOnlyBanner message="Only administrators can modify store information. Contact your admin to request changes." />
-            </>
-          )}
-          {activeTab === "security" && <SecurityTab sessions={sessions} />}
-          {activeTab === "alert-configurations" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="db-section-title">Alert Configurations</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Set up notification thresholds.
-                </p>
-              </div>
-              <div className="db-card db-fade-in">
-                <div className="db-card-header">
-                  <span className="db-card-title">Stock Level Alerts</span>
-                </div>
-                <div className="p-6 space-y-5">
-                  {[
-                    {
-                      key: "lowStockThreshold",
-                      label: "Low Stock Threshold",
-                      unit: "units",
-                      hint: "Alert when stock falls below this quantity",
-                    },
-                    {
-                      key: "criticalStockThreshold",
-                      label: "Critical Stock Threshold",
-                      unit: "units",
-                      hint: "Alert for critically low stock",
-                    },
-                    {
-                      key: "expiryWarningDays",
-                      label: "Expiry Warning Days",
-                      unit: "days",
-                      hint: "Get notified before product expiry",
-                    },
-                  ].map(({ key, label, unit, hint }) => (
-                    <div key={key}>
-                      <label className="block text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
-                        {label}
-                      </label>
-                      <div className="flex items-center gap-4">
-                        <input
-                          type="number"
-                          value={alertSettings[key]}
-                          onChange={(e) =>
-                            setAlertSettings({
-                              ...alertSettings,
-                              [key]: e.target.value,
-                            })
-                          }
-                          className="db-input flex-1"
-                        />
-                        <span className="text-sm text-gray-600">{unit}</span>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-2">{hint}</p>
-                    </div>
-                  ))}
-                  <button className="db-primary-btn">
-                    Save Alert Settings
-                  </button>
-                </div>
-              </div>
-              <div className="db-card db-fade-in">
-                <div className="db-card-header">
-                  <span className="db-card-title">Notification Channels</span>
-                </div>
-                <div className="p-6 space-y-4">
-                  {[
-                    {
-                      label: "Email Notifications",
-                      key: "emailNotifications",
-                      desc: "Receive alerts via email",
-                    },
-                    {
-                      label: "Push Notifications",
-                      key: "pushNotifications",
-                      desc: "Browser and mobile app notifications",
-                    },
-                    {
-                      label: "SMS Notifications",
-                      key: "smsNotifications",
-                      desc: "Text message alerts",
-                    },
-                  ].map((channel) => (
-                    <div
-                      key={channel.key}
-                      className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-                    >
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {channel.label}
-                        </div>
-                        <div className="text-xs text-gray-600 mt-0.5">
-                          {channel.desc}
-                        </div>
-                      </div>
-                      <Toggle
-                        checked={alertSettings[channel.key]}
-                        onChange={(e) =>
-                          setAlertSettings({
-                            ...alertSettings,
-                            [channel.key]: e.target.checked,
-                          })
-                        }
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-          {activeTab === "ai-features" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="db-section-title">AI Features</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  View AI-powered features.
-                </p>
-              </div>
-              <ViewOnlyBanner message="Only administrators can modify AI feature settings." />
-              <div className="db-card db-fade-in">
-                <div className="db-card-header">
-                  <span className="db-card-title">Active AI Features</span>
-                </div>
-                <div className="p-6 space-y-4">
-                  {!aiSettings ? (
-                    <div className="text-sm text-gray-400">Loading...</div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            Demand Forecasting
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            Predict future inventory needs
-                          </div>
-                        </div>
-                        <span
-                          className={`db-stat-pill ${aiSettings.demandForecasting ? "pill-green" : "bg-gray-100 text-gray-600"}`}
-                        >
-                          {aiSettings.demandForecasting
-                            ? "Enabled"
-                            : "Disabled"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between py-3">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            Auto-Categorization
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            Automatically categorize new products
-                          </div>
-                        </div>
-                        <span
-                          className={`db-stat-pill ${aiSettings.autoCategorization ? "pill-green" : "bg-gray-100 text-gray-600"}`}
-                        >
-                          {aiSettings.autoCategorization
-                            ? "Enabled"
-                            : "Disabled"}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="db-card db-fade-in">
-                <div className="db-card-header">
-                  <span className="db-card-title">Configuration Details</span>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium text-gray-900">
-                      Forecast Period
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {aiSettings?.forecastPeriod ?? "—"} days
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium text-gray-900">
-                      Confidence Threshold
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {aiSettings?.confidenceThreshold ?? "—"}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+    <div className="account-number-stepper">
+      <input
+        className="account-input"
+        type="number"
+        value={value ?? ""}
+        readOnly={readOnly}
+        onChange={(event) => update(Number(event.target.value) || 0)}
+      />
+      <div className="account-stepper-controls" aria-hidden={readOnly}>
+        <button
+          className="account-stepper-btn"
+          type="button"
+          onClick={() => update(numericValue + 1)}
+          disabled={readOnly}
+          tabIndex={readOnly ? -1 : 0}
+          aria-label="Increase value"
+        >
+          <ChevronUp className="w-3 h-3" />
+        </button>
+        <button
+          className="account-stepper-btn"
+          type="button"
+          onClick={() => update(numericValue - 1)}
+          disabled={readOnly || numericValue <= 0}
+          tabIndex={readOnly ? -1 : 0}
+          aria-label="Decrease value"
+        >
+          <ChevronDown className="w-3 h-3" />
+        </button>
       </div>
     </div>
   );
 }
 
-// ─── STAFF Settings ────────────────────────────────────────────────────────
-function StaffSettings() {
-  const [activeTab, setActiveTab] = useState("security");
-  const [sessions] = useState([
-    {
-      id: 1,
-      device: "Chrome on Windows",
-      location: "Dubai, UAE",
-      lastActive: "Active now",
-      status: "active",
-    },
-    {
-      id: 2,
-      device: "Mobile App on iPhone",
-      location: "Abu Dhabi, UAE",
-      lastActive: "1 day ago",
-      status: "inactive",
-    },
-  ]);
-  const [alertPreferences, setAlertPreferences] = useState({
-    emailNotifications: true,
-    pushNotifications: true,
-    smsNotifications: false,
-    lowStockAlerts: true,
-    criticalStockAlerts: true,
-    expiryWarnings: true,
-  });
-
-  const tabs = [
-    { id: "security", icon: Shield, label: "Security" },
-    { id: "alert-preferences", icon: Bell, label: "Alert Preferences" },
+function SettingsHero({ roleLabel, currentUser }) {
+  const meta = [
+    { label: "Signed in as", value: currentUser?.name || "User" },
+    { label: "Role", value: roleLabel },
+    { label: "Branch", value: currentUser?.branchId ? `Branch ${currentUser.branchId}` : "Current branch" },
   ];
 
   return (
-    <div className="settings-root">
-      <style>{SETTINGS_STYLES}</style>
-      <TabBar tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
-      <div className="flex-1 overflow-y-auto bg-[#f6f8fa]">
-        <div className="max-w-5xl mx-auto p-8 space-y-6">
-          {activeTab === "security" && <SecurityTab sessions={sessions} />}
-          {activeTab === "alert-preferences" && (
-            <>
-              <div>
-                <h2 className="db-section-title">Alert Preferences</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Customize your personal notification preferences.
-                </p>
-              </div>
-              <div className="db-card db-fade-in">
-                <div className="db-card-header">
-                  <span className="db-card-title">Notification Channels</span>
-                </div>
-                <div className="p-6 space-y-4">
-                  {[
-                    {
-                      label: "Email Notifications",
-                      key: "emailNotifications",
-                      desc: "Receive alerts via email",
-                    },
-                    {
-                      label: "Push Notifications",
-                      key: "pushNotifications",
-                      desc: "Browser and mobile app notifications",
-                    },
-                    {
-                      label: "SMS Notifications",
-                      key: "smsNotifications",
-                      desc: "Text message alerts",
-                    },
-                  ].map((channel) => (
-                    <div
-                      key={channel.key}
-                      className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-                    >
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {channel.label}
-                        </div>
-                        <div className="text-xs text-gray-600 mt-0.5">
-                          {channel.desc}
-                        </div>
-                      </div>
-                      <Toggle
-                        checked={alertPreferences[channel.key]}
-                        onChange={(e) =>
-                          setAlertPreferences({
-                            ...alertPreferences,
-                            [channel.key]: e.target.checked,
-                          })
-                        }
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="db-card db-fade-in">
-                <div className="db-card-header">
-                  <span className="db-card-title">Alert Types</span>
-                </div>
-                <div className="p-6 space-y-4">
-                  {[
-                    {
-                      label: "Low Stock Alerts",
-                      key: "lowStockAlerts",
-                      desc: "Get notified when items fall below threshold",
-                    },
-                    {
-                      label: "Critical Stock Alerts",
-                      key: "criticalStockAlerts",
-                      desc: "Urgent notifications for very low stock",
-                    },
-                    {
-                      label: "Expiry Date Warnings",
-                      key: "expiryWarnings",
-                      desc: "Alert before products expire",
-                    },
-                  ].map((alert) => (
-                    <div
-                      key={alert.key}
-                      className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-                    >
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {alert.label}
-                        </div>
-                        <div className="text-xs text-gray-600 mt-0.5">
-                          {alert.desc}
-                        </div>
-                      </div>
-                      <Toggle
-                        checked={alertPreferences[alert.key]}
-                        onChange={(e) =>
-                          setAlertPreferences({
-                            ...alertPreferences,
-                            [alert.key]: e.target.checked,
-                          })
-                        }
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <button className="db-primary-btn">Save Preferences</button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main Export ───────────────────────────────────────────────────────────
-export function SettingsPage() {
-  const { currentUser } = useAuth();
-  const role = currentUser?.role?.toLowerCase() ?? "staff";
-  const subtitles = {
-    admin: "Manage your system preferences and configurations",
-    manager: "View system preferences and manage your personal configurations",
-    staff: "Manage your personal security and notification preferences",
-  };
-
-  return (
-    <div className="h-full flex flex-col bg-white">
-      <div className="border-b border-gray-200 px-8 py-6">
-        <h1 className="db-section-title">Settings</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          {subtitles[role] ?? subtitles.staff}
+    <header className="account-hero app-soft-hero">
+      <div>
+        <span className="account-kicker">
+          <Shield className="w-3.5 h-3.5" />
+          Workspace control center
+        </span>
+        <h1 className="account-title">Settings</h1>
+        <p className="account-subtitle">
+          Manage access, branch details, alert rules, AI behavior, audit trails, and account security from one focused workspace.
         </p>
       </div>
-      {role === "admin" && <AdminSettings key="admin" />}
-      {role === "manager" && <ManagerSettings key="manager" />}
-      {role === "staff" && <StaffSettings key="staff" />}
+      <div className="account-hero-meta">
+        {meta.map((item) => (
+          <div className="account-meta-tile" key={item.label}>
+            <div className="account-meta-label">{item.label}</div>
+            <div className="account-meta-value">{item.value}</div>
+          </div>
+        ))}
+      </div>
+    </header>
+  );
+}
+
+function SettingsNavigation({ tabs, active, onChange }) {
+  return (
+    <nav className="settings-nav" aria-label="Settings sections">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          className={`settings-nav-button ${active === tab.id ? "active" : ""}`}
+          onClick={() => onChange(tab.id)}
+        >
+          <span className="settings-nav-icon">{createElement(tab.icon, { className: "w-4 h-4" })}</span>
+          <span>
+            <span className="settings-nav-label">{tab.label}</span>
+            <span className="settings-nav-desc">{tab.desc}</span>
+          </span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function StoreSettings({ readOnly = false }) {
+  const [form, setForm] = useState(INITIAL_STORE_INFO);
+  const [company, setCompany] = useState({ name: "", field: "", email: "", phone: "" });
+  const [branches, setBranches] = useState([]);
+  const [workspaceLoading, setWorkspaceLoading] = useState(true);
+  const [savingWorkspace, setSavingWorkspace] = useState(false);
+  const [editingBranchId, setEditingBranchId] = useState(null);
+  const [newBranch, setNewBranch] = useState({ name: "", location: "", phoneNumber: "", email: "", status: "Active" });
+  const [errors, setErrors] = useState({});
+  const [creating, setCreating] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const updateForm = (field, value) => setForm((current) => ({ ...current, [field]: value }));
+  const updateCompany = (field, value) => setCompany((current) => ({ ...current, [field]: value }));
+  const updateBranch = (field, value) => setNewBranch((current) => ({ ...current, [field]: value }));
+
+  const normalizeBranch = (branch) => ({
+    id: branch.id ?? branch.Id,
+    name: branch.name ?? branch.Name ?? "",
+    location: branch.location ?? branch.Location ?? "",
+    phoneNumber: branch.phoneNumber ?? branch.PhoneNumber ?? "",
+    email: branch.email ?? branch.Email ?? "",
+    status: branch.status ?? branch.Status ?? "Active",
+    createdAt: branch.createdAt ?? branch.CreatedAt ?? null,
+  });
+
+  const normalizeCompany = (data) => ({
+    name: data?.name ?? data?.Name ?? "",
+    field: data?.field ?? data?.Field ?? "",
+    email: data?.email ?? data?.Email ?? "",
+    phone: data?.phone ?? data?.Phone ?? "",
+  });
+
+  const hydrateWorkspace = useCallback(async () => {
+    setWorkspaceLoading(true);
+    try {
+      const branchData = await apiFetch("/api/Branch/Get-Branches");
+      const normalizedBranches = Array.isArray(branchData) ? branchData.map(normalizeBranch) : [];
+      setBranches(normalizedBranches);
+
+      const primaryBranch = normalizedBranches[0];
+      if (primaryBranch) {
+        setForm({
+          storeName: primaryBranch.name || INITIAL_STORE_INFO.storeName,
+          location: primaryBranch.location || INITIAL_STORE_INFO.location,
+          timezone: INITIAL_STORE_INFO.timezone,
+          supportEmail: primaryBranch.email || INITIAL_STORE_INFO.supportEmail,
+          phone: primaryBranch.phoneNumber || INITIAL_STORE_INFO.phone,
+          status: primaryBranch.status || INITIAL_STORE_INFO.status,
+        });
+        setEditingBranchId(primaryBranch.id ?? null);
+      }
+
+      const companyId = getCurrentCompanyId();
+      if (companyId) {
+        const companyData = await apiFetch(`/api/Company/Get-Company/${companyId}`);
+        setCompany(normalizeCompany(companyData));
+      }
+    } catch (error) {
+      console.error("Failed to load workspace settings:", error);
+    } finally {
+      setWorkspaceLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    hydrateWorkspace();
+  }, [hydrateWorkspace]);
+
+  const createBranch = async () => {
+    const nextErrors = {};
+    if (!newBranch.name.trim()) nextErrors.name = "Branch name is required.";
+    if (!newBranch.location.trim()) nextErrors.location = "Location is required.";
+    if (!newBranch.phoneNumber.trim()) nextErrors.phoneNumber = "Phone number is required.";
+    if (!newBranch.email.trim()) nextErrors.email = "Email is required.";
+    if (newBranch.email && !/^\S+@\S+\.\S+$/.test(newBranch.email)) nextErrors.email = "Use a valid email address.";
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+
+    setCreating(true);
+    setMessage("");
+    try {
+      await apiFetch("/api/BusinessCore/Create-Additional-Branch", {
+        method: "POST",
+        body: JSON.stringify(newBranch),
+      });
+      setMessage("Branch created successfully.");
+      setNewBranch({ name: "", location: "", phoneNumber: "", email: "", status: "Active" });
+      setErrors({});
+      await hydrateWorkspace();
+    } catch {
+      setMessage("Failed to create branch.");
+    } finally {
+      setCreating(false);
+      window.setTimeout(() => setMessage(""), 3200);
+    }
+  };
+
+  const saveWorkspace = async () => {
+    setSavingWorkspace(true);
+    setMessage("");
+    try {
+      const companyId = getCurrentCompanyId();
+
+      if (companyId) {
+        await apiFetch(`/api/Company/Update-Company/${companyId}`, {
+          method: "PUT",
+          body: JSON.stringify(company),
+        });
+      }
+
+      if (editingBranchId) {
+        await apiFetch(`/api/Branch/Update-Branch/${editingBranchId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            id: editingBranchId,
+            name: form.storeName,
+            location: form.location,
+            phoneNumber: form.phone,
+            email: form.supportEmail,
+            status: form.status,
+          }),
+        });
+      }
+
+      setMessage("Workspace saved successfully.");
+      await hydrateWorkspace();
+    } catch {
+      setMessage("Failed to save workspace.");
+    } finally {
+      setSavingWorkspace(false);
+      window.setTimeout(() => setMessage(""), 3200);
+    }
+  };
+
+  const editBranch = async (branch) => {
+    try {
+      const detail = await apiFetch(`/api/Branch/Get-Branch/${branch.id}`);
+      const selected = normalizeBranch(detail || branch);
+      setEditingBranchId(selected.id);
+      setForm({
+        storeName: selected.name || "",
+        location: selected.location || "",
+        timezone: INITIAL_STORE_INFO.timezone,
+        supportEmail: selected.email || "",
+        phone: selected.phoneNumber || "",
+        status: selected.status || "Active",
+      });
+    } catch {
+      setMessage("Failed to load branch details.");
+      window.setTimeout(() => setMessage(""), 3200);
+    }
+  };
+
+  const deleteBranch = async (branch) => {
+    if (!window.confirm(`Delete ${branch.name || "this branch"}?`)) return;
+    try {
+      await apiFetch(`/api/Branch/Delete-Branch/${branch.id}`, { method: "DELETE" });
+      setMessage("Branch deleted successfully.");
+      await hydrateWorkspace();
+    } catch {
+      setMessage("Failed to delete branch.");
+    } finally {
+      window.setTimeout(() => setMessage(""), 3200);
+    }
+  };
+
+  const deleteCompany = async () => {
+    const companyId = getCurrentCompanyId();
+    if (!companyId) {
+      setMessage("Company ID is not available.");
+      window.setTimeout(() => setMessage(""), 3200);
+      return;
+    }
+    if (!window.confirm("Delete this company workspace? This cannot be undone.")) return;
+    try {
+      await apiFetch(`/api/Company/Delete-Company/${companyId}`, { method: "DELETE" });
+      setMessage("Company deleted successfully.");
+    } catch {
+      setMessage("Failed to delete company.");
+    } finally {
+      window.setTimeout(() => setMessage(""), 3200);
+    }
+  };
+
+  const infoFields = [
+    { key: "storeName", label: "Branch name", full: true },
+    { key: "location", label: "Location", icon: MapPin },
+    { key: "timezone", label: "Timezone", type: "select", options: ["GST (UTC+4)", "EST (UTC-5)", "PST (UTC-8)", "GMT (UTC+0)", "IST (UTC+5:30)", "EET (UTC+2)"] },
+    { key: "supportEmail", label: "Support email", type: "email", icon: Mail },
+    { key: "phone", label: "Phone number", type: "tel", icon: Phone },
+    { key: "status", label: "Status", type: "select", options: ["Active", "Inactive"] },
+  ];
+
+  return (
+    <div className="account-stack">
+      <SectionHead
+        title="Branch & Workspace"
+        copy={readOnly ? "Review branch details for this workspace." : "Update your primary branch profile and create additional branches."}
+      />
+      {readOnly && <ViewOnlyBanner>Only administrators can modify branch and workspace information.</ViewOnlyBanner>}
+
+      {workspaceLoading && <div className="account-skeleton h-20" />}
+
+      <div className="account-card">
+        <div className="account-card-head">
+          <div>
+            <div className="account-card-title">Company profile</div>
+            <div className="account-card-copy">Legal and public details for the company workspace.</div>
+          </div>
+        </div>
+        <div className="account-card-body">
+          <div className="account-grid-2">
+            {[
+              { key: "name", label: "Company name" },
+              { key: "field", label: "Business field" },
+              { key: "email", label: "Company email", type: "email" },
+              { key: "phone", label: "Company phone", type: "tel" },
+            ].map((field) => (
+              <div className="account-field" key={field.key}>
+                <label>{field.label}</label>
+                <input
+                  className="account-input"
+                  type={field.type || "text"}
+                  value={company[field.key]}
+                  readOnly={readOnly}
+                  onChange={(event) => updateCompany(field.key, event.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="account-card">
+        <div className="account-card-head">
+          <div>
+            <div className="account-card-title">Primary branch</div>
+            <div className="account-card-copy">Public contact and operating details for this branch.</div>
+          </div>
+          <span className={`account-pill ${statusClass(form.status)}`}>{form.status}</span>
+        </div>
+        <div className="account-card-body">
+          <div className="account-grid-2">
+            {infoFields.map((field) => {
+              const control = field.type === "select" ? (
+                <select
+                  className="account-select"
+                  value={form[field.key]}
+                  disabled={readOnly}
+                  onChange={(event) => updateForm(field.key, event.target.value)}
+                >
+                  {field.options.map((option) => <option key={option}>{option}</option>)}
+                </select>
+              ) : (
+                <input
+                  className="account-input"
+                  type={field.type || "text"}
+                  value={form[field.key]}
+                  readOnly={readOnly}
+                  onChange={(event) => updateForm(field.key, event.target.value)}
+                />
+              );
+
+              return (
+                <div className={`account-field ${field.full ? "md:col-span-2" : ""}`} key={field.key}>
+                  <label>{field.label}</label>
+                  {field.icon ? (
+                    <div className="account-input-icon">
+                      {createElement(field.icon, { className: "w-4 h-4" })}
+                      {control}
+                    </div>
+                  ) : control}
+                </div>
+              );
+            })}
+          </div>
+          {!readOnly && (
+            <div className="account-actions mt-5">
+              <button className="account-btn secondary" onClick={() => setForm(INITIAL_STORE_INFO)}>
+                <RefreshCcw className="w-4 h-4" />
+                Discard
+              </button>
+              <button className="account-btn primary" onClick={saveWorkspace} disabled={savingWorkspace}>
+                <Save className="w-4 h-4" />
+                {savingWorkspace ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="account-card">
+        <div className="account-card-head">
+          <div>
+            <div className="account-card-title">Branches</div>
+            <div className="account-card-copy">{branches.length} branches available in this workspace.</div>
+          </div>
+        </div>
+        {branches.length === 0 ? (
+          <EmptyState icon={Building2} title="No branches found" copy="Create a branch to start assigning users and operations." />
+        ) : (
+          <div className="account-table-wrap">
+            <table className="account-table">
+              <thead>
+                <tr>
+                  <th>Branch</th>
+                  <th>Location</th>
+                  <th>Contact</th>
+                  <th>Status</th>
+                  {!readOnly && <th className="text-right">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {branches.map((branch) => (
+                  <tr key={branch.id}>
+                    <td><strong>{branch.name || "-"}</strong><div className="text-xs text-gray-500">ID {branch.id}</div></td>
+                    <td>{branch.location || "-"}</td>
+                    <td>{branch.email || "-"}<div className="text-xs text-gray-500">{branch.phoneNumber || "-"}</div></td>
+                    <td><span className={`account-pill ${statusClass(branch.status)}`}>{branch.status || "Inactive"}</span></td>
+                    {!readOnly && (
+                      <td className="text-right">
+                        <button className="account-btn secondary mr-2" onClick={() => editBranch(branch)}>Edit</button>
+                        <button className="account-btn secondary text-red-600" onClick={() => deleteBranch(branch)}>Delete</button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {!readOnly && (
+        <div className="account-card">
+          <div className="account-card-head">
+            <div>
+              <div className="account-card-title">Create branch</div>
+              <div className="account-card-copy">Add a new branch to the company workspace.</div>
+            </div>
+          </div>
+          <div className="account-card-body">
+            <div className="account-grid-2">
+              {[
+                { key: "name", label: "Branch name", placeholder: "Tanzeem Abu Dhabi", full: true },
+                { key: "location", label: "Location", placeholder: "Abu Dhabi, UAE" },
+                { key: "phoneNumber", label: "Phone number", placeholder: "+971-2-1234567" },
+                { key: "email", label: "Email", placeholder: "abudhabi@tanzeem.com", type: "email" },
+              ].map((field) => (
+                <div className={`account-field ${field.full ? "md:col-span-2" : ""}`} key={field.key}>
+                  <label>{field.label}</label>
+                  <input
+                    className="account-input"
+                    type={field.type || "text"}
+                    value={newBranch[field.key]}
+                    placeholder={field.placeholder}
+                    onChange={(event) => updateBranch(field.key, event.target.value)}
+                  />
+                  {errors[field.key] && <p className="text-xs text-red-600 mt-1">{errors[field.key]}</p>}
+                </div>
+              ))}
+              <div className="account-field">
+                <label>Status</label>
+                <select className="account-select" value={newBranch.status} onChange={(event) => updateBranch("status", event.target.value)}>
+                  <option>Active</option>
+                  <option>Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div className="account-actions mt-5">
+              {message && (
+                <span className={`account-pill ${message.includes("success") ? "pill-green" : "pill-red"}`}>
+                  {message.includes("success") ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                  {message}
+                </span>
+              )}
+              <button className="account-btn primary" onClick={createBranch} disabled={creating}>
+                <Plus className="w-4 h-4" />
+                {creating ? "Creating..." : "Create branch"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!readOnly && (
+        <div className="account-card">
+          <div className="account-card-head">
+            <div>
+              <div className="account-card-title text-red-700">Danger zone</div>
+              <div className="account-card-copy">Delete the company workspace only when the backend account should be removed.</div>
+            </div>
+          </div>
+          <div className="account-card-body">
+            <button className="account-btn secondary text-red-600" onClick={deleteCompany}>
+              Delete company
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserManagement() {
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [query, setQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [submitting, setSubmitting] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [newEmployee, setNewEmployee] = useState({ name: "", email: "", phoneNumber: "", role: ROLE_IDS.STAFF, tempPassword: "" });
+
+  const fetchEmployees = useCallback(async () => {
+    try {
+      const data = await apiFetch("/api/BusinessCore/Get-All-Employees");
+      setEmployees(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to fetch employees:", error);
+      setEmployees([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
+
+  const getEmployeeId = (employee) => {
+    const candidates = [employee?.id, employee?.employeeId, employee?.userId, employee?.UserId];
+    for (const candidate of candidates) {
+      const parsed = Number(candidate);
+      if (candidate !== undefined && candidate !== null && !Number.isNaN(parsed)) return parsed;
+    }
+    return null;
+  };
+
+  const roleBadge = (role) => ({
+    [ROLE_IDS.ADMIN]: "pill-purple",
+    [ROLE_IDS.MANAGER]: "pill-blue",
+    [ROLE_IDS.STAFF]: "pill-green",
+  }[role] || "pill-gray");
+
+  const filteredEmployees = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return employees.filter((employee) => {
+      const text = `${employee.name || ""} ${employee.email || ""} ${employee.phoneNumber || ""} ${employee.branchName || ""} ${employee.branchId || ""}`.toLowerCase();
+      const matchesQuery = !needle || text.includes(needle);
+      const matchesRole = roleFilter === "all" || Number(employee.role) === Number(roleFilter);
+      return matchesQuery && matchesRole;
+    });
+  }, [employees, query, roleFilter]);
+
+  const createEmployee = async () => {
+    if (!newEmployee.name || !newEmployee.email || !newEmployee.phoneNumber) {
+      alert("Please fill name, email, and phone number.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const payload = {
+        name: newEmployee.name,
+        email: newEmployee.email,
+        role: Number(newEmployee.role),
+        phoneNumber: newEmployee.phoneNumber,
+        ...(newEmployee.tempPassword.trim() ? { tempPassword: newEmployee.tempPassword } : {}),
+      };
+      await apiFetch("/api/BusinessCore/Create-Employee", { method: "POST", body: JSON.stringify(payload) });
+      await fetchEmployees();
+      setShowAdd(false);
+      setNewEmployee({ name: "", email: "", phoneNumber: "", role: ROLE_IDS.STAFF, tempPassword: "" });
+    } catch {
+      alert("Failed to create employee.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openEmployee = async (employee) => {
+    const id = getEmployeeId(employee);
+    if (!id) {
+      alert("Invalid employee ID.");
+      return;
+    }
+    try {
+      const profile = await apiFetch(`/api/BusinessCore/Get-Employee-Profile/${id}`);
+      setEditingEmployee(profile);
+    } catch {
+      alert("Could not load employee details.");
+    }
+  };
+
+  const updateEmployee = async () => {
+    const id = getEmployeeId(editingEmployee);
+    if (!id) {
+      alert("Invalid employee ID.");
+      return;
+    }
+    setUpdating(true);
+    try {
+      await apiFetch(`/api/BusinessCore/Update-Employee/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: editingEmployee.name,
+          email: editingEmployee.email,
+          phoneNumber: editingEmployee.phoneNumber,
+          role: Number(editingEmployee.role),
+        }),
+      });
+      await fetchEmployees();
+      setEditingEmployee(null);
+    } catch {
+      alert("Failed to update employee.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const deleteEmployee = async (employee) => {
+    const id = getEmployeeId(employee);
+    if (!id) {
+      alert("Invalid employee ID.");
+      return;
+    }
+    if (!window.confirm(`Delete ${employee.name || employee.email || "this employee"}?`)) return;
+
+    try {
+      await apiFetch(`/api/BusinessCore/Delete-Employee/${id}`, { method: "DELETE" });
+      await fetchEmployees();
+    } catch {
+      alert("Failed to delete employee.");
+    }
+  };
+
+  const assignBranch = async (employee) => {
+    const userId = getEmployeeId(employee);
+    const branchId = Number(prompt("Enter new Branch ID:"));
+    if (!userId || Number.isNaN(branchId)) return;
+
+    setAssigning(true);
+    try {
+      const response = await fetch(`/api/BusinessCore/Assign-User?userId=${userId}&newBranchId=${branchId}`, {
+        method: "PUT",
+        headers: authHeaders(),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      await fetchEmployees();
+    } catch (error) {
+      alert(`Failed to assign branch: ${error.message}`);
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const activeCount = employees.filter((employee) => String(employee.status).toLowerCase() === "active").length;
+
+  return (
+    <div className="account-stack">
+      <SectionHead
+        title="People & Access"
+        copy="Invite team members, review roles, and move people between branches."
+        action={<button className="account-btn primary" onClick={() => setShowAdd(true)}><Plus className="w-4 h-4" />Add employee</button>}
+      />
+
+      <div className="account-grid-3">
+        <div className="account-stat"><div className="account-stat-value">{employees.length}</div><div className="account-stat-label">Total employees</div></div>
+        <div className="account-stat"><div className="account-stat-value text-[#0f8c5a]">{activeCount}</div><div className="account-stat-label">Active users</div></div>
+        <div className="account-stat"><div className="account-stat-value text-[#66706a]">{employees.length - activeCount}</div><div className="account-stat-label">Inactive users</div></div>
+      </div>
+
+      <div className="account-card">
+        <div className="account-card-head">
+          <div>
+            <div className="account-card-title">Team directory</div>
+            <div className="account-card-copy">{filteredEmployees.length} shown from {employees.length} total</div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <div className="account-input-icon">
+              <Search className="w-4 h-4" />
+              <input className="account-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search team" />
+            </div>
+            <div className="account-input-icon">
+              <SlidersHorizontal className="w-4 h-4" />
+              <select className="account-select" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
+                <option value="all">All roles</option>
+                {ROLE_OPTIONS.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+        {loading ? (
+          <div className="p-5 space-y-3">{[...Array(5)].map((_, index) => <div className="account-skeleton h-12" key={index} />)}</div>
+        ) : filteredEmployees.length === 0 ? (
+          <EmptyState icon={Users} title="No employees found" copy="Try a different filter or add a new employee." />
+        ) : (
+          <div className="account-table-wrap">
+            <table className="account-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Role</th>
+                  <th>Phone</th>
+                  <th>Branch</th>
+                  <th>Status</th>
+                  <th>Last active</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEmployees.map((employee) => (
+                  <tr key={getEmployeeId(employee) || employee.email}>
+                    <td><strong>{employee.name}</strong><div className="text-xs text-gray-500">{employee.email}</div></td>
+                    <td><span className={`account-pill ${roleBadge(employee.role)}`}>{getRoleLabel(employee.role)}</span></td>
+                    <td>{employee.phoneNumber || "-"}</td>
+                    <td>
+                      {employee.branchId ? `Branch ${employee.branchId}` : employee.branchName || "-"}
+                      <button className="account-icon-btn ml-1" onClick={() => assignBranch(employee)} disabled={assigning} title="Assign branch">
+                        <Key className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                    <td><span className={`account-pill ${statusClass(employee.status)}`}>{employee.status || "Inactive"}</span></td>
+                    <td>{employee.lastActive || "-"}</td>
+                    <td className="text-right">
+                      <button className="account-btn secondary" onClick={() => openEmployee(employee)} title="View employee">
+                        View
+                      </button>
+                      <button className="account-icon-btn ml-1 text-red-600" onClick={() => deleteEmployee(employee)} title="Delete employee">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {showAdd && (
+        <EmployeeModal
+          title="Add employee"
+          subtitle="Create a team member account and assign a role."
+          employee={newEmployee}
+          setEmployee={setNewEmployee}
+          onClose={() => setShowAdd(false)}
+          onSave={createEmployee}
+          saving={submitting}
+          saveLabel="Add employee"
+          allowPassword
+        />
+      )}
+
+      {editingEmployee && (
+        <EmployeeModal
+          title="Edit employee"
+          subtitle="Update team member details and role."
+          employee={editingEmployee}
+          setEmployee={setEditingEmployee}
+          onClose={() => setEditingEmployee(null)}
+          onSave={updateEmployee}
+          saving={updating}
+          saveLabel="Save changes"
+        />
+      )}
+    </div>
+  );
+}
+
+function EmployeeModal({ title, subtitle, employee, setEmployee, onClose, onSave, saving, saveLabel, allowPassword = false }) {
+  const setField = (field, value) => setEmployee((current) => ({ ...current, [field]: value }));
+
+  return (
+    <div className="account-modal-backdrop">
+      <div className="account-modal">
+        <div className="account-card-head">
+          <div>
+            <div className="account-section-title text-[24px]">{title}</div>
+            <div className="account-card-copy">{subtitle}</div>
+          </div>
+          <button className="account-icon-btn" onClick={onClose}><X className="w-4 h-4" /></button>
+        </div>
+        <div className="account-card-body">
+          <div className="account-grid-2">
+            <div className="account-field">
+              <label>Full name</label>
+              <input className="account-input" value={employee.name || ""} onChange={(event) => setField("name", event.target.value)} />
+            </div>
+            <div className="account-field">
+              <label>Email</label>
+              <input className="account-input" type="email" value={employee.email || ""} onChange={(event) => setField("email", event.target.value)} />
+            </div>
+            <div className="account-field">
+              <label>Phone</label>
+              <input className="account-input" type="tel" value={employee.phoneNumber || ""} onChange={(event) => setField("phoneNumber", event.target.value)} />
+            </div>
+            <div className="account-field">
+              <label>Role</label>
+              <select className="account-select" value={employee.role || ROLE_IDS.STAFF} onChange={(event) => setField("role", Number(event.target.value))}>
+                {ROLE_OPTIONS.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+              </select>
+            </div>
+            {allowPassword && (
+              <div className="account-field md:col-span-2">
+                <label>Temporary password</label>
+                <input className="account-input" value={employee.tempPassword || ""} onChange={(event) => setField("tempPassword", event.target.value)} placeholder="Auto-generate if left empty" />
+              </div>
+            )}
+          </div>
+          <div className="account-actions mt-5">
+            <button className="account-btn secondary" onClick={onClose}>Cancel</button>
+            <button className="account-btn primary" onClick={onSave} disabled={saving}>
+              <Save className="w-4 h-4" />
+              {saving ? "Saving..." : saveLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AlertConfigurations({ readOnly = false }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    apiFetch("/api/AlertConfigurations")
+      .then(setData)
+      .catch(() => setData({
+        lowStockThreshold: 20,
+        daysBeforeExpiry: 30,
+        daysWithoutMovement: 60,
+        isActive_InAppNotifiation: true,
+        isActive_EmailNotifiation: false,
+        isActive_LowAlert: true,
+        isActive_OutAlert: true,
+        isActive_ExpiryAlert: false,
+        isActive_DeadAlert: false,
+        isActive_NewOrderAlert: true,
+        isActive_OrderUpdateAlert: false,
+      }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const set = (field, value) => !readOnly && setData((current) => ({ ...current, [field]: value }));
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await apiFetch("/api/AlertConfigurations", { method: "PUT", body: JSON.stringify(data) });
+      setMessage("Alert settings saved.");
+    } catch {
+      setMessage("Failed to save alert settings.");
+    } finally {
+      setSaving(false);
+      window.setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
+  if (loading) return <div className="account-skeleton h-80" />;
+  if (!data) return <EmptyState icon={Bell} title="Alert settings unavailable" copy="Try again later." />;
+
+  const thresholds = [
+    { key: "lowStockThreshold", label: "Low stock threshold", unit: "units", copy: "Alert when stock falls below this quantity." },
+    { key: "daysBeforeExpiry", label: "Expiry warning", unit: "days", copy: "Warn before products reach expiration." },
+    { key: "daysWithoutMovement", label: "Dead stock threshold", unit: "days", copy: "Flag products without movement." },
+  ];
+  const channels = [
+    { key: "isActive_InAppNotifiation", label: "In-app notifications", copy: "Show alerts inside Tanzeem.", icon: Bell, tone: "purple" },
+    { key: "isActive_EmailNotifiation", label: "Email notifications", copy: "Send critical alerts by email.", icon: Mail, tone: "green" },
+  ];
+  const alertTypes = [
+    { key: "isActive_LowAlert", label: "Low stock alerts", copy: "Items fall below threshold." },
+    { key: "isActive_OutAlert", label: "Out of stock alerts", copy: "Stock reaches zero." },
+    { key: "isActive_ExpiryAlert", label: "Expiry warnings", copy: "Products nearing expiration." },
+    { key: "isActive_DeadAlert", label: "Dead stock alerts", copy: "Items with no movement." },
+    { key: "isActive_NewOrderAlert", label: "New order alerts", copy: "Orders are placed." },
+    { key: "isActive_OrderUpdateAlert", label: "Order update alerts", copy: "Fulfillment status changes." },
+  ];
+
+  return (
+    <div className="account-stack">
+      <SectionHead title="Alerts & Notifications" copy="Tune thresholds, notification channels, and alert types." />
+      {readOnly && <ViewOnlyBanner>Only administrators can modify alert settings.</ViewOnlyBanner>}
+      <div className="account-card pad">
+        <div className="account-grid-3">
+          {thresholds.map((item) => (
+            <div className="account-field" key={item.key}>
+              <label>{item.label}</label>
+              <NumberStepper
+                value={data[item.key]}
+                readOnly={readOnly}
+                onChange={(value) => set(item.key, value)}
+              />
+              <p className="account-card-copy">{item.unit} - {item.copy}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="account-grid-2">
+        {channels.map((channel) => (
+          <div className="account-card pad flex items-center justify-between gap-4" key={channel.key}>
+            <div className="flex items-center gap-3">
+              <IconBubble icon={channel.icon} tone={channel.tone} />
+              <div>
+                <div className="account-card-title">{channel.label}</div>
+                <div className="account-card-copy">{channel.copy}</div>
+              </div>
+            </div>
+            <Toggle checked={!!data[channel.key]} onChange={(event) => set(channel.key, event.target.checked)} disabled={readOnly} />
+          </div>
+        ))}
+      </div>
+      <div className="account-card">
+        <div className="account-card-head"><div className="account-card-title">Alert types</div></div>
+        <div className="account-card-body">
+          <div className="account-grid-2">
+            {alertTypes.map((type) => (
+              <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-3" key={type.key}>
+                <div>
+                  <div className="text-sm font-semibold">{type.label}</div>
+                  <div className="account-card-copy">{type.copy}</div>
+                </div>
+                <Toggle checked={!!data[type.key]} onChange={(event) => set(type.key, event.target.checked)} disabled={readOnly} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {!readOnly && (
+        <div className="account-actions">
+          {message && <span className={`account-pill ${message.includes("saved") ? "pill-green" : "pill-red"}`}>{message}</span>}
+          <button className="account-btn primary" onClick={save} disabled={saving}><Save className="w-4 h-4" />{saving ? "Saving..." : "Save alert settings"}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AIFeatures({ readOnly = false }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    apiFetch("/api/AIConfigurations")
+      .then(setData)
+      .catch(() => setData({ demandForecasting: true, autoCategorization: false }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const set = (field, value) => !readOnly && setData((current) => ({ ...current, [field]: value }));
+  const save = async () => {
+    setSaving(true);
+    try {
+      await apiFetch("/api/AIConfigurations", { method: "PUT", body: JSON.stringify(data) });
+      setMessage("AI settings saved.");
+    } catch {
+      setMessage("Failed to save AI settings.");
+    } finally {
+      setSaving(false);
+      window.setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
+  if (loading) return <div className="account-skeleton h-64" />;
+
+  const features = [
+    { key: "demandForecasting", icon: Zap, tone: "amber", label: "Demand forecasting", copy: "Predict inventory needs using transaction history." },
+    { key: "autoCategorization", icon: Bot, tone: "blue", label: "Auto categorization", copy: "Suggest categories when new products are created." },
+  ];
+
+  return (
+    <div className="account-stack">
+      <SectionHead title="AI Features" copy="Control automation that helps teams forecast, classify, and act faster." />
+      {readOnly && <ViewOnlyBanner>Only administrators can modify AI feature settings.</ViewOnlyBanner>}
+      <div className="account-card pad flex items-center gap-4">
+        <IconBubble icon={Sparkles} tone="green" />
+        <div>
+          <div className="account-card-title">Inventory intelligence</div>
+          <div className="account-card-copy">Keep AI assistance focused on operations, not extra noise.</div>
+        </div>
+      </div>
+      <div className="account-grid-2">
+        {features.map((feature) => (
+          <div className="account-card pad" key={feature.key}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <IconBubble icon={feature.icon} tone={feature.tone} />
+                <div>
+                  <div className="account-card-title">{feature.label}</div>
+                  <div className="account-card-copy">{feature.copy}</div>
+                </div>
+              </div>
+              <Toggle checked={!!data?.[feature.key]} onChange={(event) => set(feature.key, event.target.checked)} disabled={readOnly} />
+            </div>
+            <div className="mt-5 pt-4 border-t border-gray-100">
+              <span className={`account-pill ${data?.[feature.key] ? "pill-green" : "pill-gray"}`}>{data?.[feature.key] ? "Enabled" : "Disabled"}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      {!readOnly && (
+        <div className="account-actions">
+          {message && <span className={`account-pill ${message.includes("saved") ? "pill-green" : "pill-red"}`}>{message}</span>}
+          <button className="account-btn primary" onClick={save} disabled={saving}><Save className="w-4 h-4" />{saving ? "Saving..." : "Save AI settings"}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AuditLogs() {
+  const navigate = useNavigate();
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("branch");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState({ total: 0, today: 0, users: 0 });
+  const [loadedAt, setLoadedAt] = useState(null);
+
+  useEffect(() => {
+    const endpoint = filter === "branch"
+      ? `/api/AuditLogs/Get-Audits-Branch?Page_Size=${AUDIT_PAGE_SIZE}&Page=${page}`
+      : `/api/AuditLogs/Get-Audits-User?Page_Size=${AUDIT_PAGE_SIZE}&Page=${page}`;
+
+    apiFetch(endpoint)
+      .then((response) => {
+        const rows = response?.data || [];
+        const nextTotalCount = response?.totalCount || rows.length;
+        const today = new Date().toDateString();
+        setLogs(rows.slice(0, AUDIT_PAGE_SIZE));
+        setTotalCount(nextTotalCount);
+        setTotalPages(response?.totalPages > 0 ? response.totalPages : Math.max(1, Math.ceil(nextTotalCount / AUDIT_PAGE_SIZE)));
+        setStats({
+          total: nextTotalCount,
+          today: rows.filter((row) => row.createdAt && new Date(row.createdAt).toDateString() === today).length,
+          users: new Set(rows.map((row) => row.userId)).size,
+        });
+        setLoadedAt(Date.now());
+      })
+      .catch((error) => console.error("Audit logs error:", error))
+      .finally(() => setLoading(false));
+  }, [filter, page]);
+
+  const changeFilter = (nextFilter) => {
+    setLoading(true);
+    setPage(1);
+    setFilter(nextFilter);
+  };
+
+  const changePage = (nextPage) => {
+    setLoading(true);
+    setPage(Math.min(Math.max(nextPage, 1), totalPages));
+  };
+
+  return (
+    <div className="account-stack">
+      <SectionHead title="Audit Trail" copy="Review changes made across users and branches." />
+      <div className="account-grid-3">
+        <div className="account-stat"><div className="account-stat-value">{loading ? "-" : stats.total}</div><div className="account-stat-label">Total events</div></div>
+        <div className="account-stat"><div className="account-stat-value text-[#0f8c5a]">{loading ? "-" : stats.today}</div><div className="account-stat-label">Today</div></div>
+        <div className="account-stat"><div className="account-stat-value text-[#66706a]">{loading ? "-" : stats.users}</div><div className="account-stat-label">Unique users</div></div>
+      </div>
+      <div className="account-card">
+        <div className="account-card-head">
+          <div>
+            <div className="account-card-title">Activity log</div>
+            <div className="account-card-copy">
+              Showing {filter} events{totalCount ? ` - ${totalCount} total` : ""}.
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {["branch", "user"].map((item) => (
+              <button key={item} className={`account-btn ${filter === item ? "primary" : "secondary"}`} onClick={() => changeFilter(item)}>
+                {item === "branch" ? "Branch" : "User"}
+              </button>
+            ))}
+          </div>
+        </div>
+        {loading ? (
+          <div className="p-5 space-y-3">{[...Array(AUDIT_PAGE_SIZE)].map((_, index) => <div className="account-skeleton h-12" key={index} />)}</div>
+        ) : logs.length === 0 ? (
+          <EmptyState title="No audit logs found" copy="Activity appears here as changes are made." />
+        ) : (
+          <div className="account-table-wrap">
+            <table className="account-table">
+              <thead>
+                <tr><th>Action</th><th>Entity</th><th>Performed by</th><th>Timestamp</th><th className="text-right">Details</th></tr>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id}>
+                    <td><span className={`account-pill ${actionPill(log.action)}`}>{log.action || "Action"}</span></td>
+                    <td><strong>{log.entityName || "-"}</strong></td>
+                    <td>{log.userName || log.userId || "-"}</td>
+                    <td>{formatTime(log.createdAt, loadedAt)}</td>
+                    <td className="text-right">
+                      <button className="account-btn secondary" onClick={() => navigate(`/audit-log/${log.id}`, { state: { log, returnTo: "/settings?tab=audit" } })}>View</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {totalPages > 1 && (
+              <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between flex-wrap gap-3">
+                <p className="text-sm text-gray-600">
+                  Page {page} of {totalPages} ({totalCount} events)
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="account-btn secondary"
+                    onClick={() => changePage(page - 1)}
+                    disabled={page === 1}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className="account-btn secondary"
+                    onClick={() => changePage(page + 1)}
+                    disabled={page >= totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SecuritySettings() {
+  return (
+    <div className="account-stack">
+      <SectionHead title="Security" copy="Update password details for the current account." />
+      <div className="account-card">
+        <div className="account-card-head">
+          <div>
+            <div className="account-card-title">Change password</div>
+            <div className="account-card-copy">Use a strong password and rotate it regularly.</div>
+          </div>
+          <IconBubble icon={Key} tone="purple" />
+        </div>
+        <div className="account-card-body">
+          <div className="account-grid-2">
+            {["Current password", "New password", "Confirm new password"].map((label, index) => (
+              <div className={`account-field ${index === 0 ? "md:col-span-2" : ""}`} key={label}>
+                <label>{label}</label>
+                <input className="account-input" type="password" placeholder={`Enter ${label.toLowerCase()}`} />
+              </div>
+            ))}
+          </div>
+          <div className="account-actions mt-5">
+            <button className="account-btn primary"><Save className="w-4 h-4" />Update password</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ManagerStoreReadOnly() {
+  return <StoreSettings readOnly />;
+}
+
+export function SettingsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { currentUser, can } = useAuth();
+  const roleId = currentUser?.roleId ?? currentUser?.role_id ?? roleToId(currentUser?.role);
+  const roleKey = normalizeRoleKey(currentUser?.role || roleId);
+  const canManageWorkspace = can("update_company") || can("create_branch");
+  const canViewWorkspace = roleKey !== ROLE_KEYS.STAFF && (can("view_company") || can("view_branch"));
+  const canManageUsers = can("manage_users");
+  const canViewAlerts = can("view_alert_config");
+  const canEditAlerts = can("update_alert_config");
+  const canViewAi = can("view_ai_config");
+  const canEditAi = can("update_ai_config");
+  const canViewAudit = can("view_audit_logs");
+  const roleLabel = getRoleLabel(roleId);
+  const requestedTab = new URLSearchParams(location.search).get("tab") || location.state?.tab;
+  const [activeTab, setActiveTab] = useState(canViewWorkspace ? "store" : "security");
+
+  const tabs = useMemo(() => {
+    const items = [];
+    if (canViewWorkspace) items.push({ id: "store", label: "Workspace", desc: canManageWorkspace ? "Branches and contacts" : "Branch details", icon: Building2 });
+    if (canManageUsers) items.push({ id: "users", label: "People", desc: "Team and access", icon: Users });
+    if (canViewAlerts) items.push({ id: "alerts", label: "Alerts", desc: canEditAlerts ? "Thresholds and channels" : "View alert rules", icon: Bell });
+    if (canViewAi) items.push({ id: "ai", label: "AI", desc: canEditAi ? "Automation settings" : "View automation", icon: Sparkles });
+    if (canViewAudit) items.push({ id: "audit", label: "Audit trail", desc: "System activity", icon: Activity });
+    items.push({ id: "security", label: "Security", desc: "Password controls", icon: Shield });
+    return items;
+  }, [canEditAi, canEditAlerts, canManageUsers, canManageWorkspace, canViewAi, canViewAlerts, canViewAudit, canViewWorkspace]);
+
+  const selectedTab = requestedTab || activeTab;
+  const effectiveActiveTab = tabs.some((tab) => tab.id === selectedTab) ? selectedTab : tabs[0]?.id || "security";
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    navigate({ pathname: "/settings", search: `?tab=${tabId}` }, { replace: true });
+  };
+
+  return (
+    <div className="account-root account-page">
+      <div className="account-shell">
+        <SettingsHero roleLabel={roleLabel} currentUser={currentUser} />
+        <div className="settings-layout">
+          <SettingsNavigation tabs={tabs} active={effectiveActiveTab} onChange={handleTabChange} />
+          <main>
+            {effectiveActiveTab === "store" && (canManageWorkspace ? <StoreSettings /> : <ManagerStoreReadOnly />)}
+            {effectiveActiveTab === "users" && canManageUsers && <UserManagement />}
+            {effectiveActiveTab === "alerts" && canViewAlerts && <AlertConfigurations readOnly={!canEditAlerts} />}
+            {effectiveActiveTab === "ai" && canViewAi && <AIFeatures readOnly={!canEditAi} />}
+            {effectiveActiveTab === "audit" && canViewAudit && <AuditLogs />}
+            {effectiveActiveTab === "security" && <SecuritySettings />}
+          </main>
+        </div>
+      </div>
     </div>
   );
 }

@@ -159,18 +159,18 @@ export function CSVUploadModal({ isOpen, onClose, type, onUploadComplete }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-xl">
+      <div className="app-card w-full max-w-3xl max-h-[90vh] flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="app-card-header">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="app-card-title">
               Import {type === 'products' ? 'Products' : 'Suppliers'} from CSV
             </h2>
-            <p className="text-sm text-gray-600 mt-1">Upload a CSV file to bulk import data</p>
+            <p className="app-page-subtitle">Upload a CSV file to bulk import data.</p>
           </div>
-          <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-gray-600" />
+          <button onClick={handleClose} className="db-icon-btn" aria-label="Close CSV import">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -179,10 +179,10 @@ export function CSVUploadModal({ isOpen, onClose, type, onUploadComplete }) {
           {!showPreview ? (
             <div className="space-y-6">
               {/* Template Download */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="rounded-xl border border-[var(--app-line)] bg-[var(--app-soft)] p-4">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Download className="w-5 h-5 text-blue-600" />
+                  <div className="app-action-icon bg-[var(--app-info-bg)]">
+                    <Download className="w-5 h-5 text-[var(--app-info-text)]" />
                   </div>
                   <div className="flex-1">
                     <h3 className="font-medium text-gray-900 mb-1">Download Template</h3>
@@ -191,7 +191,7 @@ export function CSVUploadModal({ isOpen, onClose, type, onUploadComplete }) {
                     </p>
                     <button
                       onClick={downloadTemplate}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      className="app-link"
                     >
                       Download CSV Template
                     </button>
@@ -200,11 +200,11 @@ export function CSVUploadModal({ isOpen, onClose, type, onUploadComplete }) {
               </div>
 
               {/* Required Fields Info */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="rounded-xl border border-[var(--app-line)] bg-white p-4">
                 <h3 className="font-medium text-gray-900 mb-3">Required Fields</h3>
                 <div className="flex flex-wrap gap-2">
                   {requiredFields.map(field => (
-                    <span key={field} className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700">
+                    <span key={field} className="db-stat-pill pill-gray">
                       {field}
                     </span>
                   ))}
@@ -215,7 +215,7 @@ export function CSVUploadModal({ isOpen, onClose, type, onUploadComplete }) {
               </div>
 
               {/* Upload Area */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-[#15aaad] transition-colors">
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center transition-colors hover:border-[var(--app-green)]">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -226,8 +226,8 @@ export function CSVUploadModal({ isOpen, onClose, type, onUploadComplete }) {
                 />
                 <label htmlFor="csv-upload" className="cursor-pointer">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="p-4 bg-[#15aaad]/10 rounded-full">
-                      <Upload className="w-8 h-8 text-[#15aaad]" />
+                    <div className="p-4 bg-[var(--app-success-bg)] rounded-full">
+                      <Upload className="w-8 h-8 text-[var(--app-green)]" />
                     </div>
                     <div>
                       <p className="font-medium text-gray-900">
@@ -241,7 +241,7 @@ export function CSVUploadModal({ isOpen, onClose, type, onUploadComplete }) {
 
               {isProcessing && (
                 <div className="flex items-center justify-center gap-3 py-4">
-                  <Loader2 className="w-5 h-5 text-[#15aaad] animate-spin" />
+                  <Loader2 className="w-5 h-5 text-[var(--app-green)] animate-spin" />
                   <span className="text-sm text-gray-600">Processing CSV file...</span>
                 </div>
               )}
@@ -250,12 +250,12 @@ export function CSVUploadModal({ isOpen, onClose, type, onUploadComplete }) {
             <div className="space-y-4">
               {/* Summary */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="app-success-panel">
                   <div className="flex items-center gap-2 mb-1">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    <span className="font-medium text-green-900">Valid Rows</span>
+                    <CheckCircle2 className="w-5 h-5" />
+                    <span className="font-medium">Valid Rows</span>
                   </div>
-                  <p className="text-2xl font-semibold text-green-900">
+                  <p className="text-2xl font-semibold text-[var(--app-ink)]">
                     {parsedData.filter(p => p.isValid).length}
                   </p>
                 </div>
@@ -271,12 +271,12 @@ export function CSVUploadModal({ isOpen, onClose, type, onUploadComplete }) {
               </div>
 
               {/* Preview Table */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                  <h3 className="font-medium text-gray-900">Data Preview</h3>
+              <div className="app-card">
+                <div className="app-card-header">
+                  <h3 className="app-card-title">Data Preview</h3>
                 </div>
                 <div className="max-h-96 overflow-auto">
-                  <table className="w-full">
+                  <table className="app-table">
                     <thead className="bg-gray-50 sticky top-0">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -326,7 +326,7 @@ export function CSVUploadModal({ isOpen, onClose, type, onUploadComplete }) {
         <div className="flex items-center justify-between gap-3 p-6 border-t border-gray-200">
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="db-secondary-btn"
           >
             Cancel
           </button>
@@ -341,14 +341,14 @@ export function CSVUploadModal({ isOpen, onClose, type, onUploadComplete }) {
                     fileInputRef.current.value = '';
                   }
                 }}
-                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="db-secondary-btn"
               >
                 Upload Different File
               </button>
               <button
                 onClick={handleUpload}
                 disabled={parsedData.filter(p => p.isValid).length === 0}
-                className="px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="db-primary-btn disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Import {parsedData.filter(p => p.isValid).length} Valid Rows
               </button>

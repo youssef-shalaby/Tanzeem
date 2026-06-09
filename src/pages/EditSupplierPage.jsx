@@ -187,14 +187,14 @@ export function EditSupplierPage() {
       <style>{EDIT_SUPPLIER_STYLES}</style>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="app-page-header">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="db-icon-btn">
+          <button onClick={() => navigate(-1)} className="db-icon-btn" aria-label="Back to supplier">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="db-section-title">Edit Supplier</h1>
-            <p className="text-sm text-gray-600 mt-1">Update supplier information</p>
+          <div className="app-page-heading">
+            <h1 className="app-page-title">Edit Supplier</h1>
+            <p className="app-page-subtitle">Update supplier information.</p>
           </div>
         </div>
       </div>

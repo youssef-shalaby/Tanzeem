@@ -1,5 +1,15 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from "react";
 import { apiRequest } from "../services/api";
+import {
+  FEATURE_PERMISSIONS,
+  canAccessFeature,
+  getDefaultRouteForRole,
+  getPermissionsForRole,
+  hasPermission,
+  normalizeRoleKey,
+  roleToId,
+} from "../config/permissions";
 
 const AuthContext = createContext(null);
 
@@ -25,12 +35,16 @@ function readStoredAuth() {
   }
 }
 
-function normalizeRole(role) {
-  if (!role) return "staff";
-  if (typeof role === "number") {
-    return { 1: "admin", 2: "manager", 3: "staff" }[role] || "staff";
-  }
-  return String(role).toLowerCase();
+function persistAuthSession({ currentUser, token, backendResponse, deniedFeatures }) {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      currentUser,
+      token,
+      backendResponse,
+      deniedFeatures: Array.from(deniedFeatures || []),
+    })
+  );
 }
 
 function extractToken(data) {
@@ -47,6 +61,16 @@ function extractToken(data) {
 function decodeJWT(token) {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
+    const roleClaim =
+      payload[
+        "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+      ] ||
+      payload.role ||
+      payload.Role ||
+      payload.roleId ||
+      payload.RoleId;
+    const role = normalizeRoleKey(roleClaim);
+
     return {
       id:
         payload[
@@ -60,11 +84,8 @@ function decodeJWT(token) {
         payload[
           "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
         ] || "",
-      role: normalizeRole(
-        payload[
-          "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
-        ]
-      ),
+      role,
+      roleId: roleToId(role),
       companyId: payload["CompanyId"] || null,
       branchId: payload["BranchId"] || null,
     };
@@ -76,6 +97,8 @@ function decodeJWT(token) {
 function normalizeUser(data) {
   const source = data?.user || data?.data || data || {};
   const email = source.email || "";
+  const role = normalizeRoleKey(source.role || source.userRole || source.roleId || source.role_id);
+
   return {
     id: source.id || source.userId || email || "current-user",
     name:
@@ -84,26 +107,45 @@ function normalizeUser(data) {
       source.userName ||
       (email ? email.split("@")[0] : "User"),
     email,
-    role: normalizeRole(source.role || source.userRole),
+    role,
+    roleId: roleToId(role),
+    companyId: source.companyId || source.companyID || source.company_id || null,
+    branchId: source.branchId || source.branchID || source.branch_id || null,
   };
 }
 
-async function probeFeatures() {
-  const results = await Promise.allSettled(
-    FEATURE_PROBES.map(({ path }) => apiRequest(path))
-  );
-
+function deriveAllowedFeatures(currentUser, deniedFeatures = new Set()) {
   const allowed = new Set();
 
-  results.forEach((result, i) => {
-    if (result.status === "fulfilled") {
-      allowed.add(FEATURE_PROBES[i].feature);
-    } else if (result.reason?.name !== "ForbiddenError") {
-      allowed.add(FEATURE_PROBES[i].feature);
+  Object.keys(FEATURE_PERMISSIONS).forEach((feature) => {
+    if (canAccessFeature(currentUser?.role, feature) && !deniedFeatures.has(feature)) {
+      allowed.add(feature);
     }
   });
 
   return allowed;
+}
+
+async function probeDeniedFeatures(currentUser) {
+  const results = await Promise.allSettled(
+    FEATURE_PROBES.map(({ path }) => apiRequest(path))
+  );
+
+  const denied = new Set();
+
+  results.forEach((result, i) => {
+    const feature = FEATURE_PROBES[i].feature;
+    if (!canAccessFeature(currentUser?.role, feature)) {
+      denied.add(feature);
+      return;
+    }
+
+    if (result.status === "rejected" && result.reason?.name === "ForbiddenError") {
+      denied.add(feature);
+    }
+  });
+
+  return denied;
 }
 
 /* ------------------ Provider ------------------ */
@@ -111,49 +153,77 @@ async function probeFeatures() {
 export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState(() => {
     const stored = readStoredAuth();
+    const deniedFeatures = new Set(stored?.deniedFeatures || []);
 
     return {
       currentUser: stored?.currentUser || null,
       token: stored?.token || null,
       backendResponse: stored?.backendResponse || null,
-      allowedFeatures: null,
+      deniedFeatures,
+      allowedFeatures: stored?.currentUser ? deriveAllowedFeatures(stored.currentUser, deniedFeatures) : new Set(),
+      permissions: stored?.currentUser ? getPermissionsForRole(stored.currentUser.role) : new Set(),
+      permissionsReady: !stored?.currentUser || Array.isArray(stored?.deniedFeatures),
     };
   });
 
   useEffect(() => {
     if (authState.currentUser) {
-      probeFeatures().then((allowed) => {
-        setAuthState((prev) => ({ ...prev, allowedFeatures: allowed }));
+      probeDeniedFeatures(authState.currentUser).then((deniedFeatures) => {
+        setAuthState((prev) => ({
+          ...prev,
+          deniedFeatures,
+          allowedFeatures: deriveAllowedFeatures(prev.currentUser, deniedFeatures),
+          permissions: getPermissionsForRole(prev.currentUser?.role),
+          permissionsReady: true,
+        }));
+        persistAuthSession({
+          currentUser: authState.currentUser,
+          token: authState.token,
+          backendResponse: authState.backendResponse,
+          deniedFeatures,
+        });
       });
     }
-  }, []);
+  }, [authState.backendResponse, authState.currentUser, authState.token]);
 
   /* LOGIN */
   const setSession = async (data) => {
     const token = typeof data === "string" ? data : extractToken(data);
-    const currentUser = token ? decodeJWT(token) : normalizeUser(data);
+    const currentUser = token ? decodeJWT(token) || normalizeUser(data) : normalizeUser(data);
 
     const nextState = { currentUser, token, backendResponse: data };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
 
-    const allowedFeatures = await probeFeatures();
+    const deniedFeatures = await probeDeniedFeatures(currentUser);
+    const allowedFeatures = deriveAllowedFeatures(currentUser, deniedFeatures);
+    const permissions = getPermissionsForRole(currentUser?.role);
 
-    setAuthState({ ...nextState, allowedFeatures });
+    persistAuthSession({ ...nextState, deniedFeatures });
 
-    return { ...nextState, allowedFeatures };
+    setAuthState({ ...nextState, deniedFeatures, allowedFeatures, permissions, permissionsReady: true });
+
+    return { ...nextState, deniedFeatures, allowedFeatures, permissions, permissionsReady: true };
   };
 
   const setCurrentUser = (currentUser) => {
-    const nextState = { ...authState, currentUser };
+    const normalizedUser = {
+      ...currentUser,
+      role: normalizeRoleKey(currentUser?.role || currentUser?.roleId || currentUser?.role_id),
+      roleId: roleToId(currentUser?.role || currentUser?.roleId || currentUser?.role_id),
+    };
+    const nextState = {
+      ...authState,
+      currentUser: normalizedUser,
+      permissions: getPermissionsForRole(normalizedUser.role),
+      allowedFeatures: deriveAllowedFeatures(normalizedUser, authState.deniedFeatures),
+      permissionsReady: true,
+    };
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        currentUser,
-        token: authState.token,
-        backendResponse: authState.backendResponse,
-      })
-    );
+    persistAuthSession({
+      currentUser: normalizedUser,
+      token: authState.token,
+      backendResponse: authState.backendResponse,
+      deniedFeatures: authState.deniedFeatures,
+    });
 
     setAuthState(nextState);
   };
@@ -165,13 +235,21 @@ export function AuthProvider({ children }) {
       currentUser: null,
       token: null,
       backendResponse: null,
-      allowedFeatures: null,
+      deniedFeatures: new Set(),
+      allowedFeatures: new Set(),
+      permissions: new Set(),
+      permissionsReady: true,
     });
   };
 
   const isFeatureAllowed = (feature) => {
-    if (authState.allowedFeatures === null) return true;
+    if (!authState.currentUser) return false;
     return authState.allowedFeatures.has(feature);
+  };
+
+  const can = (permission) => {
+    if (!authState.currentUser) return false;
+    return hasPermission(authState.currentUser.role, permission);
   };
 
   return (
@@ -180,6 +258,8 @@ export function AuthProvider({ children }) {
         ...authState,
         isAuthenticated: !!authState.currentUser,
         isFeatureAllowed,
+        can,
+        getDefaultRoute: () => getDefaultRouteForRole(authState.currentUser?.role),
         setSession,
         setCurrentUser,
         logout,

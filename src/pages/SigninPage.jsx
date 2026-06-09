@@ -58,12 +58,12 @@ export function SigninPage() {
         password: form.password,
       });
 
-      setSession(response);
+      const session = await setSession(response);
 
       navigate("/welcome", {
         replace: true,
         state: {
-          name: form.email,
+          name: session.currentUser?.name || form.email,
         },
       });
     } catch (err) {

@@ -120,12 +120,12 @@ export function AddSupplierPage() {
       <style>{ADD_SUPPLIER_STYLES}</style>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="db-section-title">Add New Supplier</h1>
-          <p className="text-sm text-gray-600 mt-1">Create a new supplier record</p>
+      <div className="app-page-header">
+        <div className="app-page-heading">
+          <h1 className="app-page-title">Add New Supplier</h1>
+          <p className="app-page-subtitle">Create a new supplier record.</p>
         </div>
-        <button onClick={() => navigate(-1)} className="db-icon-btn">
+        <button onClick={() => navigate(-1)} className="db-icon-btn" aria-label="Close add supplier">
           <X className="w-5 h-5" />
         </button>
       </div>

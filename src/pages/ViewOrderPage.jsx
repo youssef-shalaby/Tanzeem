@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle,
@@ -74,6 +74,60 @@ const VIEW_ORDER_STYLES = `
   .pill-yellow { background: #fef3c7; color: #8b5e00; }
   .pill-red { background: #fde8e8; color: #9b1c1c; }
   .pill-blue { background: #e8f0fe; color: #2c5f8a; }
+  .order-issue-banner {
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(217, 119, 6, .28);
+    background: #fff7ed;
+  }
+  .order-issue-banner-icon { color: #c2410c; }
+  .order-issue-banner-title {
+    margin: 0 0 6px;
+    color: #9a3412;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .order-issue-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .order-issue-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 11px;
+    border-radius: 9px;
+    border: 1px solid rgba(217, 119, 6, .22);
+    background: #ffedd5;
+    color: #9a3412;
+    font-size: 12px;
+    font-weight: 650;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .order-issue-link:hover {
+    background: #fed7aa;
+    border-color: rgba(217, 119, 6, .34);
+  }
+  :root[data-theme="dark"] .order-issue-banner {
+    background: rgba(245, 158, 11, .08);
+    border-color: rgba(245, 158, 11, .3);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.018);
+  }
+  :root[data-theme="dark"] .order-issue-banner-icon { color: #f0c676; }
+  :root[data-theme="dark"] .order-issue-banner-title { color: #f2d5a2; }
+  :root[data-theme="dark"] .order-issue-link {
+    background: rgba(245, 158, 11, .14);
+    border-color: rgba(245, 158, 11, .28);
+    color: #f2d5a2;
+  }
+  :root[data-theme="dark"] .order-issue-link:hover {
+    background: rgba(245, 158, 11, .2);
+    border-color: rgba(245, 158, 11, .4);
+  }
   .db-fade-in { animation: dbFadeIn .4s ease both; }
   @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .db-table { width: 100%; border-collapse: collapse; }
@@ -116,9 +170,9 @@ function CancelModal({ orderId, orderIdDisplay, onClose, onCancelled }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+      <div className="app-card w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Cancel Order</h2>
+          <h2 className="app-card-title">Cancel Order</h2>
           <button
             onClick={onClose}
             className="db-icon-btn"
@@ -132,7 +186,7 @@ function CancelModal({ orderId, orderIdDisplay, onClose, onCancelled }) {
           This action cannot be undone.
         </p>
         {error && (
-          <p className="mb-4 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-3">
+          <p className="app-alert-danger mb-4">
             {error}
           </p>
         )}
@@ -243,9 +297,9 @@ function EditModal({ order, items: initialItems, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4">
+      <div className="app-card w-full max-w-2xl mx-4">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Edit Order</h2>
+          <h2 className="app-card-title">Edit Order</h2>
           <button
             onClick={onClose}
             className="db-icon-btn"
@@ -257,43 +311,43 @@ function EditModal({ order, items: initialItems, onClose, onSaved }) {
         <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Order Date</label>
+              <label className="app-form-label">Order Date</label>
               <input type="date" value={form.orderDate} onChange={updateForm("orderDate")} className="db-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Expected Delivery</label>
+              <label className="app-form-label">Expected Delivery</label>
               <input type="date" value={form.expectedDeliveryDate} onChange={updateForm("expectedDeliveryDate")} className="db-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Received Date</label>
+              <label className="app-form-label">Received Date</label>
               <input type="date" value={form.recievedDeliveryDate} onChange={updateForm("recievedDeliveryDate")} className="db-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Supplier ID</label>
+              <label className="app-form-label">Supplier ID</label>
               <input type="number" value={form.supplierId} onChange={updateForm("supplierId")} className="db-input" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Shipping Cost</label>
+              <label className="app-form-label">Shipping Cost</label>
               <input type="number" step="0.01" value={form.shippingCost} onChange={updateForm("shippingCost")} className="db-input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Taxes</label>
+              <label className="app-form-label">Taxes</label>
               <input type="number" step="0.01" value={form.taxes} onChange={updateForm("taxes")} className="db-input" />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
+            <label className="app-form-label">Notes</label>
             <textarea rows={3} value={form.notes} onChange={updateForm("notes")} className="db-input resize-none" />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-gray-700">Order Items</label>
-              <button onClick={addItem} className="flex items-center gap-1.5 text-xs text-[#0f8c5a] hover:text-[#0a6b45] font-medium">
+              <label className="app-form-label mb-0">Order Items</label>
+              <button onClick={addItem} className="app-link">
                 <Plus className="w-3.5 h-3.5" /> Add Item
               </button>
             </div>
@@ -303,7 +357,7 @@ function EditModal({ order, items: initialItems, onClose, onSaved }) {
                   <input type="number" placeholder="Product ID" value={item.productId} onChange={updateItem(idx, "productId")} className="db-input w-28" />
                   <input type="number" placeholder="Qty" value={item.quantity} onChange={updateItem(idx, "quantity")} className="db-input w-20" />
                   <input type="number" step="0.01" placeholder="Price" value={item.price} onChange={updateItem(idx, "price")} className="db-input flex-1" />
-                  <button onClick={() => removeItem(idx)} disabled={items.length === 1} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30">
+                  <button onClick={() => removeItem(idx)} disabled={items.length === 1} className="db-icon-btn text-red-600 disabled:opacity-30">
                     <Minus className="w-4 h-4" />
                   </button>
                 </div>
@@ -312,7 +366,7 @@ function EditModal({ order, items: initialItems, onClose, onSaved }) {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-3">{error}</p>
+            <p className="app-alert-danger">{error}</p>
           )}
         </div>
 
@@ -357,7 +411,7 @@ export function ViewOrderPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [deliveryIssues, setDeliveryIssues] = useState([]);
 
-  const fetchOrder = () => {
+  const fetchOrder = useCallback(() => {
     setLoading(true);
     const stateOrder = location.state?.order;
 
@@ -391,7 +445,7 @@ export function ViewOrderPage() {
           setLoading(false);
         }
       });
-  };
+  }, [location.state?.order, orderId]);
 
   // Fetch delivery issues for this order
   useEffect(() => {
@@ -413,8 +467,9 @@ export function ViewOrderPage() {
   }, [orderId]);
 
   useEffect(() => {
-    fetchOrder();
-  }, [orderId]);
+    const loadTimer = window.setTimeout(fetchOrder, 0);
+    return () => window.clearTimeout(loadTimer);
+  }, [fetchOrder]);
 
   const normalizeStatus = (status) => {
     if (!status) return "Pending";
@@ -551,18 +606,18 @@ export function ViewOrderPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="app-page-header">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="db-icon-btn">
+          <button onClick={() => navigate(-1)} className="db-icon-btn" aria-label="Back to orders">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="db-section-title">Order Details</h1>
-            <p className="text-sm text-gray-600 mt-1">Order {orderIdDisplay}</p>
+          <div className="app-page-heading">
+            <h1 className="app-page-title">Order Details</h1>
+            <p className="app-page-subtitle">Order {orderIdDisplay}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="app-page-actions">
           {isPending && (
             <>
               <button
@@ -574,7 +629,7 @@ export function ViewOrderPage() {
               </button>
               <button
                 onClick={() => setShowCancelModal(true)}
-                className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 text-sm rounded-full hover:bg-red-50 transition-colors"
+                className="db-danger-btn"
               >
                 <Trash2 className="w-4 h-4" />
                 Cancel Order
@@ -596,7 +651,7 @@ export function ViewOrderPage() {
                 },
               })
             }
-            className="flex items-center gap-2 px-4 py-2 border border-[#0f8c5a] text-[#0f8c5a] text-sm rounded-full hover:bg-[#0f8c5a]/10 transition-colors"
+            className="db-secondary-btn"
           >
             <RefreshCw className="w-4 h-4" />
             Reorder
@@ -606,11 +661,11 @@ export function ViewOrderPage() {
 
       {/* Delivery Issues Banner */}
       {orderStatus === "Delivered" && deliveryIssues.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+        <div className="order-issue-banner">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="order-issue-banner-icon w-5 h-5 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-orange-800 mb-1">
+              <p className="order-issue-banner-title">
                 This order was delivered with{" "}
                 {totalIssueCount === 1
                   ? "1 issue"
@@ -620,7 +675,7 @@ export function ViewOrderPage() {
                 {allIssueTypes.map((type) => (
                   <span
                     key={type}
-                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ISSUE_TYPE_STYLES[type] ?? "bg-gray-100 text-gray-700"}`}
+                    className={`order-issue-chip ${ISSUE_TYPE_STYLES[type] ?? "bg-gray-100 text-gray-700"}`}
                   >
                     {type}
                   </span>
@@ -631,7 +686,7 @@ export function ViewOrderPage() {
                   <button
                     key={issue.id}
                     onClick={() => navigate(`/delivery-issues/${issue.id}`)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-lg hover:bg-orange-200 transition-colors"
+                    className="order-issue-link"
                   >
                     <ExternalLink className="w-3 h-3" />
                     View {issue.stringId}

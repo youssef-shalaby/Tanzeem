@@ -110,30 +110,31 @@ export function StockInlogs() {
   ];
 
   const sourceColors = {
-    'Received from Supplier': 'bg-green-100 text-green-700',
-    'Customer Return': 'bg-blue-100 text-blue-700',
-    'Production': 'bg-purple-100 text-purple-700',
-    'Found/Recovered': 'bg-orange-100 text-orange-700',
-    'Transfer from Other Location': 'bg-indigo-100 text-indigo-700',
-    'Inventory Adjustment': 'bg-yellow-100 text-yellow-700',
+    'Received from Supplier': 'pill-green',
+    'Customer Return': 'pill-blue',
+    'Production': 'pill-purple',
+    'Found/Recovered': 'pill-amber',
+    'Transfer from Other Location': 'pill-blue',
+    'Inventory Adjustment': 'pill-yellow',
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="db-root db-fade-in space-y-6">
+      <div className="app-page-header">
         <div className="flex items-center gap-4">
           <Link
             to="/add-stock"
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="db-icon-btn"
+            aria-label="Back to add stock"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
+            <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Add Stock Logs</h1>
-            <p className="text-sm text-gray-600 mt-1">Complete history of all stock additions</p>
+          <div className="app-page-heading">
+            <h1 className="app-page-title">Add Stock Logs</h1>
+            <p className="app-page-subtitle">Complete history of all stock additions.</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-[#15aaad] text-white text-sm rounded-lg hover:bg-[#0d8082] transition-colors">
+        <button className="db-primary-btn">
           <Download className="w-[18px] h-[18px]" />
           Export Logs
         </button>
@@ -141,37 +142,37 @@ export function StockInlogs() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">Total Transactions</div>
-          <div className="text-2xl font-semibold text-gray-900">328</div>
+        <div className="db-card app-stat-card">
+          <div className="app-stat-label mb-2">Total Transactions</div>
+          <div className="app-stat-value">328</div>
         </div>
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">Items Added</div>
-          <div className="text-2xl font-semibold text-gray-900">2,456</div>
+        <div className="db-card app-stat-card">
+          <div className="app-stat-label mb-2">Items Added</div>
+          <div className="app-stat-value">2,456</div>
         </div>
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">Total Value</div>
-          <div className="text-2xl font-semibold text-gray-900">$89,342</div>
+        <div className="db-card app-stat-card">
+          <div className="app-stat-label mb-2">Total Value</div>
+          <div className="app-stat-value">$89,342</div>
         </div>
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">This Month</div>
-          <div className="text-2xl font-semibold text-gray-900">127</div>
+        <div className="db-card app-stat-card">
+          <div className="app-stat-label mb-2">This Month</div>
+          <div className="app-stat-value">127</div>
         </div>
       </div>
 
       {/* Main Table */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="p-5 border-b border-gray-200">
+      <div className="db-card">
+        <div className="db-card-header">
           <div className="flex items-center gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400" />
               <input
                 type="text"
                 placeholder="Search by product name, SKU, or log ID..."
-                className="w-full pl-11 pr-4 py-2.5 bg-[#f6f8fa] border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#15aaad]/20"
+                className="db-search-input"
               />
             </div>
-            <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">
+            <button className="db-secondary-btn">
               <Filter className="w-[18px] h-[18px] text-gray-600" />
               Filter
             </button>
@@ -179,7 +180,7 @@ export function StockInlogs() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="db-table">
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Log ID</th>
@@ -211,7 +212,7 @@ export function StockInlogs() {
                     <div className="text-sm font-semibold text-green-600">+{log.quantity}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${sourceColors[log.source] || 'bg-gray-100 text-gray-700'}`}>
+                    <span className={`db-stat-pill ${sourceColors[log.source] || 'pill-gray'}`}>
                       {log.source}
                     </span>
                   </td>
@@ -220,7 +221,7 @@ export function StockInlogs() {
                   <td className="px-6 py-4">
                     <Link
                       to={`/stock-logs/${log.id}`}
-                      className="inline-flex items-center px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+                      className="db-secondary-btn"
                     >
                       View
                     </Link>
@@ -237,16 +238,16 @@ export function StockInlogs() {
             Showing 1 to 8 of 328 transactions
           </div>
           <div className="flex items-center gap-2">
-            <button className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
+            <button className="db-icon-btn disabled:opacity-50 disabled:cursor-not-allowed">
+              <ChevronLeft className="w-5 h-5" />
             </button>
-            <button className="px-3 py-2 bg-[#15aaad] text-white text-sm rounded-lg">1</button>
-            <button className="px-3 py-2 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">2</button>
-            <button className="px-3 py-2 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">3</button>
+            <button className="db-primary-btn min-w-9 px-3">1</button>
+            <button className="db-secondary-btn min-w-9 px-3">2</button>
+            <button className="db-secondary-btn min-w-9 px-3">3</button>
             <span className="px-2 text-gray-600">...</span>
-            <button className="px-3 py-2 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors">41</button>
-            <button className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-              <ChevronRight className="w-5 h-5 text-gray-600" />
+            <button className="db-secondary-btn min-w-9 px-3">41</button>
+            <button className="db-icon-btn">
+              <ChevronRight className="w-5 h-5" />
             </button>
           </div>
         </div>

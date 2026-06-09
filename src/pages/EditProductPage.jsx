@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
-import { useNavigate, useLocation, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 
 function getToken() {
   try {
@@ -46,7 +46,6 @@ function productToForm(p) {
 
 export function EditProductPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { id } = useParams();
 
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -113,7 +112,9 @@ export function EditProductPage() {
       if (!res.ok) {
         const text = await res.text();
         let msg = 'Failed to save product.';
-        try { msg = JSON.parse(text)?.message || msg; } catch {}
+        try { msg = JSON.parse(text)?.message || msg; } catch {
+          // Keep the fallback message when the API returns non-JSON text.
+        }
         throw new Error(msg);
       }
 
@@ -135,7 +136,7 @@ export function EditProductPage() {
       <p className="text-gray-500 mb-4">Product not found. Please go back and try again.</p>
       <button
         onClick={() => navigate('/products')}
-        className="px-4 py-2 bg-[#0f8c5a] text-white text-sm rounded-lg hover:bg-[#0a6b45] transition-colors"
+        className="db-primary-btn"
       >
         Back to Products
       </button>
@@ -143,18 +144,21 @@ export function EditProductPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="view-product-root space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Edit Product</h1>
-          <p className="text-sm text-gray-600">Update product information</p>
+      <div className="app-page-header">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="db-icon-btn"
+            aria-label="Back to products"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="app-page-heading">
+            <h1 className="app-page-title">Edit Product</h1>
+            <p className="app-page-subtitle">Update product information.</p>
+          </div>
         </div>
       </div>
 
@@ -167,74 +171,74 @@ export function EditProductPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit}>
-        <div className="bg-white rounded-xl border border-gray-200">
+        <div className="db-card">
           <div className="p-6 space-y-6">
 
             {/* Basic Information */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+              <h3 className="app-form-section-title">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="app-form-label">
                     Product Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.productName}
                     onChange={(e) => handleChange('productName', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
+                    className="db-input"
                     placeholder="Enter product name"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="app-form-label">
                     SKU <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.sku}
                     onChange={(e) => handleChange('sku', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
+                    className="db-input"
                     placeholder="Enter SKU"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="app-form-label">
                     Category <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.category}
                     onChange={(e) => handleChange('category', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
+                    className="db-input"
                     placeholder="Enter category"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="app-form-label">
                     Barcode
                   </label>
                   <input
                     type="text"
                     value={formData.barcode}
                     onChange={(e) => handleChange('barcode', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
+                    className="db-input"
                     placeholder="Enter barcode"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <label className="app-form-label">Status</label>
                   <select
                     value={formData.status}
                     onChange={(e) => handleChange('status', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
+                    className="db-select w-full"
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -243,12 +247,12 @@ export function EditProductPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                  <label className="app-form-label">Description</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
                     rows={3}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a] resize-none"
+                    className="db-input resize-none"
                     placeholder="Enter product description..."
                   />
                 </div>
@@ -257,10 +261,10 @@ export function EditProductPage() {
 
             {/* Pricing */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Pricing</h3>
+              <h3 className="app-form-section-title">Pricing</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="app-form-label">
                     Selling Price <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -269,14 +273,14 @@ export function EditProductPage() {
                     min="0"
                     value={formData.sellingPrice}
                     onChange={(e) => handleChange('sellingPrice', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
+                    className="db-input"
                     placeholder="0.00"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="app-form-label">
                     Cost Price
                   </label>
                   <input
@@ -285,7 +289,7 @@ export function EditProductPage() {
                     min="0"
                     value={formData.costPrice}
                     onChange={(e) => handleChange('costPrice', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
+                    className="db-input"
                     placeholder="0.00"
                   />
                 </div>
@@ -294,10 +298,10 @@ export function EditProductPage() {
 
             {/* Stock Information */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Stock Information</h3>
+              <h3 className="app-form-section-title">Stock Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="app-form-label">
                     Current Stock Level <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -305,31 +309,31 @@ export function EditProductPage() {
                     min="0"
                     value={formData.stockLevel}
                     onChange={(e) => handleChange('stockLevel', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
+                    className="db-input"
                     placeholder="0"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Reorder Level</label>
+                  <label className="app-form-label">Reorder Level</label>
                   <input
                     type="number"
                     min="0"
                     value={formData.reorderLevel}
                     onChange={(e) => handleChange('reorderLevel', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
+                    className="db-input"
                     placeholder="0"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
+                  <label className="app-form-label">Expiry Date</label>
                   <input
                     type="date"
                     value={formData.expiryDate}
                     onChange={(e) => handleChange('expiryDate', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0f8c5a]/20 focus:border-[#0f8c5a]"
+                    className="db-input"
                   />
                 </div>
               </div>
@@ -342,14 +346,14 @@ export function EditProductPage() {
               type="button"
               onClick={() => navigate(-1)}
               disabled={saving}
-              className="px-4 py-2 border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="db-secondary-btn disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-[#0f8c5a] text-white text-sm rounded-lg hover:bg-[#0a6b45] transition-colors disabled:opacity-60"
+              className="db-primary-btn disabled:opacity-60"
             >
               <Save className="w-[18px] h-[18px]" />
               {saving ? 'Saving...' : 'Save Changes'}

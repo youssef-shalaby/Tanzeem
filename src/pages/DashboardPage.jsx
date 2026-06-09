@@ -9,33 +9,48 @@ import { Link } from "react-router";
 import { apiRequest, ForbiddenError } from "../services/api";
 import UnauthorizedPage from "./UnauthorizedPage";
 
-const CATEGORY_COLORS = ["#0f8c5a","#15aaad","#3b82f6","#f59e0b","#ef4444","#6b7280"];
+const CATEGORY_COLORS = ["#0f8c5a","#2c5f8a","#3b82f6","#f59e0b","#ef4444","#6b7280"];
 
 const DB_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
-  .db-root { font-family: 'DM Sans', sans-serif; }
-  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
-  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
-  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
-  .db-stat-pill { display:inline-flex; align-items:center; font-size:11px; font-weight:500; padding:3px 8px; border-radius:100px; }
-  .pill-green { background:#d6f5e8; color:#0a6b45; }
-  .pill-red   { background:#fde8e8; color:#9b1c1c; }
-  .pill-amber { background:#fef3c7; color:#8b5e00; }
-  .db-table th { font-size:11px; font-weight:500; color:#888; text-transform:uppercase; letter-spacing:.5px; padding:10px 16px; text-align:left; }
-  .db-table td { padding:12px 16px; font-size:13px; color:#1a1a18; border-top:1px solid rgba(0,0,0,.05); }
-  .db-table tr:hover td { background:#f9faf7; }
   .db-insight-card {
-    background: #f9faf7; border-radius: 16px; border: 1px solid rgba(15,140,90,.15);
-    padding: 20px 24px; display:flex; align-items:center; justify-content:space-between;
-    gap:24px; transition: border-color .2s, box-shadow .2s; text-decoration:none; color:inherit; cursor:pointer;
+    background:
+      linear-gradient(90deg, rgba(15,140,90,.055), rgba(255,255,255,0) 42%),
+      var(--app-panel);
+    border-radius: 16px; border: 1px solid var(--app-line);
+    padding: 18px 20px; display:flex; align-items:center; justify-content:space-between;
+    gap:20px; transition: border-color .2s, box-shadow .2s; text-decoration:none; color:inherit; cursor:pointer;
   }
   .db-insight-card:hover { border-color: #0f8c5a; box-shadow: 0 4px 20px rgba(15,140,90,.08); }
-  .db-insight-icon { width:44px; height:44px; border-radius:50%; background:rgba(15,140,90,.1); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .db-skeleton { background: linear-gradient(90deg,#f0f0ec 25%,#e8e8e4 50%,#f0f0ec 75%); background-size:200% 100%; animation: shimmer 1.4s infinite; border-radius:10px; }
-  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  .db-fade-in { animation: dbFadeIn .4s ease both; }
-  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .db-insight-icon { width:40px; height:40px; border-radius:12px; background:#e9f8f1; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .db-insight-main { display:flex; align-items:center; gap:14px; flex:1; min-width:0; }
+  .db-insight-heading { display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap; }
+  .db-insight-title { font-size:14px; font-weight:600; color:var(--app-ink); }
+  .db-insight-copy { font-size:13px; color:var(--app-muted); font-weight:400; line-height:1.5; margin:0; }
+  .db-insight-metrics { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .db-insight-metric { text-align:center; padding:0 18px; }
+  .db-insight-metric + .db-insight-metric { border-left:1px solid var(--app-line); }
+  .db-insight-number { font-size:24px; font-weight:500; color:var(--app-ink); font-family:'DM Serif Display',serif; line-height:1; }
+  .db-insight-number.green { color:var(--app-green); }
+  .db-insight-label { font-size:10px; color:var(--app-subtle); text-transform:uppercase; letter-spacing:.5px; margin-top:5px; white-space:nowrap; }
+  :root[data-theme="dark"] .db-insight-card {
+    background:
+      linear-gradient(90deg, rgba(47,186,120,.035), rgba(20,23,24,0) 44%),
+      var(--app-panel);
+    border-color: rgba(238,242,239,.1);
+  }
+  :root[data-theme="dark"] .db-insight-card:hover {
+    border-color: rgba(47,186,120,.24);
+    box-shadow: 0 0 0 1px rgba(47,186,120,.08);
+  }
+  :root[data-theme="dark"] .db-insight-icon {
+    background: rgba(47,186,120,.12);
+    color: var(--app-success-text);
+  }
+  @media (max-width: 900px) {
+    .db-insight-card { align-items:flex-start; flex-direction:column; }
+    .db-insight-metrics { width:100%; justify-content:space-between; }
+    .db-insight-metric { flex:1; padding:0 12px; }
+  }
 `;
 
 export function DashboardPage() {
@@ -77,6 +92,18 @@ export function DashboardPage() {
 
   if (isForbidden) return <UnauthorizedPage />;
 
+  const chartText = "var(--app-subtle)";
+  const chartGrid = "var(--app-line)";
+  const chartTooltip = {
+    background: "var(--app-panel-raised, var(--app-panel))",
+    borderRadius: 10,
+    border: "1px solid var(--app-line)",
+    color: "var(--app-ink)",
+    fontSize: 12,
+    fontFamily: "'DM Sans',sans-serif",
+    boxShadow: "var(--app-shadow-card)",
+  };
+
   const stats = boxes ? [
     { title: "Total Stock Value",  value: `$${Number(boxes.totalStockValue).toLocaleString()}`, change: 18.2,  icon: DollarSign,   iconColor: "#0f8c5a", iconBgColor: "bg-[#0f8c5a]/10" },
     { title: "Low Stock Count",    value: String(boxes.lowStockCount),                          change: -12.5, icon: AlertTriangle, iconColor: "#f59e0b", iconBgColor: "bg-orange-100" },
@@ -89,7 +116,12 @@ export function DashboardPage() {
       <style>{DB_STYLES}</style>
 
       {/* Header — period selector removed */}
-      <h1 className="db-section-title">Dashboard</h1>
+      <div className="app-page-header">
+        <div className="app-page-heading">
+          <h1 className="db-section-title">Dashboard</h1>
+          <p className="app-page-subtitle">Monitor stock health, movement, value, and forecast signals.</p>
+        </div>
+      </div>
 
       {/* Stat Cards */}
       {loading ? (
@@ -108,28 +140,28 @@ export function DashboardPage() {
 
       {/* AI Insights Banner */}
       <Link to="/analytics" className="db-insight-card db-fade-in" style={{ animationDelay:".05s" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:16, flex:1 }}>
+        <div className="db-insight-main">
           <div className="db-insight-icon">
-            <Sparkles size={20} color="#0f8c5a" />
+            <Sparkles size={20} />
           </div>
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-              <span style={{ fontSize:14, fontWeight:600, color:"#1a1a18" }}>AI-Powered Demand Forecasting</span>
-              <span style={{ fontSize:11, fontWeight:500, padding:"3px 8px", borderRadius:100, background:"#fef3c7", color:"#8b5e00" }}>3 Urgent</span>
+            <div className="db-insight-heading">
+              <span className="db-insight-title">AI-powered demand forecasting</span>
+              <span className="db-stat-pill pill-amber">3 urgent</span>
             </div>
-            <p style={{ fontSize:13, color:"#666", fontWeight:300, lineHeight:1.5, margin:0 }}>
+            <p className="db-insight-copy">
               3 items need restocking within 7 days. View detailed analytics and AI recommendations to optimise your inventory.
             </p>
           </div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ textAlign:"center", paddingRight:20, borderRight:"1px solid rgba(0,0,0,.08)" }}>
-            <div style={{ fontSize:28, fontWeight:600, color:"#1a1a18", fontFamily:"'DM Serif Display',serif" }}>95.2%</div>
-            <div style={{ fontSize:10, color:"#888", textTransform:"uppercase", letterSpacing:".5px", marginTop:2 }}>Forecast accuracy</div>
+        <div className="db-insight-metrics">
+          <div className="db-insight-metric">
+            <div className="db-insight-number">95.2%</div>
+            <div className="db-insight-label">Forecast accuracy</div>
           </div>
-          <div style={{ textAlign:"center", paddingLeft:20 }}>
-            <div style={{ fontSize:28, fontWeight:600, color:"#0f8c5a", fontFamily:"'DM Serif Display',serif" }}>18</div>
-            <div style={{ fontSize:10, color:"#888", textTransform:"uppercase", letterSpacing:".5px", marginTop:2 }}>High demand</div>
+          <div className="db-insight-metric">
+            <div className="db-insight-number green">18</div>
+            <div className="db-insight-label">High demand</div>
           </div>
           <ArrowRight size={16} color="#0f8c5a" style={{ marginLeft:8 }} />
         </div>
@@ -154,7 +186,7 @@ export function DashboardPage() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ borderRadius:10, border:"1px solid rgba(0,0,0,.08)", fontSize:12, fontFamily:"'DM Sans',sans-serif" }} />
+                    <Tooltip contentStyle={chartTooltip} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div style={{ marginTop:12, display:"flex", flexDirection:"column", gap:8 }}>
@@ -162,9 +194,9 @@ export function DashboardPage() {
                     <div key={item.name} style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                         <div style={{ width:8, height:8, borderRadius:"50%", background:item.color, flexShrink:0 }} />
-                        <span style={{ fontSize:13, color:"#555" }}>{item.name}</span>
+                        <span style={{ fontSize:13, color:"var(--app-muted)" }}>{item.name}</span>
                       </div>
-                      <span style={{ fontSize:13, fontWeight:500, color:"#1a1a18" }}>{item.value}</span>
+                      <span style={{ fontSize:13, fontWeight:500, color:"var(--app-ink)" }}>{item.value}</span>
                     </div>
                   ))}
                 </div>
@@ -225,11 +257,11 @@ export function DashboardPage() {
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={barData} barCategoryGap="35%">
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,.05)" vertical={false} />
-                  <XAxis dataKey="monthName" tick={{ fontSize:12, fill:"#888", fontFamily:"'DM Sans',sans-serif" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize:12, fill:"#888", fontFamily:"'DM Sans',sans-serif" }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ borderRadius:10, border:"1px solid rgba(0,0,0,.08)", fontSize:12, fontFamily:"'DM Sans',sans-serif" }} />
-                  <Legend wrapperStyle={{ fontSize:12, fontFamily:"'DM Sans',sans-serif" }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} vertical={false} />
+                  <XAxis dataKey="monthName" tick={{ fontSize:12, fill:chartText, fontFamily:"'DM Sans',sans-serif" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize:12, fill:chartText, fontFamily:"'DM Sans',sans-serif" }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={chartTooltip} />
+                  <Legend wrapperStyle={{ fontSize:12, fontFamily:"'DM Sans',sans-serif", color:"var(--app-muted)" }} />
                   <Bar dataKey="stockIn"  name="Stock In"  fill="#0f8c5a" radius={[6,6,0,0]} />
                   <Bar dataKey="stockOut" name="Stock Out" fill="#f59e0b" radius={[6,6,0,0]} />
                 </BarChart>
@@ -248,10 +280,10 @@ export function DashboardPage() {
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={lineData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,.05)" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize:12, fill:"#888", fontFamily:"'DM Sans',sans-serif" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize:12, fill:"#888", fontFamily:"'DM Sans',sans-serif" }} axisLine={false} tickLine={false} />
-                  <Tooltip formatter={(v) => [`$${Number(v).toLocaleString()}`, "Stock Value"]} contentStyle={{ borderRadius:10, border:"1px solid rgba(0,0,0,.08)", fontSize:12, fontFamily:"'DM Sans',sans-serif" }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize:12, fill:chartText, fontFamily:"'DM Sans',sans-serif" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize:12, fill:chartText, fontFamily:"'DM Sans',sans-serif" }} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={(v) => [`$${Number(v).toLocaleString()}`, "Stock Value"]} contentStyle={chartTooltip} />
                   <Line type="monotone" dataKey="totalValue" name="Stock Value" stroke="#0f8c5a" strokeWidth={2.5} dot={{ r:4, fill:"#0f8c5a", strokeWidth:0 }} activeDot={{ r:6 }} />
                 </LineChart>
               </ResponsiveContainer>

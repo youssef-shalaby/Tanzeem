@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, ScanLine, Sparkles, Loader2, Plus, Trash2, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { useAuth } from '../contexts/AuthContext';
+import { normalizeRoleKey, ROLE_KEYS } from '../config/permissions';
 
 // ============================
 // Design system styles (green accent)
@@ -63,6 +65,42 @@ const ADD_ITEM_STYLES = `
   .cat-option:hover { background: #f9faf7; }
   .cat-option.new-hint { color: #0f8c5a; font-weight: 500; }
   .cat-option.new-hint:hover { background: rgba(15,140,90,.06); }
+  .add-item-money {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 12px;
+    background: #fff;
+    border: 1px solid var(--app-line-strong);
+    border-radius: var(--app-radius-control);
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .add-item-money:focus-within {
+    border-color: var(--app-green);
+    box-shadow: 0 0 0 3px rgba(15,140,90,.1);
+  }
+  .add-item-money input {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: var(--app-ink);
+    font-size: 13px;
+    outline: 0;
+    padding: 9px 0;
+  }
+  .add-item-dropzone {
+    border: 1px dashed rgba(15,140,90,.34);
+    background: var(--app-soft);
+    border-radius: var(--app-radius-card);
+    padding: 18px;
+    transition: border-color .2s, background .2s;
+  }
+  .add-item-dropzone:hover {
+    border-color: var(--app-green);
+    background: #fff;
+  }
 `;
 
 function getToken() {
@@ -86,8 +124,8 @@ const CATEGORIES = [
   'Footwear',
 ];
 
-const emptyProduct = () => ({
-  id: Date.now().toString(),
+const emptyProduct = (id) => ({
+  id,
   productName: '',
   sku: '',
   barcode: '',
@@ -102,13 +140,10 @@ const emptyProduct = () => ({
 });
 
 
-function CategoryCombobox({ value, onChange, categories, onAddCategory }) {
+function CategoryCombobox({ value, onChange, categories, onAddCategory, canAddCategory = false }) {
   const [open, setOpen] = useState(false);
-  const [inputVal, setInputVal] = useState(value || '');
+  const [query, setQuery] = useState(value || '');
   const wrapRef = useRef(null);
-
-  // Sync inputVal when value changes externally (e.g. AI suggest apply)
-  useEffect(() => { setInputVal(value || ''); }, [value]);
 
   // Close on outside click
   useEffect(() => {
@@ -117,25 +152,29 @@ function CategoryCombobox({ value, onChange, categories, onAddCategory }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const filtered = inputVal.trim()
-    ? categories.filter(c => c.toLowerCase().includes(inputVal.toLowerCase()))
+  const filtered = query.trim()
+    ? categories.filter(c => c.toLowerCase().includes(query.toLowerCase()))
     : categories;
 
-  const isNew = inputVal.trim() && !categories.some(c => c.toLowerCase() === inputVal.trim().toLowerCase());
+  const exactMatch = categories.find(c => c.toLowerCase() === query.trim().toLowerCase());
+  const isNew = canAddCategory && query.trim() && !exactMatch;
 
   const select = (cat) => {
     onChange(cat);
-    setInputVal(cat);
+    setQuery(cat);
     setOpen(false);
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const trimmed = inputVal.trim();
+      const trimmed = query.trim();
       if (!trimmed) return;
-      if (isNew) onAddCategory(trimmed);
-      select(trimmed);
+      if (exactMatch) select(exactMatch);
+      else if (isNew) {
+        onAddCategory(trimmed);
+        select(trimmed);
+      } else if (filtered[0]) select(filtered[0]);
     } else if (e.key === 'Escape') {
       setOpen(false);
     }
@@ -146,24 +185,31 @@ function CategoryCombobox({ value, onChange, categories, onAddCategory }) {
       <div className="cat-input-wrap" onClick={() => setOpen(true)}>
         <input
           type="text"
-          value={inputVal}
-          placeholder="Select or type a category…"
-          onChange={(e) => { setInputVal(e.target.value); onChange(e.target.value); setOpen(true); }}
+          value={canAddCategory ? value || query : query}
+          placeholder={canAddCategory ? "Select or type a category…" : "Select a category…"}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (canAddCategory) onChange(e.target.value);
+            setOpen(true);
+          }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
           required
         />
       </div>
       <ChevronDown size={14} className={`cat-chevron${open ? ' open' : ''}`} />
-      {open && (filtered.length > 0 || isNew) && (
+      {open && (filtered.length > 0 || isNew || (!canAddCategory && query.trim())) && (
         <div className="cat-dropdown">
           {filtered.map(c => (
             <div key={c} className="cat-option" onMouseDown={() => select(c)}>{c}</div>
           ))}
           {isNew && (
-            <div className="cat-option new-hint" onMouseDown={() => { onAddCategory(inputVal.trim()); select(inputVal.trim()); }}>
-              + Add "{inputVal.trim()}"
+            <div className="cat-option new-hint" onMouseDown={() => { onAddCategory(query.trim()); select(query.trim()); }}>
+              + Add "{query.trim()}"
             </div>
+          )}
+          {!canAddCategory && query.trim() && filtered.length === 0 && (
+            <div className="cat-option text-gray-500">No matching category</div>
           )}
         </div>
       )}
@@ -173,14 +219,18 @@ function CategoryCombobox({ value, onChange, categories, onAddCategory }) {
 
 export function AddItemPage() {
   const navigate = useNavigate();
-  const [products, setProducts] = useState([emptyProduct()]);
+  const { currentUser } = useAuth();
+  const nextProductId = useRef(1);
+  const [products, setProducts] = useState(() => [emptyProduct(`product-${nextProductId.current++}`)]);
   const [aiSuggesting, setAiSuggesting] = useState({});
   const [aiSuggestions, setAiSuggestions] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [categories, setCategories] = useState(CATEGORIES);
+  const canAddCategory = [ROLE_KEYS.ADMIN, ROLE_KEYS.MANAGER].includes(normalizeRoleKey(currentUser?.role || currentUser?.roleId));
 
   const handleAddCategory = (cat) => {
+    if (!canAddCategory) return;
     setCategories(prev => prev.includes(cat) ? prev : [...prev, cat]);
   };
 
@@ -188,7 +238,7 @@ export function AddItemPage() {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
   };
 
-  const handleScanBarcode = (id) => {
+  const handleScanBarcode = () => {
     alert('Barcode scanning feature would be activated here');
   };
 
@@ -238,9 +288,13 @@ Category:`,
 
   const applyAISuggestion = (id) => {
     const suggestion = aiSuggestions[id];
-    if (suggestion) {
+    const existing = categories.find(category => category.toLowerCase() === suggestion?.toLowerCase());
+    if (suggestion && (existing || canAddCategory)) {
+      if (!existing && canAddCategory) handleAddCategory(suggestion);
       handleChange(id, 'category', suggestion);
       setAiSuggestions(prev => { const n = { ...prev }; delete n[id]; return n; });
+    } else if (suggestion) {
+      setSubmitError('Staff can only select an existing category. Ask a manager or admin to add a new category.');
     }
   };
 
@@ -249,7 +303,7 @@ Category:`,
   };
 
   const addProduct = () => {
-    setProducts(prev => [...prev, emptyProduct()]);
+    setProducts(prev => [...prev, emptyProduct(`product-${nextProductId.current++}`)]);
   };
 
   const removeProduct = (id) => {
@@ -262,6 +316,15 @@ Category:`,
     e.preventDefault();
     setSubmitting(true);
     setSubmitError(null);
+
+    const invalidCategory = products.some(product =>
+      !product.category || !categories.some(category => category.toLowerCase() === product.category.toLowerCase())
+    );
+    if (invalidCategory) {
+      setSubmitError(canAddCategory ? 'Please add or select a valid category for every product.' : 'Please select an existing category for every product.');
+      setSubmitting(false);
+      return;
+    }
 
     const token = getToken();
 
@@ -294,7 +357,9 @@ Category:`,
           if (!res.ok) {
             const text = await res.text();
             let msg = `Failed to create "${product.productName}".`;
-            try { msg = JSON.parse(text)?.message || msg; } catch {}
+            try { msg = JSON.parse(text)?.message || msg; } catch {
+              // Keep the fallback message when the API returns non-JSON text.
+            }
             throw new Error(msg);
           }
 
@@ -313,45 +378,42 @@ Category:`,
     <div className="add-item-root space-y-6">
       <style>{ADD_ITEM_STYLES}</style>
 
-      {/* Header – exactly like Addstockpage */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="db-section-title">Add New Products</h1>
-          <p className="text-sm text-gray-600 mt-1">Add one or multiple products at once</p>
+      {/* Header */}
+      <div className="app-page-header">
+        <div className="app-page-heading">
+          <h1 className="app-page-title">Add New Products</h1>
+          <p className="app-page-subtitle">Add one or multiple products at once.</p>
         </div>
-        <button onClick={() => navigate(-1)} className="db-icon-btn">
+        <button onClick={() => navigate(-1)} className="db-icon-btn" aria-label="Close add products">
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Submit error banner */}
-      {submitError && (
-        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          {submitError}
-        </div>
-      )}
+      {submitError && <div className="app-alert-danger">{submitError}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {products.map((product, index) => (
-          <div key={product.id} className="relative border border-gray-200 rounded-xl p-5 bg-white">
+          <div key={product.id} className="db-card p-5 db-fade-in">
             {/* Product header */}
             <div className="flex items-center justify-between mb-4">
-              <div className="db-badge db-badge-teal">Product #{index + 1}</div>
+              <div className="db-stat-pill pill-green">Product #{index + 1}</div>
               {products.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeProduct(product.id)}
-                  className="text-red-600 hover:bg-red-50 p-1 rounded-lg transition-colors"
+                  className="db-icon-btn text-red-600"
+                  aria-label={`Remove product ${index + 1}`}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               )}
             </div>
 
-            {/* Basic Information */}
+              {/* Basic Information */}
             <div className="space-y-5">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Product Name <span className="text-red-500">*</span></label>
+                <label className="app-form-label">Product Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={product.productName}
@@ -364,7 +426,7 @@ Category:`,
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">SKU <span className="text-red-500">*</span></label>
+                  <label className="app-form-label">SKU <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={product.sku}
@@ -375,7 +437,7 @@ Category:`,
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Barcode</label>
+                  <label className="app-form-label">Barcode</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -387,10 +449,11 @@ Category:`,
                     <button
                       type="button"
                       onClick={() => handleScanBarcode(product.id)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="db-icon-btn absolute right-1 top-1/2 -translate-y-1/2"
                       title="Scan barcode"
+                      aria-label="Scan barcode"
                     >
-                      <ScanLine className="w-4 h-4 text-gray-600" />
+                      <ScanLine className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -398,12 +461,12 @@ Category:`,
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700">Category <span className="text-red-500">*</span></label>
+                  <label className="app-form-label mb-0">Category <span className="text-red-500">*</span></label>
                   <button
                     type="button"
                     onClick={() => handleAISuggestCategory(product.id)}
                     disabled={aiSuggesting[product.id]}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0f8c5a]/10 text-[#0f8c5a] text-xs font-medium rounded-lg hover:bg-[#0f8c5a]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="db-secondary-btn min-h-8 px-3 py-1 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {aiSuggesting[product.id] ? (
                       <><Loader2 className="w-3.5 h-3.5 animate-spin" />Analyzing...</>
@@ -417,24 +480,25 @@ Category:`,
                   onChange={(val) => handleChange(product.id, 'category', val)}
                   categories={categories}
                   onAddCategory={handleAddCategory}
+                  canAddCategory={canAddCategory}
                 />
 
                 {aiSuggestions[product.id] && (
-                  <div className="mt-3 p-3 bg-[#0f8c5a]/10 border border-[#0f8c5a]/20 rounded-lg">
+                  <div className="mt-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-soft)] p-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-[#0f8c5a]" />
+                        <Sparkles className="w-4 h-4 text-[var(--app-green)]" />
                         <span className="text-sm text-gray-900">
-                          AI suggests: <span className="font-semibold text-[#0f8c5a]">{aiSuggestions[product.id]}</span>
+                          AI suggests: <span className="font-semibold text-[var(--app-green)]">{aiSuggestions[product.id]}</span>
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button type="button" onClick={() => applyAISuggestion(product.id)}
-                          className="px-3 py-1 bg-[#0f8c5a] text-white text-xs font-medium rounded hover:bg-[#0a6b45] transition-colors">
+                          className="db-primary-btn min-h-8 px-3 py-1 text-xs">
                           Apply
                         </button>
                         <button type="button" onClick={() => dismissAISuggestion(product.id)}
-                          className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-300 transition-colors">
+                          className="db-secondary-btn min-h-8 px-3 py-1 text-xs">
                           Dismiss
                         </button>
                       </div>
@@ -444,7 +508,7 @@ Category:`,
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Description</label>
+                <label className="app-form-label">Description</label>
                 <textarea
                   value={product.description}
                   onChange={(e) => handleChange(product.id, 'description', e.target.value)}
@@ -457,11 +521,11 @@ Category:`,
 
             {/* Pricing & Stock – separate section inside the same card */}
             <div className="mt-6 pt-6 border-t border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Pricing & Stock</h3>
+              <h3 className="app-form-section-title">Pricing & Stock</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Unit Price (Selling) <span className="text-red-500">*</span></label>
-                  <div className="flex items-center gap-2 border border-gray-200 rounded-lg focus-within:ring-2 focus-within:ring-[#0f8c5a]/20 focus-within:border-[#0f8c5a] bg-white">
+                  <label className="app-form-label">Unit Price (Selling) <span className="text-red-500">*</span></label>
+                  <div className="add-item-money">
                     <span className="pl-3 text-gray-500 text-sm">$</span>
                     <input
                       type="number"
@@ -470,14 +534,13 @@ Category:`,
                       required
                       step="0.01"
                       min="0"
-                      className="flex-1 py-2 pr-3 text-sm bg-transparent focus:outline-none"
                       placeholder="0.00"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Cost Price <span className="text-red-500">*</span></label>
-                  <div className="flex items-center gap-2 border border-gray-200 rounded-lg focus-within:ring-2 focus-within:ring-[#0f8c5a]/20 focus-within:border-[#0f8c5a] bg-white">
+                  <label className="app-form-label">Cost Price <span className="text-red-500">*</span></label>
+                  <div className="add-item-money">
                     <span className="pl-3 text-gray-500 text-sm">$</span>
                     <input
                       type="number"
@@ -486,13 +549,12 @@ Category:`,
                       required
                       step="0.01"
                       min="0"
-                      className="flex-1 py-2 pr-3 text-sm bg-transparent focus:outline-none"
                       placeholder="0.00"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Initial Stock Quantity <span className="text-red-500">*</span></label>
+                  <label className="app-form-label">Initial Stock Quantity <span className="text-red-500">*</span></label>
                   <input
                     type="number"
                     value={product.stock}
@@ -504,7 +566,7 @@ Category:`,
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Reorder Level <span className="text-red-500">*</span></label>
+                  <label className="app-form-label">Reorder Level <span className="text-red-500">*</span></label>
                   <input
                     type="number"
                     value={product.reorderLevel}
@@ -516,7 +578,7 @@ Category:`,
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Expiry Date</label>
+                  <label className="app-form-label">Expiry Date</label>
                   <input
                     type="date"
                     value={product.expiryDate}
@@ -525,7 +587,7 @@ Category:`,
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Status <span className="text-red-500">*</span></label>
+                  <label className="app-form-label">Status <span className="text-red-500">*</span></label>
                   <select
                     value={product.status}
                     onChange={(e) => handleChange(product.id, 'status', e.target.value)}
@@ -542,12 +604,12 @@ Category:`,
           </div>
         ))}
 
-        {/* Add Another Product – dashed border like Addstockpage */}
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-[#0f8c5a] transition-colors">
+        {/* Add Another Product */}
+        <div className="add-item-dropzone">
           <button
             type="button"
             onClick={addProduct}
-            className="w-full flex items-center justify-center gap-2 text-[#0f8c5a] font-medium hover:text-[#0a6b45] transition-colors"
+            className="w-full app-link justify-center"
           >
             <Plus className="w-5 h-5" />
             Add Another Product

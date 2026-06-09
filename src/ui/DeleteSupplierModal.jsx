@@ -1,43 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 
-// ============================
-// Design system styles (modal)
-// ============================
-const MODAL_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap');
-  .delete-modal-root { font-family: 'DM Sans', sans-serif; }
-  .db-modal-card {
-    background: #fff;
-    border-radius: 16px;
-    box-shadow: 0 20px 35px -10px rgba(0,0,0,0.2);
-    width: 100%;
-    max-width: 480px;
-  }
-  .db-secondary-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
-    border-radius: 100px; font-size: 13px; font-weight: 500;
-    color: #444; cursor: pointer; transition: background .15s;
-  }
-  .db-secondary-btn:hover { background: #f5f6f3; }
-  .db-danger-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 16px; background: #dc2626; color: white;
-    border-radius: 100px; font-size: 13px; font-weight: 500;
-    border: none; cursor: pointer; transition: background .15s;
-  }
-  .db-danger-btn:hover { background: #b91c1c; }
-  .db-danger-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  @keyframes modalFadeIn {
-    from { opacity: 0; transform: scale(0.96); }
-    to { opacity: 1; transform: scale(1); }
-  }
-  .db-modal-animate {
-    animation: modalFadeIn 0.2s ease-out;
-  }
-`;
-
 export function DeleteSupplierModal({ isOpen, onClose, onConfirm, supplierName, supplierId }) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
@@ -80,33 +43,31 @@ export function DeleteSupplierModal({ isOpen, onClose, onConfirm, supplierName, 
   };
 
   return (
-    <div className="delete-modal-root">
-      <style>{MODAL_STYLES}</style>
-
+    <div className="db-root">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-200"
         onClick={handleClose}
-        style={{ animation: 'fadeIn 0.2s ease' }}
       />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="db-modal-card db-modal-animate">
+        <div className="app-card db-fade-in w-full max-w-md">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'rgba(0,0,0,.06)' }}>
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+              <div className="app-stat-icon bg-red-100">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">Delete Supplier</h2>
+              <h2 className="app-card-title">Delete Supplier</h2>
             </div>
             <button
               onClick={handleClose}
               disabled={deleting}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+              className="db-icon-btn disabled:opacity-50"
+              aria-label="Close delete supplier dialog"
             >
-              <X className="w-5 h-5 text-gray-600" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
@@ -120,14 +81,14 @@ export function DeleteSupplierModal({ isOpen, onClose, onConfirm, supplierName, 
             </p>
 
             {error && (
-              <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
+              <div className="app-alert-danger mt-4">
                 {error}
               </div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 p-6 border-t" style={{ borderColor: 'rgba(0,0,0,.06)' }}>
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
             <button
               onClick={handleClose}
               disabled={deleting}
@@ -145,14 +106,6 @@ export function DeleteSupplierModal({ isOpen, onClose, onConfirm, supplierName, 
           </div>
         </div>
       </div>
-
-      {/* Simple fade-in keyframes (in case not defined globally) */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }

@@ -44,6 +44,23 @@ const CONFIRM_DELIVERY_STYLES = `
     color: #1a1a18; outline: none; transition: border-color .2s;
   }
   .db-input:focus { border-color: #0f8c5a; box-shadow: 0 0 0 2px rgba(15,140,90,.1); }
+  .delivery-info-panel {
+    border: 1px solid rgba(0,0,0,.08); border-radius: 14px;
+    background: #fafbf8; padding: 20px;
+  }
+  .delivery-warning-panel {
+    border: 1px solid #fed7aa; border-radius: 14px;
+    background: #fff7ed; padding: 20px;
+  }
+  .delivery-item-panel {
+    border: 1px solid rgba(0,0,0,.08); border-radius: 14px;
+    background: #fafbf8; padding: 20px;
+  }
+  .delivery-item-panel.has-issues { border-color: #fed7aa; background: #fff7ed; }
+  .delivery-metric {
+    border: 1px solid rgba(0,0,0,.08); border-radius: 12px;
+    background: #fff; padding: 12px;
+  }
 `;
 
 const ISSUE_TYPE_MAP = { damaged: 0, missing: 1, incorrect: 2, defective: 3, other: 4 };
@@ -64,29 +81,36 @@ function authHeaders() {
   };
 }
 
+function createItemDetails(itemList = []) {
+  const initial = {};
+  itemList.forEach((item) => {
+    initial[item.productId] = { damaged: 0, missing: 0, incorrect: 0, defective: 0, other: 0, notes: '' };
+  });
+  return initial;
+}
+
 export function ConfirmDeliveryPage() {
   const navigate = useNavigate();
   const { orderId } = useParams();
   const location = useLocation();
 
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const stateOrder = location.state?.order;
+  const stateItems = location.state?.items ?? stateOrder?.itemsConfirmResponseDtos;
+  const hasStateItems = Boolean(stateItems?.length);
+
+  const [order, setOrder] = useState(() => (
+    hasStateItems ? { ...(stateOrder || {}), itemsConfirmResponseDtos: stateItems } : null
+  ));
+  const [loading, setLoading] = useState(() => !hasStateItems);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const [itemDetails, setItemDetails] = useState({});
+  const [itemDetails, setItemDetails] = useState(() => createItemDetails(stateItems || []));
   const [generalNotes, setGeneralNotes] = useState('');
   const [receivedDate, setReceivedDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    const stateOrder = location.state?.order;
-    const stateItems = location.state?.items ?? stateOrder?.itemsConfirmResponseDtos;
-
-    if (stateItems?.length) {
-      const base = stateOrder || {};
-      setOrder({ ...base, itemsConfirmResponseDtos: stateItems });
-      initItemDetails(stateItems);
-      setLoading(false);
+    if (hasStateItems) {
       return;
     }
 
@@ -97,22 +121,14 @@ export function ConfirmDeliveryPage() {
       })
       .then((data) => {
         setOrder(data);
-        initItemDetails(data.itemsConfirmResponseDtos || []);
+        setItemDetails(createItemDetails(data.itemsConfirmResponseDtos || []));
         setLoading(false);
       })
       .catch((err) => {
         setError(err.message || 'Failed to fetch order details.');
         setLoading(false);
       });
-  }, [orderId]);
-
-  const initItemDetails = (itemList) => {
-    const initial = {};
-    itemList.forEach((item) => {
-      initial[item.productId] = { damaged: 0, missing: 0, incorrect: 0, defective: 0, other: 0, notes: '' };
-    });
-    setItemDetails(initial);
-  };
+  }, [orderId, hasStateItems]);
 
   const handleItemChange = (itemId, field, value) => {
     setItemDetails(prev => ({
@@ -191,7 +207,9 @@ export function ConfirmDeliveryPage() {
               const text = await res.text();
               if (text) serverMessage = text;
             }
-          } catch (_) {}
+          } catch {
+            // Keep the fallback error message when the server response cannot be parsed.
+          }
           throw new Error(serverMessage);
         }
         navigate(`/orders/${orderId}`);
@@ -210,17 +228,18 @@ export function ConfirmDeliveryPage() {
       <style>{CONFIRM_DELIVERY_STYLES}</style>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="app-page-header">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(`/orders/${orderId}`)}
             className="db-icon-btn"
+            aria-label="Back to order"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="db-section-title">Confirm Delivery & Update Stock</h1>
-            <p className="text-sm text-gray-600 mt-1">Order {order.orderStringId} • Review and confirm received quantities</p>
+          <div className="app-page-heading">
+            <h1 className="app-page-title">Confirm Delivery & Update Stock</h1>
+            <p className="app-page-subtitle">Order {order.orderStringId} • Review and confirm received quantities.</p>
           </div>
         </div>
       </div>
@@ -242,14 +261,14 @@ export function ConfirmDeliveryPage() {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+      <div className="delivery-info-panel">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-            <Package className="w-5 h-5 text-blue-600" />
+          <div className="app-stat-icon flex-shrink-0">
+            <Package className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-semibold text-blue-900 mb-1">Verify Received Quantities</h3>
-            <p className="text-sm text-blue-800">
+            <h3 className="font-semibold text-gray-900 mb-1">Verify Received Quantities</h3>
+            <p className="text-sm text-gray-600">
               Confirm the actual quantities received for each item. If there are any issues, specify the exact quantity for each problem type
               (damaged, missing, incorrect, defective, or other). Stock will only be updated with confirmed good quantities.
             </p>
@@ -259,9 +278,9 @@ export function ConfirmDeliveryPage() {
 
       {/* Discrepancy Alert */}
       {hasDiscrepancies && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-5">
+        <div className="delivery-warning-panel">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 text-orange-600">
               <AlertTriangle className="w-5 h-5 text-orange-600" />
             </div>
             <div>
@@ -289,7 +308,7 @@ export function ConfirmDeliveryPage() {
             return (
               <div
                 key={item.productId}
-                className={`p-5 rounded-xl border-2 ${totalIssues > 0 ? 'border-orange-200 bg-orange-50/30' : 'border-gray-200 bg-gray-50/50'}`}
+                className={`delivery-item-panel ${totalIssues > 0 ? 'has-issues' : ''}`}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -304,7 +323,7 @@ export function ConfirmDeliveryPage() {
 
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className="app-form-label">
                       Issue Breakdown {totalIssues > 0 && <span className="text-red-500">*</span>}
                     </label>
                     <div className="text-sm">
@@ -335,7 +354,7 @@ export function ConfirmDeliveryPage() {
                   </div>
 
                   {totalIssues > 0 && (
-                    <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
+                    <div className="mt-3 delivery-metric">
                       <p className="text-xs font-medium text-gray-900 mb-2">Issue Summary:</p>
                       <div className="flex flex-wrap gap-2">
                         {itemDetails[item.productId]?.damaged > 0 && <span className="db-stat-pill pill-green">Damaged: {itemDetails[item.productId].damaged}</span>}
@@ -350,7 +369,7 @@ export function ConfirmDeliveryPage() {
 
                 {totalIssues > 0 && (
                   <div>
-                    <label className="text-sm font-medium text-gray-900 mb-2 block">
+                    <label className="app-form-label">
                       Notes <span className="text-red-500">*</span>
                     </label>
                     <textarea
@@ -363,16 +382,16 @@ export function ConfirmDeliveryPage() {
                   </div>
                 )}
 
-                <div className="mt-4 pt-4 border-t border-gray-300 grid grid-cols-3 gap-4 text-sm">
-                  <div>
+                <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                  <div className="delivery-metric">
                     <span className="text-gray-600">Good Stock:</span>
                     <p className="font-semibold text-green-600">{receivedGood} units</p>
                   </div>
-                  <div>
+                  <div className="delivery-metric">
                     <span className="text-gray-600">Issues:</span>
                     <p className="font-semibold text-orange-600">{totalIssues} units</p>
                   </div>
-                  <div>
+                  <div className="delivery-metric">
                     <span className="text-gray-600">Total:</span>
                     <p className="font-semibold text-gray-900">{receivedGood + totalIssues} / {ordered}</p>
                   </div>
@@ -390,7 +409,7 @@ export function ConfirmDeliveryPage() {
             <span className="db-card-title">Additional Information</span>
           </div>
           <div className="p-5">
-            <label className="text-sm font-medium text-gray-900 mb-2 block">General Notes (Optional)</label>
+            <label className="app-form-label">General Notes (Optional)</label>
             <textarea
               rows={4}
               placeholder="Add any general notes about the delivery or issues..."

@@ -7,6 +7,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { StatCard } from "../components/StatCard";
 
 // ============================
 // Design system styles (green accent, DM Sans, etc.)
@@ -126,7 +127,10 @@ export function OrdersPage() {
 
   // Orders Fetch
   useEffect(() => {
-    setLoading(true);
+    let isCancelled = false;
+    const loadingTimer = window.setTimeout(() => {
+      if (!isCancelled) setLoading(true);
+    }, 0);
 
     let url = `/api/Order?page=${currentPage}&page_size=${pageSize}`;
 
@@ -151,15 +155,22 @@ export function OrdersPage() {
         return res.json();
       })
       .then((body) => {
+        if (isCancelled) return;
         setOrdersList(body.data || []);
         setTotalPages(body.totalPages && body.totalPages > 0 ? body.totalPages : 1);
         setTotalCount(body.totalCount || 0);
         setLoading(false);
       })
       .catch((err) => {
+        if (isCancelled) return;
         setError(err.message);
         setLoading(false);
       });
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(loadingTimer);
+    };
   }, [currentPage, searchTerm, filterId, sortId]);
 
   // Delivery Issues Fetch
@@ -222,10 +233,10 @@ export function OrdersPage() {
       <style>{ORDERS_STYLES}</style>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="app-page-header">
+        <div className="app-page-heading">
           <h1 className="db-section-title">Orders</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage purchase orders and track deliveries</p>
+          <p className="app-page-subtitle">Manage purchase orders and track deliveries.</p>
         </div>
         <button
           onClick={() => navigate("/orders/create")}
@@ -237,56 +248,9 @@ export function OrdersPage() {
 
       {/* Stats Cards (Dashboard style) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Total Revenue</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">
-                ${Number(dashboardStats.totalOrdersRevenue || 0).toLocaleString()}
-              </div>
-              <div className="text-xs text-green-600 mt-1">↑ 12% vs last period</div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-[#0f8c5a]/10 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-[#0f8c5a]" />
-            </div>
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Pending Orders</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">
-                {dashboardStats.pendingOrdersCount}
-              </div>
-              <div className="text-xs text-yellow-600 mt-1">Need attention</div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-yellow-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Completed Orders</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">
-                {dashboardStats.deliveredOrdersCount}
-              </div>
-              <div className="text-xs text-green-600 mt-1">↑ 5% vs last period</div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-            </div>
-          </div>
-        </div>
+        <StatCard title="Total Revenue" value={`$${Number(dashboardStats.totalOrdersRevenue || 0).toLocaleString()}`} change={12} sub="vs last period" icon={DollarSign} iconColor="#0f8c5a" iconBgColor="bg-[#0f8c5a]/10" className="db-fade-in" />
+        <StatCard title="Pending Orders" value={dashboardStats.pendingOrdersCount} sub="Need attention" subColor="#d97706" icon={Clock} iconColor="#eab308" iconBgColor="bg-yellow-100" className="db-fade-in" />
+        <StatCard title="Completed Orders" value={dashboardStats.deliveredOrdersCount} change={5} sub="vs last period" icon={CheckCircle} iconColor="#22c55e" iconBgColor="bg-green-100" className="db-fade-in" />
       </div>
 
       {/* Search + Filters Card */}

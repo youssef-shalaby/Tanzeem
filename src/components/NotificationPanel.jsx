@@ -1,12 +1,6 @@
-import { X, Package, TruckIcon, Clock, Skull } from 'lucide-react';
+import { AlertTriangle, CheckCheck, Clock, Inbox, Package, TruckIcon, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-
-// ============================
-// Design system colors & helpers
-// ============================
-const GREEN_PRIMARY = '#0f8c5a';
-const GREEN_HOVER = '#0a6b45';
 
 function getToken() {
   try {
@@ -26,10 +20,10 @@ function authHeaders() {
 
 function getNotificationMeta(type) {
   switch (type) {
-    case 1:  return { Icon: Skull,     color: 'text-orange-600', bg: 'bg-orange-100' };
-    case 2:  return { Icon: Clock,     color: 'text-yellow-600', bg: 'bg-yellow-100' };
-    case 4:  return { Icon: TruckIcon, color: 'text-blue-600',   bg: 'bg-blue-100'   };
-    default: return { Icon: Package,   color: 'text-gray-600',   bg: 'bg-gray-100'   };
+    case 1:  return { Icon: AlertTriangle, label: 'Stock alert', color: 'var(--app-warning-text)', bg: 'var(--app-warning-bg)' };
+    case 2:  return { Icon: Clock,         label: 'Pending',     color: 'var(--app-warning-text)', bg: 'var(--app-warning-bg)' };
+    case 4:  return { Icon: TruckIcon,     label: 'Delivery',    color: 'var(--app-info-text)', bg: 'var(--app-info-bg)' };
+    default: return { Icon: Package,       label: 'Inventory',   color: 'var(--app-gray-text)', bg: 'var(--app-gray-bg)' };
   }
 }
 
@@ -49,20 +43,36 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
-    setLoading(true);
+    let isCancelled = false;
+    const loadingTimer = window.setTimeout(() => {
+      if (!isCancelled) setLoading(true);
+    }, 0);
+
     fetch('/api/Notification?Page=1&Page_Size=20', { headers: authHeaders() })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
+        if (isCancelled) return;
         if (data?.data) setNotifications(data.data);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        if (!isCancelled) setLoading(false);
+      });
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(loadingTimer);
+    };
   }, [isOpen]);
 
   const handleMarkAsRead = (id) => {
+    const current = notifications.find((n) => n.id === id);
+    if (current?.isRead) return;
+
     fetch(`/api/Notification/mark-as-read/${id}`, {
       method: 'PATCH',
       headers: authHeaders(),
@@ -78,6 +88,8 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
   };
 
   const handleMarkAllAsRead = () => {
+    if (localUnread === 0 || isMarkingAll) return;
+    setIsMarkingAll(true);
     fetch('/api/Notification/mark-all-read', {
       method: 'PATCH',
       headers: authHeaders(),
@@ -92,7 +104,8 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
         onMarkAllRead?.();
         setTimeout(() => onUnreadCountChange?.(), 300);
       })
-      .catch((err) => console.error('mark-all-read failed:', err));
+      .catch((err) => console.error('mark-all-read failed:', err))
+      .finally(() => setIsMarkingAll(false));
   };
 
   const handleClick = (notification) => {
@@ -113,87 +126,266 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
 
   return (
     <>
+      <style>{`
+        .notif-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 40;
+          background: rgba(15, 23, 42, .22);
+          backdrop-filter: blur(2px);
+        }
+        .notif-panel {
+          font-family: 'DM Sans', sans-serif;
+          background: var(--app-panel);
+          box-shadow: -14px 0 34px rgba(15, 23, 42, .1);
+          border-left: 1px solid var(--app-line);
+        }
+        .notif-header {
+          position: relative;
+          overflow: hidden;
+          border-bottom: 1px solid var(--app-line);
+          background: var(--app-wash-bg-soft);
+        }
+        .notif-header::after {
+          content: "";
+          position: absolute;
+          right: 22px;
+          bottom: 0;
+          width: 128px;
+          height: 3px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, rgba(15,140,90,0), rgba(15,140,90,.34));
+          pointer-events: none;
+        }
+        .notif-header > * { position: relative; z-index: 1; }
+        .notif-summary {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--app-muted);
+          font-size: 13px;
+          margin-top: 6px;
+        }
+        .notif-mark-all {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          min-height: 34px;
+          padding: 0 11px;
+          border-radius: 999px;
+          border: 1px solid rgba(15,140,90,.14);
+          background: var(--app-panel);
+          color: var(--app-green-dark);
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background .15s, border-color .15s, color .15s;
+        }
+        .notif-mark-all:hover:not(:disabled) {
+          background: var(--app-soft);
+          border-color: rgba(15,140,90,.24);
+        }
+        .notif-mark-all:disabled {
+          opacity: .55;
+          cursor: not-allowed;
+        }
+        .notif-list {
+          display: grid;
+          gap: 10px;
+          padding: 14px;
+        }
+        .notif-item {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 40px minmax(0, 1fr);
+          gap: 12px;
+          padding: 13px;
+          border-radius: 14px;
+          border: 1px solid transparent;
+          background: var(--app-panel);
+          text-align: left;
+          transition: background .15s, border-color .15s, transform .15s;
+        }
+        .notif-item:hover {
+          background: var(--app-soft);
+          border-color: var(--app-line);
+        }
+        .notif-item.unread {
+          background: var(--app-wash-bg-soft);
+          border-color: rgba(15,140,90,.12);
+        }
+        .notif-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .notif-item-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 5px;
+        }
+        .notif-title {
+          color: var(--app-ink);
+          font-size: 13.5px;
+          font-weight: 700;
+          line-height: 1.35;
+        }
+        .notif-message {
+          color: var(--app-muted);
+          font-size: 13px;
+          line-height: 1.5;
+          margin: 0;
+        }
+        .notif-foot {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          margin-top: 10px;
+        }
+        .notif-type {
+          display: inline-flex;
+          align-items: center;
+          min-height: 22px;
+          padding: 0 8px;
+          border-radius: 999px;
+          background: var(--app-gray-bg);
+          color: var(--app-gray-text);
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .notif-time {
+          color: var(--app-subtle);
+          font-size: 11.5px;
+          white-space: nowrap;
+        }
+        .notif-unread-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 999px;
+          background: var(--app-green);
+          flex: 0 0 auto;
+          margin-top: 5px;
+        }
+        .notif-footer {
+          border-top: 1px solid var(--app-line);
+          background: var(--app-panel);
+        }
+        :root[data-theme="dark"] .notif-backdrop {
+          background: rgba(0, 0, 0, .5);
+        }
+        :root[data-theme="dark"] .notif-panel {
+          background: var(--app-panel);
+          box-shadow: -20px 0 70px rgba(0, 0, 0, .42);
+        }
+        :root[data-theme="dark"] .notif-item {
+          background: var(--app-panel-raised);
+          border-color: var(--app-line);
+        }
+        :root[data-theme="dark"] .notif-item:hover {
+          background: #1b2420;
+        }
+        @media (max-width: 520px) {
+          .notif-panel { width: 100vw !important; }
+          .notif-list { padding: 12px; }
+        }
+      `}</style>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
+      <div className="notif-backdrop" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed top-0 right-0 h-full w-[420px] bg-white shadow-2xl z-50 flex flex-col" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <div className="notif-panel fixed top-0 right-0 h-full w-[440px] max-w-[100vw] z-50 flex flex-col">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-gray-900">Notifications</h2>
-              {localUnread > 0 && (
-                <span className="px-2 py-0.5 text-white text-xs font-semibold rounded-full" style={{ backgroundColor: GREEN_PRIMARY }}>
-                  {localUnread}
-                </span>
-              )}
+        <div className="notif-header px-6 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="app-card-title">Notifications</h2>
+                {localUnread > 0 && (
+                  <span className="db-stat-pill pill-green">
+                    {localUnread}
+                  </span>
+                )}
+              </div>
+              <p className="notif-summary">
+                {localUnread > 0
+                  ? `${localUnread} unread update${localUnread === 1 ? '' : 's'}`
+                  : 'Everything is read'}
+              </p>
             </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
 
-          {localUnread > 0 && (
-            <button
-              onClick={handleMarkAllAsRead}
-              className="text-sm font-medium transition-colors"
-              style={{ color: GREEN_PRIMARY }}
-              onMouseEnter={(e) => e.currentTarget.style.color = GREEN_HOVER}
-              onMouseLeave={(e) => e.currentTarget.style.color = GREEN_PRIMARY}
-            >
-              Mark all as read
-            </button>
-          )}
+            <div className="flex items-center gap-2">
+              {localUnread > 0 && (
+                <button
+                  onClick={handleMarkAllAsRead}
+                  className="notif-mark-all"
+                  disabled={isMarkingAll}
+                >
+                  <CheckCheck className="w-4 h-4" />
+                  {isMarkingAll ? 'Marking' : 'Mark all'}
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="db-icon-btn"
+                aria-label="Close notifications"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Notifications List */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-40 text-sm text-gray-400">
-              Loading...
+            <div className="p-6 space-y-3">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="db-skeleton h-20" />
+              ))}
             </div>
           ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-6">
-              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <Package className="w-8 h-8 text-gray-400" />
+            <div className="app-empty flex h-full flex-col items-center justify-center px-6">
+              <div className="app-stat-icon bg-gray-100 mb-4">
+                <Inbox className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-base font-semibold text-gray-900 mb-1">No notifications</h3>
-              <p className="text-sm text-gray-600">
-                You're all caught up! We'll notify you when something important happens.
+              <h3 className="app-card-title mb-1">No notifications</h3>
+              <p className="text-sm text-gray-600 text-center max-w-[280px]">
+                You are caught up. New stock, order, and delivery updates will appear here.
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="notif-list">
               {notifications.map((n) => {
-                const { Icon, color, bg } = getNotificationMeta(n.type);
+                const { Icon, color, bg, label } = getNotificationMeta(n.type);
                 return (
                   <button
                     key={n.id}
                     onClick={() => handleClick(n)}
-                    className={`w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors ${
-                      !n.isRead ? 'bg-[#0f8c5a]/5' : ''
-                    }`}
+                    className={`notif-item${!n.isRead ? ' unread' : ''}`}
                   >
-                    <div className="flex gap-3">
-                      <div className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center flex-shrink-0`}>
-                        <Icon className={`w-5 h-5 ${color}`} />
+                    <div className="notif-icon" style={{ background: bg, color }}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="notif-item-head">
+                        <h4 className="notif-title">
+                          {n.title || label}
+                        </h4>
+                        {!n.isRead && (
+                          <span className="notif-unread-dot" aria-label="Unread" />
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <h4 className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
-                            {n.title}
-                          </h4>
-                          {!n.isRead && (
-                            <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: GREEN_PRIMARY }} />
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600 mb-1 line-clamp-2">{n.message}</p>
-                        <span className="text-xs text-gray-400">{formatTime(n.createdAt)}</span>
+                      <p className="notif-message line-clamp-2">{n.message}</p>
+                      <div className="notif-foot">
+                        <span className="notif-type">{label}</span>
+                        <span className="notif-time">{formatTime(n.createdAt)}</span>
                       </div>
                     </div>
                   </button>
@@ -205,15 +397,12 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
 
         {/* Footer */}
         {notifications.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200">
+          <div className="notif-footer px-6 py-4">
             <button
               onClick={() => { navigate('/alerts'); onClose(); }}
-              className="w-full py-2.5 text-sm font-medium transition-colors"
-              style={{ color: GREEN_PRIMARY }}
-              onMouseEnter={(e) => e.currentTarget.style.color = GREEN_HOVER}
-              onMouseLeave={(e) => e.currentTarget.style.color = GREEN_PRIMARY}
+              className="db-secondary-btn w-full"
             >
-              View All Notifications
+              View alert center
             </button>
           </div>
         )}

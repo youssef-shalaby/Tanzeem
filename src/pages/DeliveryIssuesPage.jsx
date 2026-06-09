@@ -1,6 +1,7 @@
-import { Search, Eye, AlertTriangle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, AlertTriangle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useState, useEffect } from 'react';
+import { StatCard } from '../components/StatCard';
 
 // ============================
 // Design system styles (matching Dashboard)
@@ -83,27 +84,39 @@ export function DeliveryIssuesPage() {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    setLoading(true);
-    fetch(`/api/DeliveryIssues?page=${currentPage}&page_size=${itemsPerPage}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch delivery issues');
-        return res.json();
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      setLoading(true);
+
+      fetch(`/api/DeliveryIssues?page=${currentPage}&page_size=${itemsPerPage}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
       })
-      .then((data) => {
-        setIssues(data.data || []);
-        setTotalCount(data.totalCount || 0);
-        setTotalPages(data.totalPages || 1);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to fetch delivery issues');
+          return res.json();
+        })
+        .then((data) => {
+          if (cancelled) return;
+          setIssues(data.data || []);
+          setTotalCount(data.totalCount || 0);
+          setTotalPages(data.totalPages || 1);
+          setLoading(false);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          setError(err.message);
+          setLoading(false);
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [currentPage]);
 
   const getIssueTypeLabels = (items) => {
@@ -142,48 +155,18 @@ export function DeliveryIssuesPage() {
       <style>{DELIVERY_STYLES}</style>
 
       {/* Header */}
-      <div>
+      <div className="app-page-header">
+        <div className="app-page-heading">
         <h1 className="db-section-title">Delivery Issues</h1>
-        <p className="text-sm text-gray-600 mt-1">Track and manage delivery discrepancies and issues</p>
+        <p className="app-page-subtitle">Track delivery discrepancies, affected items, and follow-up actions.</p>
+        </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Total Issues</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div className="text-2xl font-semibold text-gray-900">{stats.total}</div>
-            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-gray-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Items Affected</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div className="text-2xl font-semibold text-orange-600">{stats.itemsAffected}</div>
-            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-orange-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Total Discrepancy</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div className="text-2xl font-semibold text-red-600">-{stats.discrepancy}</div>
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-              <XCircle className="w-5 h-5 text-red-600" />
-            </div>
-          </div>
-        </div>
+        <StatCard title="Total Issues" value={stats.total} sub="Open delivery records" icon={AlertTriangle} iconColor="#66706a" iconBgColor="bg-gray-100" className="db-fade-in" />
+        <StatCard title="Items Affected" value={stats.itemsAffected} sub="Units requiring review" subColor="#d97706" icon={AlertTriangle} iconColor="#f97316" iconBgColor="bg-orange-100" className="db-fade-in" />
+        <StatCard title="Total Discrepancy" value={`-${stats.discrepancy}`} sub="Units short or damaged" subColor="#dc2626" icon={XCircle} iconColor="#ef4444" iconBgColor="bg-red-100" className="db-fade-in" />
       </div>
 
       {/* Search Card */}
@@ -268,7 +251,6 @@ export function DeliveryIssuesPage() {
                         className="db-secondary-btn"
                         style={{ padding: "6px 12px", fontSize: "12px" }}
                       >
-                        <Eye className="w-4 h-4" />
                         View
                       </button>
                     </td>

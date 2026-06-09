@@ -1,53 +1,8 @@
 import { ArrowLeft, Package, Edit, Trash2, DollarSign, BarChart3, AlertTriangle, Archive } from 'lucide-react';
-import { useNavigate, useLocation, useParams, Link } from 'react-router';
+import { useNavigate, useParams, Link } from 'react-router';
 import { useState, useEffect } from 'react';
 import { DeleteProductModal } from '../ui/DeleteProductModal';
-
-// ============================
-// Design system styles (green accent)
-// ============================
-const VIEW_PRODUCT_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
-  .view-product-root { font-family: 'DM Sans', sans-serif; }
-  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
-  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
-  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
-  .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
-  .pill-green { background: #d6f5e8; color: #0a6b45; }
-  .pill-red { background: #fde8e8; color: #9b1c1c; }
-  .pill-yellow { background: #fef3c7; color: #8b5e00; }
-  .pill-blue { background: #e8f0fe; color: #2c5f8a; }
-  .db-primary-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 16px; background: #0f8c5a; color: white;
-    border-radius: 100px; font-size: 13px; font-weight: 500;
-    border: none; cursor: pointer; transition: background .15s;
-  }
-  .db-primary-btn:hover { background: #0a6b45; }
-  .db-secondary-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
-    border-radius: 100px; font-size: 13px; font-weight: 500;
-    color: #444; cursor: pointer; transition: background .15s;
-  }
-  .db-secondary-btn:hover { background: #f5f6f3; }
-  .db-danger-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 16px; background: #dc2626; color: white;
-    border-radius: 100px; font-size: 13px; font-weight: 500;
-    border: none; cursor: pointer; transition: background .15s;
-  }
-  .db-danger-btn:hover { background: #b91c1c; }
-  .db-icon-btn {
-    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
-    display: inline-flex; align-items: center; justify-content: center;
-    color: #666; cursor: pointer; transition: background .15s, color .15s;
-  }
-  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
-  .db-fade-in { animation: dbFadeIn .4s ease both; }
-  @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-`;
+import { useAuth } from '../contexts/AuthContext';
 
 function getToken() {
   try {
@@ -81,7 +36,7 @@ function normalize(raw) {
 
 export function ViewProductPage() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { can } = useAuth();
   const { id } = useParams();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [product, setProduct] = useState(null);
@@ -89,43 +44,59 @@ export function ViewProductPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!id) { setError('No product ID provided.'); setLoading(false); return; }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
 
-    fetch(`/api/Products/Get-Product/${id}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error(`Server returned ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        setProduct(normalize(data?.data ?? data));
+      if (!id) {
+        setError('No product ID provided.');
         setLoading(false);
+        return;
+      }
+
+      fetch(`/api/Products/Get-Product/${id}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
       })
-      .catch((err) => { setError(err.message); setLoading(false); });
+        .then((res) => {
+          if (!res.ok) throw new Error(`Server returned ${res.status}`);
+          return res.json();
+        })
+        .then((data) => {
+          if (cancelled) return;
+          setProduct(normalize(data?.data ?? data));
+          setLoading(false);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          setError(err.message);
+          setLoading(false);
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [id]);
 
   const handleDelete = () => { setDeleteModalOpen(false); navigate('/products'); };
 
   if (loading) return (
     <div className="view-product-root flex items-center justify-center h-96 text-sm text-gray-500">
-      <style>{VIEW_PRODUCT_STYLES}</style>
       Loading product...
     </div>
   );
   if (error) return (
     <div className="view-product-root flex flex-col items-center justify-center h-96">
-      <style>{VIEW_PRODUCT_STYLES}</style>
       <p className="text-red-600 mb-4">{error}</p>
       <button onClick={() => navigate('/products')} className="db-primary-btn">Back to Products</button>
     </div>
   );
   if (!product) return (
     <div className="view-product-root flex flex-col items-center justify-center h-96">
-      <style>{VIEW_PRODUCT_STYLES}</style>
       <Package className="w-16 h-16 text-gray-400 mb-4" />
       <h2 className="text-xl font-semibold text-gray-900 mb-2">Product Not Found</h2>
       <p className="text-gray-600 mb-6">The product you're looking for doesn't exist.</p>
@@ -150,13 +121,13 @@ export function ViewProductPage() {
     product.status === 'Active' ? 'pill-green' :
     product.status === 'Inactive' ? 'bg-gray-100 text-gray-600' :
     'bg-red-100 text-red-700';
+  const canEditProduct = can('edit_products');
+  const canDeleteProduct = can('delete_products');
 
   return (
     <div className="view-product-root space-y-6">
-      <style>{VIEW_PRODUCT_STYLES}</style>
-
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="app-page-header">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/products')} className="db-icon-btn">
             <ArrowLeft className="w-5 h-5" />
@@ -167,18 +138,22 @@ export function ViewProductPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(`/products/edit-product/${product.id}`, { state: { product } })}
-            className="db-secondary-btn"
-          >
-            <Edit className="w-4 h-4" /> Edit
-          </button>
-          <button
-            onClick={() => setDeleteModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 text-sm rounded-full hover:bg-red-50 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" /> Delete
-          </button>
+          {canEditProduct && (
+            <button
+              onClick={() => navigate(`/products/edit-product/${product.id}`, { state: { product } })}
+              className="db-secondary-btn"
+            >
+              <Edit className="w-4 h-4" /> Edit
+            </button>
+          )}
+          {canDeleteProduct && (
+            <button
+              onClick={() => setDeleteModalOpen(true)}
+              className="db-danger-btn"
+            >
+              <Trash2 className="w-4 h-4" /> Delete
+            </button>
+          )}
         </div>
       </div>
 

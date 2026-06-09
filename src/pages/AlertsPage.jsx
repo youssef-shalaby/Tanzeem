@@ -2,8 +2,9 @@ import {
   AlertTriangle, Clock, XCircle, Package, Info,
   Bell, ChevronRight, Skull,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { createElement, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { StatCard } from '../components/StatCard';
 
 // ============================
 // Design system styles (green accent)
@@ -40,6 +41,13 @@ const ALERTS_STYLES = `
     color: #666; cursor: pointer; transition: background .15s, color .15s;
   }
   .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .alerts-feed { overflow: hidden; }
+  .alerts-feed-item {
+    border-top: 1px solid var(--app-line);
+    transition: background .15s;
+  }
+  .alerts-feed-item:first-child { border-top: 0; }
+  .alerts-feed-item:hover { background: var(--app-soft); }
   .db-fade-in { animation: dbFadeIn .4s ease both; }
   @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .db-skeleton { background: linear-gradient(90deg,#f0f0ec 25%,#e8e8e4 50%,#f0f0ec 75%); background-size:200% 100%; animation: shimmer 1.4s infinite; border-radius:10px; }
@@ -122,7 +130,10 @@ export function AlertsPage() {
 
   // Fetch alerts list
   useEffect(() => {
-    setLoading(true);
+    let isCancelled = false;
+    const loadingTimer = window.setTimeout(() => {
+      if (!isCancelled) setLoading(true);
+    }, 0);
     const params = new URLSearchParams({
       Page: currentPage,
       Page_Size: itemsPerPage,
@@ -139,12 +150,20 @@ export function AlertsPage() {
         return r.json();
       })
       .then((data) => {
+        if (isCancelled) return;
         setAlerts(data.data || []);
         setTotalCount(data.totalCount || 0);
         setTotalPages(data.totalPages > 0 ? data.totalPages : 1);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        if (!isCancelled) setLoading(false);
+      });
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(loadingTimer);
+    };
   }, [currentPage]);
 
   // Filtering
@@ -188,10 +207,10 @@ export function AlertsPage() {
       <style>{ALERTS_STYLES}</style>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="app-page-header">
+        <div className="app-page-heading">
           <h1 className="db-section-title">Alerts & Notifications</h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="app-page-subtitle">
             {totalCount > 0 ? `${totalCount} active alerts across all categories` : 'No active alerts'}
           </p>
         </div>
@@ -199,65 +218,10 @@ export function AlertsPage() {
 
       {/* Stats Cards (from mini_Alert_dashboard) - matching Dashboard stat cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Critical</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">{dashboard?.criticalCount ?? '—'}</div>
-              <div className="text-xs text-red-600 font-medium mt-1">Requires immediate action</div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Warnings</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">{dashboard?.warningCount ?? '—'}</div>
-              <div className="text-xs text-yellow-600 font-medium mt-1">Review soon</div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-yellow-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Dead Stock</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">{dashboard?.deadCount ?? '—'}</div>
-              <div className="text-xs text-orange-600 font-medium mt-1">No movement detected</div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-              <Skull className="w-5 h-5 text-orange-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Info</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">{dashboard?.infoCount ?? '—'}</div>
-              <div className="text-xs text-blue-600 font-medium mt-1">Updates available</div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <Info className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
-        </div>
+        <StatCard title="Critical" value={dashboard?.criticalCount ?? '—'} sub="Requires immediate action" subColor="#dc2626" icon={AlertTriangle} iconColor="#ef4444" iconBgColor="bg-red-100" className="db-fade-in" />
+        <StatCard title="Warnings" value={dashboard?.warningCount ?? '—'} sub="Review soon" subColor="#d97706" icon={AlertTriangle} iconColor="#eab308" iconBgColor="bg-yellow-100" className="db-fade-in" />
+        <StatCard title="Dead Stock" value={dashboard?.deadCount ?? '—'} sub="No movement detected" subColor="#ea580c" icon={Skull} iconColor="#f97316" iconBgColor="bg-orange-100" className="db-fade-in" />
+        <StatCard title="Info" value={dashboard?.infoCount ?? '—'} sub="Updates available" subColor="#2563eb" icon={Info} iconColor="#3b82f6" iconBgColor="bg-blue-100" className="db-fade-in" />
       </div>
 
       {/* Main Content (Category Sidebar + Alert List) */}
@@ -270,7 +234,7 @@ export function AlertsPage() {
             </div>
             <div className="p-4">
               <div className="space-y-1">
-                {categories.map(({ id, name, icon: Icon, color }) => {
+                {categories.map(({ id, name, icon, color }) => {
                   const isActive = selectedCategory === id;
                   const count = countByCategory(id);
                   return (
@@ -282,7 +246,7 @@ export function AlertsPage() {
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <Icon className={`w-[18px] h-[18px] ${isActive ? 'text-[#0f8c5a]' : color}`} />
+                        {createElement(icon, { className: `w-[18px] h-[18px] ${isActive ? 'text-[#0f8c5a]' : color}` })}
                         <span className="font-medium">{name}</span>
                       </div>
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
@@ -332,13 +296,13 @@ export function AlertsPage() {
             ) : filteredAlerts.length === 0 ? (
               <div className="p-10 text-center text-sm text-gray-400">No alerts in this category.</div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="alerts-feed">
                 {filteredAlerts.map((alert, idx) => {
                   const meta = getAlertMeta(alert);
                   const Icon = meta.icon;
 
                   return (
-                    <div key={idx} className="p-5 hover:bg-gray-50 transition-colors">
+                    <div key={idx} className="alerts-feed-item p-5">
                       <div className="flex items-start gap-4">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${meta.iconBg}`}>
                           <Icon className={`w-5 h-5 ${meta.iconColor}`} />

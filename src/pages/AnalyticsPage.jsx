@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, Package, AlertCircle, Download, BarChart3, Target, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, Package, AlertCircle, BarChart3, Target, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { StatCard } from '../components/StatCard';
 
 // ============================
 // Design system styles (green accent instead of teal)
@@ -51,6 +52,31 @@ const ANALYTICS_STYLES = `
     color: #666; cursor: pointer; transition: background .15s, color .15s;
   }
   .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .forecast-signal-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 14px;
+    background: var(--app-soft);
+    border: 1px solid var(--app-line);
+  }
+  .forecast-signal-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .forecast-signal-icon.green { background: var(--app-success-bg); color: var(--app-success-text); }
+  .forecast-signal-icon.blue { background: var(--app-info-bg); color: var(--app-info-text); }
+  .forecast-signal-icon.amber { background: var(--app-warning-bg); color: var(--app-warning-text); }
+  .forecast-signal-icon.red { background: var(--app-danger-bg); color: var(--app-danger-text); }
+  .forecast-signal-title { font-size: 13px; font-weight: 650; color: var(--app-ink); }
+  .forecast-signal-detail { margin-top: 2px; font-size: 12px; color: var(--app-muted); }
   .db-fade-in { animation: dbFadeIn .4s ease both; }
   @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .db-skeleton { background: linear-gradient(90deg,#f0f0ec 25%,#e8e8e4 50%,#f0f0ec 75%); background-size:200% 100%; animation: shimmer 1.4s infinite; border-radius:10px; }
@@ -65,8 +91,20 @@ function getToken() {
   }
 }
 
+const CATEGORY_COLORS = [
+  'bg-[#0f8c5a]',
+  'bg-blue-500',
+  'bg-purple-500',
+  'bg-orange-500',
+  'bg-pink-500',
+  'bg-green-500',
+  'bg-red-500',
+  'bg-yellow-500',
+  'bg-indigo-500',
+  'bg-teal-500',
+];
+
 export function AnalyticsPage() {
-  const [timeRange, setTimeRange] = useState('30days');
   const [currentPage, setCurrentPage] = useState(1);
   const [forecastData, setForecastData] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -78,21 +116,9 @@ export function AnalyticsPage() {
     averageForecastConfidence: 0,
   });
   const [topCategories, setTopCategories] = useState([]);
+  const [topCategoriesLoading, setTopCategoriesLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
-
-  const CATEGORY_COLORS = [
-    'bg-[#0f8c5a]',
-    'bg-blue-500',
-    'bg-purple-500',
-    'bg-orange-500',
-    'bg-pink-500',
-    'bg-green-500',
-    'bg-red-500',
-    'bg-yellow-500',
-    'bg-indigo-500',
-    'bg-teal-500',
-  ];
 
   const scrollToForecast = () => {
     document.getElementById('demand-forecast-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -129,65 +155,91 @@ export function AnalyticsPage() {
     })
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
-        if (!Array.isArray(data)) return;
+        if (!Array.isArray(data)) {
+          setTopCategories([]);
+          return;
+        }
         const seen = new Set();
-        const cleaned = data.filter((c) => {
-          if (!c.categoryName || c.categoryName === 'string') return false;
-          if (seen.has(c.categoryName)) return false;
-          seen.add(c.categoryName);
-          return true;
-        });
-        const maxCount = Math.max(...cleaned.map((c) => c.categoryCount ?? 0));
+        const cleaned = data.reduce((items, category) => {
+          const name = String(category.categoryName || "").trim();
+          const count = Number(
+            category.categoryCount ??
+            category.forecastCount ??
+            category.totalForecast ??
+            category.count ??
+            0
+          );
+          const key = name.toLowerCase();
+
+          if (!name || key === "string" || count <= 0 || seen.has(key)) return items;
+
+          seen.add(key);
+          items.push({ categoryName: name, categoryCount: count });
+          return items;
+        }, []);
+
+        const maxCount = Math.max(1, ...cleaned.map((c) => c.categoryCount));
         const mapped = cleaned.map((c, i) => ({
           category: c.categoryName,
-          count: c.categoryCount ?? 0,
-          percentage: maxCount > 0
-            ? Math.round(((c.categoryCount ?? 0) / maxCount) * 90) + 10
-            : 60,
+          count: c.categoryCount,
+          percentage: Math.max(8, Math.round((c.categoryCount / maxCount) * 100)),
           color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
         }));
         setTopCategories(mapped);
       })
-      .catch(() => {});
+      .catch(() => setTopCategories([]))
+      .finally(() => setTopCategoriesLoading(false));
   }, []);
 
   // Paginated table fetch
   useEffect(() => {
-    setLoading(true);
-    fetch(`/api/DemandForecasting?page=${currentPage}&page_size=${itemsPerPage}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch forecast data');
-        return res.json();
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      setLoading(true);
+
+      fetch(`/api/DemandForecasting?page=${currentPage}&page_size=${itemsPerPage}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
       })
-      .then((body) => {
-        const mapped = (body.data || []).map((item) => ({
-          id: String(item.productId),
-          productName: item.productName,
-          sku: item.sku,
-          predictedDemand: item.predicted_units ?? 0,
-          confidence: Math.round((item.confidence ?? 0) * 100),
-          trend: item.demand_occurs ? 'up' : (item.segment === 'zero' ? 'down' : 'stable'),
-          segment: item.segment,
-          recommendedAction: item.demand_occurs
-            ? `Order ${item.predicted_units} units`
-            : item.segment === 'zero'
-            ? 'No demand expected'
-            : 'Monitor stock levels',
-        }));
-        setForecastData(mapped);
-        setTotalCount(body.totalCount ?? 0);
-        setTotalPages(body.totalPages > 0 ? body.totalPages : Math.max(1, Math.ceil((body.totalCount ?? 0) / itemsPerPage)));
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Forecast fetch error:', err);
-        setLoading(false);
-      });
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to fetch forecast data');
+          return res.json();
+        })
+        .then((body) => {
+          if (cancelled) return;
+          const mapped = (body.data || []).map((item) => ({
+            id: String(item.productId),
+            productName: item.productName,
+            sku: item.sku,
+            predictedDemand: item.predicted_units ?? 0,
+            confidence: Math.round((item.confidence ?? 0) * 100),
+            trend: item.demand_occurs ? 'up' : (item.segment === 'zero' ? 'down' : 'stable'),
+            segment: item.segment,
+            recommendedAction: item.demand_occurs
+              ? `Order ${item.predicted_units} units`
+              : item.segment === 'zero'
+              ? 'No demand expected'
+              : 'Monitor stock levels',
+          }));
+          setForecastData(mapped);
+          setTotalCount(body.totalCount ?? 0);
+          setTotalPages(body.totalPages > 0 ? body.totalPages : Math.max(1, Math.ceil((body.totalCount ?? 0) / itemsPerPage)));
+          setLoading(false);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.error('Forecast fetch error:', err);
+          setLoading(false);
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [currentPage]);
 
   const getTrendIcon = (trend) => {
@@ -208,69 +260,100 @@ export function AnalyticsPage() {
     return 'text-orange-700 bg-orange-100';
   };
 
+  const leadingCategory = topCategories[0];
+  const forecastSignals = [
+    {
+      title: 'Forecast window',
+      detail: `${miniDashboard.totalProductForecasted.toLocaleString()} products analyzed`,
+      value: 'Next 30 days',
+      icon: Target,
+      tone: 'green',
+      pill: 'pill-green',
+    },
+    {
+      title: 'Leading category',
+      detail: leadingCategory
+        ? `${leadingCategory.count.toLocaleString()} forecasted units`
+        : 'Waiting for category forecast data',
+      value: leadingCategory?.category ?? 'No category yet',
+      icon: BarChart3,
+      tone: 'blue',
+      pill: 'pill-blue',
+    },
+    {
+      title: 'Restock pressure',
+      detail: 'Items predicted to need stock attention',
+      value: `${miniDashboard.itemsNeedRestock.toLocaleString()} items`,
+      icon: AlertCircle,
+      tone: miniDashboard.itemsNeedRestock > 0 ? 'amber' : 'green',
+      pill: miniDashboard.itemsNeedRestock > 0 ? 'pill-yellow' : 'pill-green',
+    },
+    {
+      title: 'Model confidence',
+      detail: miniDashboard.averageForecastConfidence > 0
+        ? 'Average confidence across forecasted products'
+        : 'Confidence will appear after forecasts are generated',
+      value: miniDashboard.averageForecastConfidence > 0
+        ? `${miniDashboard.averageForecastConfidence}%`
+        : 'Pending',
+      icon: TrendingUp,
+      tone: miniDashboard.averageForecastConfidence >= 75 ? 'green' : 'amber',
+      pill: miniDashboard.averageForecastConfidence >= 75 ? 'pill-green' : 'pill-yellow',
+    },
+  ];
+
   return (
     <div className="analytics-root space-y-6">
       <style>{ANALYTICS_STYLES}</style>
 
       {/* Header - removed dropdown and export button */}
-      <div>
+      <div className="app-page-header">
+        <div className="app-page-heading">
         <h1 className="db-section-title">AI-Powered Analytics</h1>
-        <p className="text-sm text-gray-600 mt-1">Demand forecasting and intelligent insights</p>
+        <p className="app-page-subtitle">Demand forecasting, restock signals, and intelligent inventory insights.</p>
+        </div>
       </div>
 
       {/* Summary Cards (Dashboard style) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Total Products Forecasted</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div className="text-2xl font-semibold text-gray-900">{miniDashboard.totalProductForecasted}</div>
-            <div className="w-10 h-10 rounded-full bg-[#0f8c5a]/10 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-[#0f8c5a]" />
-            </div>
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Items Need Restock</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div className="text-2xl font-semibold text-gray-900">{miniDashboard.itemsNeedRestock}</div>
-            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-              <AlertCircle className="w-5 h-5 text-orange-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">High Demand Items</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div className="text-2xl font-semibold text-gray-900">{miniDashboard.highDemandItems}</div>
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Avg Forecast Confidence</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div className="text-2xl font-semibold text-gray-900">
-              {miniDashboard.averageForecastConfidence > 0
-                ? `${miniDashboard.averageForecastConfidence}%`
-                : '—'}
-            </div>
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <Target className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
-        </div>
+        <StatCard
+          title="Total Products Forecasted"
+          value={miniDashboard.totalProductForecasted}
+          sub="Products analyzed"
+          icon={Sparkles}
+          iconColor="#0f8c5a"
+          iconBgColor="bg-[#0f8c5a]/10"
+          className="db-fade-in"
+        />
+        <StatCard
+          title="Items Need Restock"
+          value={miniDashboard.itemsNeedRestock}
+          sub="Need attention"
+          subColor="#d97706"
+          icon={AlertCircle}
+          iconColor="#f59e0b"
+          iconBgColor="bg-orange-100"
+          className="db-fade-in"
+        />
+        <StatCard
+          title="High Demand Items"
+          value={miniDashboard.highDemandItems}
+          sub="Forecasted demand"
+          subColor="#0a6b45"
+          icon={TrendingUp}
+          iconColor="#22c55e"
+          iconBgColor="bg-green-100"
+          className="db-fade-in"
+        />
+        <StatCard
+          title="Avg Forecast Confidence"
+          value={miniDashboard.averageForecastConfidence > 0 ? `${miniDashboard.averageForecastConfidence}%` : '—'}
+          sub="Model confidence"
+          icon={Target}
+          iconColor="#3b82f6"
+          iconBgColor="bg-blue-100"
+          className="db-fade-in"
+        />
       </div>
 
       {/* AI Insights Banner (green accent) */}
@@ -395,42 +478,32 @@ export function AnalyticsPage() {
 
       {/* Seasonal Patterns + Top Categories */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Seasonal Patterns */}
+        {/* Forecast Signals */}
         <div className="db-card db-fade-in">
           <div className="db-card-header">
-            <span className="db-card-title">Seasonal Patterns</span>
+            <span className="db-card-title">Forecast Signals</span>
           </div>
           <div className="p-5">
             <div className="space-y-4">
-              {[
-                { season: 'Q1 2025', trend: 'High demand for office supplies', impact: '+23%', color: 'green' },
-                { season: 'Q2 2025', trend: 'Electronics surge expected', impact: '+35%', color: 'blue' },
-                { season: 'Q3 2025', trend: 'Furniture orders declining', impact: '-12%', color: 'red' },
-                { season: 'Q4 2025', trend: 'Holiday season boost', impact: '+48%', color: 'purple' },
-              ].map((pattern, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              {forecastSignals.map((signal) => {
+                const Icon = signal.icon;
+                return (
+                <div key={signal.title} className="forecast-signal-card">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      pattern.color === 'green' ? 'bg-green-100' :
-                      pattern.color === 'blue' ? 'bg-blue-100' :
-                      pattern.color === 'red' ? 'bg-red-100' : 'bg-purple-100'
-                    }`}>
-                      <TrendingUp className={`w-5 h-5 ${
-                        pattern.color === 'green' ? 'text-green-600' :
-                        pattern.color === 'blue' ? 'text-blue-600' :
-                        pattern.color === 'red' ? 'text-red-600' : 'text-purple-600'
-                      }`} />
+                    <div className={`forecast-signal-icon ${signal.tone}`}>
+                      <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{pattern.season}</div>
-                      <div className="text-xs text-gray-600">{pattern.trend}</div>
+                      <div className="forecast-signal-title">{signal.title}</div>
+                      <div className="forecast-signal-detail">{signal.detail}</div>
                     </div>
                   </div>
-                  <span className={`db-stat-pill ${pattern.impact.startsWith('+') ? 'pill-green' : 'pill-red'}`}>
-                    {pattern.impact}
+                  <span className={`db-stat-pill ${signal.pill}`}>
+                    {signal.value}
                   </span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -441,16 +514,34 @@ export function AnalyticsPage() {
             <span className="db-card-title">Top Categories by Forecast</span>
           </div>
           <div className="p-5">
-            {topCategories.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">No category data available.</p>
+            {topCategoriesLoading ? (
+              <div className="space-y-5">
+                {[...Array(4)].map((_, index) => (
+                  <div key={index}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="db-skeleton h-4 w-36" />
+                      <div className="db-skeleton h-4 w-20" />
+                    </div>
+                    <div className="db-skeleton h-2.5 w-full rounded-full" />
+                  </div>
+                ))}
+              </div>
+            ) : topCategories.length === 0 ? (
+              <div className="app-empty">
+                <BarChart3 className="w-6 h-6 mx-auto mb-3 text-[#0f8c5a]" />
+                <div className="font-semibold text-gray-900">No category forecast yet</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  Category rankings will appear after forecasted demand is available.
+                </div>
+              </div>
             ) : (
               <div className="space-y-5">
-                {topCategories.map((cat, index) => (
-                  <div key={index}>
+                {topCategories.map((cat) => (
+                  <div key={cat.category}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="text-sm font-medium text-gray-900">{cat.category}</div>
                       <div className="text-sm text-gray-600">
-                        {cat.count > 0 ? `${cat.count} units` : 'Pending data'}
+                        {cat.count.toLocaleString()} units
                       </div>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2.5">

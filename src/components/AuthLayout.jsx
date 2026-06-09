@@ -1,4 +1,5 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { ArrowLeft } from "lucide-react";
 
 const steps = [
   "Sign up your account",
@@ -14,6 +15,16 @@ const AUTH_FONT = `
 // Named export for AuthLayout
 // showSteps: pass false on pages that aren't multi-step (e.g. SigninPage)
 export function AuthLayout({ activeStep = 1, showSteps = true, children, logo }) {
+  const navigate = useNavigate();
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate("/");
+  };
+
   return (
     <main className="auth-root min-h-screen">
       <style>{AUTH_FONT}</style>
@@ -26,16 +37,28 @@ export function AuthLayout({ activeStep = 1, showSteps = true, children, logo })
             <div className="absolute -bottom-44 right-0 h-[520px] w-[520px] rounded-full bg-white/10 blur-3xl" />
 
             <div className="relative z-10 flex w-full flex-col justify-between">
-              {logo || (
-                <Link to="/" className="inline-flex items-center gap-3">
-                  <svg width="34" height="32" viewBox="0 0 47 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M36.0427 19.4379C36.0427 18.789 36.3807 18.187 36.9348 17.8492C38.1746 17.0934 39.7638 17.9858 39.7638 19.4379V23.2598C39.7638 23.9087 39.4257 24.5107 38.8716 24.8485C37.6318 25.6043 36.0427 24.7119 36.0427 23.2598V19.4379Z" fill="white" fillOpacity="0.9"/>
-                  </svg>
-                  <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: "#fff", letterSpacing: "-0.2px" }}>
-                    Tanzeem
-                  </span>
-                </Link>
-              )}
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  aria-label="Go back"
+                  title="Go back"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white transition hover:border-white/35 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/45"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+
+                {logo || (
+                  <Link to="/" className="inline-flex items-center gap-3">
+                    <svg width="34" height="32" viewBox="0 0 47 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M36.0427 19.4379C36.0427 18.789 36.3807 18.187 36.9348 17.8492C38.1746 17.0934 39.7638 17.9858 39.7638 19.4379V23.2598C39.7638 23.9087 39.4257 24.5107 38.8716 24.8485C37.6318 25.6043 36.0427 24.7119 36.0427 23.2598V19.4379Z" fill="white" fillOpacity="0.9"/>
+                    </svg>
+                    <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: "#fff", letterSpacing: "-0.2px" }}>
+                      Tanzeem
+                    </span>
+                  </Link>
+                )}
+              </div>
 
               <div className="max-w-[520px]">
                 {showSteps ? (

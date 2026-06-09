@@ -1,25 +1,52 @@
-export function StatCard({ title, value, change, icon, iconColor = '#15aaad', iconBgColor = 'bg-[#15aaad]/10' }) {
-  const isPositive = change > 0;
+export function StatCard({
+  title,
+  value,
+  change,
+  sub,
+  subColor,
+  icon,
+  iconColor = "#0f8c5a",
+  iconBgColor = "bg-[#0f8c5a]/10",
+  iconBg,
+  loading = false,
+  className = "",
+  style,
+}) {
+  const hasChange = typeof change === "number";
+  const isPositive = change >= 0;
   const Icon = icon;
+  const resolvedIconBg = iconBg || iconBgColor;
+  const isInlineBg = typeof resolvedIconBg === "string" && resolvedIconBg.startsWith("#");
 
   return (
-    <div className="bg-white rounded-xl p-5 border border-gray-200">
-      <div className="flex items-start justify-between mb-6">
-        <div className={`w-12 h-12 rounded-full ${iconBgColor} flex items-center justify-center`}>
-          <Icon className="w-6 h-6" style={{ color: iconColor }} />
+    <div className={`app-card app-stat-card ${className}`} style={style}>
+      <div className="app-stat-head">
+        <div>
+          <div className="app-stat-label">{title}</div>
+          {hasChange && (
+            <div className={`app-stat-change ${isPositive ? "positive" : "negative"}`}>
+              <span>{isPositive ? "↑" : "↓"}</span>
+              <span>{Math.abs(change)}%</span>
+            </div>
+          )}
         </div>
-        <div className={`flex items-center gap-1 text-xs font-medium ${
-          isPositive ? 'text-green-600' : 'text-red-600'
-        }`}>
-          <span>{isPositive ? '↑' : '↓'}</span>
-          <span>{Math.abs(change)}%</span>
+        <div
+          className={`app-stat-icon ${isInlineBg ? "" : resolvedIconBg}`}
+          style={{
+            ...(isInlineBg ? { background: resolvedIconBg } : {}),
+            color: iconColor,
+          }}
+        >
+          {Icon && <Icon className="w-5 h-5" />}
         </div>
       </div>
 
-      <div className="space-y-1">
-        <div className="text-sm text-gray-600">{title}</div>
-        <div className="text-2xl font-semibold text-gray-900">{value}</div>
-      </div>
+      {loading ? (
+        <div className="app-skeleton h-8 w-20 mb-2" />
+      ) : (
+        <div className="app-stat-value">{value}</div>
+      )}
+      {sub && <div className="app-stat-sub" style={{ color: subColor }}>{sub}</div>}
     </div>
   );
 }

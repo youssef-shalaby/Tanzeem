@@ -1,34 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Plus, Download, Upload, List, Package, ShoppingCart, AlertTriangle, Loader2, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router';
+import { StatCard } from '../components/StatCard';
 
 const INV_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
-  .inv-root { font-family: 'DM Sans', sans-serif; }
-  .inv-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
-  .inv-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); display:flex; align-items:center; justify-content:space-between; }
-  .inv-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
-  .inv-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
-  .inv-skeleton { background: linear-gradient(90deg,#f0f0ec 25%,#e8e8e4 50%,#f0f0ec 75%); background-size:200% 100%; animation: inv-shimmer 1.4s infinite; border-radius:10px; }
-  @keyframes inv-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  .inv-fade-in { animation: invFadeIn .4s ease both; }
-  @keyframes invFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  .inv-table th { font-size:11px; font-weight:500; color:#888; text-transform:uppercase; letter-spacing:.5px; padding:10px 20px; text-align:left; }
-  .inv-table td { padding:13px 20px; font-size:13px; color:#1a1a18; border-top:1px solid rgba(0,0,0,.05); }
-  .inv-table tr:hover td { background:#f9faf7; }
-  .inv-pill { display:inline-flex; align-items:center; font-size:11px; font-weight:500; padding:3px 8px; border-radius:100px; }
-  .pill-green  { background:#d6f5e8; color:#0a6b45; }
-  .pill-red    { background:#fde8e8; color:#9b1c1c; }
-  .pill-amber  { background:#fef3c7; color:#8b5e00; }
-  .pill-blue   { background:#dbeafe; color:#1e40af; }
   .inv-action-card {
-    background:#fff; border-radius:16px; border:1px solid rgba(0,0,0,.07);
-    padding:24px; text-decoration:none; color:inherit;
-    transition: border-color .2s, box-shadow .2s;
-    display:block;
+    background: var(--app-panel);
+    border-radius: var(--app-radius-card);
+    border: 1px solid var(--app-line);
   }
-  .inv-action-card:hover { border-color:#0f8c5a; box-shadow:0 4px 20px rgba(15,140,90,.08); }
-  .inv-icon-circle { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px; flex-shrink:0; }
 `;
 
 function getToken() {
@@ -149,9 +129,9 @@ export function Inventory() {
       title: 'Total SKUs',
       value: loading ? null : totalSKUs.toLocaleString(),
       sub: 'Active products',
-      subColor: '#888',
+      subColor: 'var(--app-subtle)',
       icon: Package,
-      iconColor: '#15aaad',
+      iconColor: '#2c5f8a',
       iconBg: 'rgba(21,170,173,.1)',
     },
     {
@@ -179,37 +159,30 @@ export function Inventory() {
       <style>{INV_STYLES}</style>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="inv-section-title">Inventory</h1>
+      <div className="app-page-header">
+        <div className="app-page-heading">
+          <h1 className="inv-section-title">Inventory</h1>
+          <p className="app-page-subtitle">Move stock in, stock out, and review recent inventory transactions.</p>
+        </div>
       </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {stats.map((stat, i) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={stat.title}
-              className="inv-card inv-fade-in"
-              style={{ padding: '22px 24px', animationDelay: `${i * 0.05}s` }}
-            >
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-                <span style={{ fontSize: 13, color: '#888', fontWeight: 400 }}>{stat.title}</span>
-                <div style={{ width: 44, height: 44, borderRadius: '50%', background: stat.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon size={18} color={stat.iconColor} />
-                </div>
-              </div>
-              {stat.value === null ? (
-                <div className="inv-skeleton" style={{ height: 36, width: 80, marginBottom: 10 }} />
-              ) : (
-                <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 32, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>
-                  {stat.value}
-                </div>
-              )}
-              <div style={{ fontSize: 12, color: stat.subColor, fontWeight: 400 }}>{stat.sub}</div>
-            </div>
-          );
-        })}
+        {stats.map((stat, i) => (
+          <StatCard
+            key={stat.title}
+            title={stat.title}
+            value={stat.value}
+            sub={stat.sub}
+            subColor={stat.subColor}
+            icon={stat.icon}
+            iconColor={stat.iconColor}
+            iconBg={stat.iconBg}
+            loading={stat.value === null}
+            className="inv-fade-in"
+            style={{ animationDelay: `${i * 0.05}s` }}
+          />
+        ))}
       </div>
 
       {/* Action Cards */}
@@ -220,16 +193,16 @@ export function Inventory() {
             <Link
               key={card.to}
               to={card.to}
-              className="inv-action-card inv-fade-in"
+              className="inv-action-card app-action-card inv-fade-in"
               style={{ animationDelay: `${0.1 + i * 0.04}s` }}
             >
-              <div className="inv-icon-circle" style={{ background: card.iconBg }}>
+              <div className="app-action-icon" style={{ background: card.iconBg }}>
                 <Icon size={20} color={card.iconColor} />
               </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>{card.title}</div>
-              <p style={{ fontSize: 13, color: '#666', fontWeight: 300, lineHeight: 1.55, margin: 0 }}>{card.desc}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 16 }}>
-                <span style={{ fontSize: 12, color: '#0f8c5a', fontWeight: 500 }}>Go</span>
+              <div className="app-action-title">{card.title}</div>
+              <p className="app-action-copy">{card.desc}</p>
+              <div className="app-action-link">
+                <span>Open</span>
                 <ArrowRight size={12} color="#0f8c5a" />
               </div>
             </Link>
@@ -243,7 +216,7 @@ export function Inventory() {
           <span className="inv-card-title">Recent transactions</span>
           <Link
             to="/transactions"
-            style={{ fontSize: 13, color: '#0f8c5a', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+      style={{ fontSize: 13, color: 'var(--app-green)', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
           >
             View all <ArrowRight size={13} />
           </Link>
@@ -256,11 +229,11 @@ export function Inventory() {
             ))}
           </div>
         ) : error ? (
-          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 13, color: '#ef4444' }}>
+          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 13, color: 'var(--app-danger-text)' }}>
             Failed to load: {error}
           </div>
         ) : recentTransactions.length === 0 ? (
-          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 13, color: '#888' }}>
+          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 13, color: 'var(--app-subtle)' }}>
             No transactions yet.
           </div>
         ) : (
@@ -285,7 +258,7 @@ export function Inventory() {
                       </span>
                     </td>
                     <td>{transactionLabel(tx)}</td>
-                    <td style={{ color: '#666' }}>{formatDate(tx.createdAt)}</td>
+                    <td style={{ color: 'var(--app-muted)' }}>{formatDate(tx.createdAt)}</td>
                     <td>
                       <span className={`inv-pill ${STATUS_PILL(tx.status)}`}>
                         {STATUS_LABEL(tx.status)}

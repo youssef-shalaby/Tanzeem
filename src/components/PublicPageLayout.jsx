@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Check } from "lucide-react";
+import { Check, Menu, X } from "lucide-react";
 import Logo from "../assets/TanzeemGreen.svg";
 
 const navItems = [
@@ -56,6 +57,7 @@ export const TanzeemNavLogo = () => (
 /* ─── Nav ────────────────────────────────────────────────────── */
 export function PublicNav() {
   const location = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <header className="relative z-20 border-b border-[rgba(30,50,30,0.08)] bg-[#f9faf7]/80 px-6 py-5 backdrop-blur-md md:px-8">
@@ -79,6 +81,15 @@ export function PublicNav() {
         </nav>
 
         <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[rgba(26,26,24,0.14)] text-[#1a1a18] transition hover:border-[#0f8c5a] hover:text-[#0f8c5a] lg:hidden"
+            aria-label={isOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((current) => !current)}
+          >
+            {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
           <Link
             to="/signin"
             className="hidden rounded-full border border-[rgba(26,26,24,0.2)] px-[18px] py-2 text-[14px] font-medium text-[#1a1a18] transition-colors hover:border-[#0f8c5a] hover:text-[#0f8c5a] sm:block"
@@ -93,6 +104,31 @@ export function PublicNav() {
           </Link>
         </div>
       </div>
+      {isOpen && (
+        <nav className="mx-auto mt-4 grid max-w-[1320px] gap-2 rounded-2xl border border-[rgba(30,50,30,0.08)] bg-white p-2 shadow-sm lg:hidden">
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              onClick={() => setIsOpen(false)}
+              className={`rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
+                location.pathname === item.to
+                  ? "bg-[#eaf5ee] text-[#0a6b45]"
+                  : "text-[#565f59] hover:bg-[#f5f6f3] hover:text-[#1a1a18]"
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+          <Link
+            to="/signin"
+            onClick={() => setIsOpen(false)}
+            className="rounded-xl px-4 py-3 text-sm font-medium text-[#565f59] hover:bg-[#f5f6f3] hover:text-[#1a1a18] sm:hidden"
+          >
+            Sign in
+          </Link>
+        </nav>
+      )}
     </header>
   );
 }
