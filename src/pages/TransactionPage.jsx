@@ -4,6 +4,7 @@ import {
   RefreshCw, Loader2,
 } from "lucide-react";
 import { Link } from "react-router";
+import { ToneIcon } from "../components/ToneIcon";
 
 // ============================
 // Design system styles (green accent)
@@ -175,9 +176,7 @@ export function TransactionsPage() {
               <div className="text-2xl font-semibold text-gray-900">${totalStockIn.toLocaleString()}</div>
               <div className="text-xs text-gray-500 mt-1">{transactions.filter((t) => t.type === "Stock In").length} transactions</div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-            </div>
+            <ToneIcon icon={TrendingUp} tone="green" />
           </div>
         </div>
 
@@ -190,9 +189,7 @@ export function TransactionsPage() {
               <div className="text-2xl font-semibold text-gray-900">${totalStockOut.toLocaleString()}</div>
               <div className="text-xs text-gray-500 mt-1">{transactions.filter((t) => t.type === "Stock Out").length} transactions</div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-              <TrendingDown className="w-5 h-5 text-red-600" />
-            </div>
+            <ToneIcon icon={TrendingDown} tone="red" />
           </div>
         </div>
 
@@ -205,9 +202,7 @@ export function TransactionsPage() {
               <div className="text-2xl font-semibold text-gray-900">${totalAdj.toLocaleString()}</div>
               <div className="text-xs text-gray-500 mt-1">{transactions.filter((t) => t.type === "Adjustment").length} transactions</div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <RefreshCw className="w-5 h-5 text-blue-600" />
-            </div>
+            <ToneIcon icon={RefreshCw} tone="blue" />
           </div>
         </div>
       </div>

@@ -5,6 +5,7 @@ import {
 import { createElement, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { StatCard } from '../components/StatCard';
+import { ToneIcon } from '../components/ToneIcon';
 
 // ============================
 // Design system styles (green accent)
@@ -60,32 +61,28 @@ function getAlertMeta(alert) {
     case 1: // Dead Stock
       return {
         icon: Skull,
-        iconBg: 'bg-orange-100',
-        iconColor: 'text-orange-600',
+        tone: 'amber',
         category: 'dead-stock',
         action: alert.productId ? 'View Product' : null,
       };
     case 2: // Expiry
       return {
         icon: Clock,
-        iconBg: 'bg-yellow-100',
-        iconColor: 'text-yellow-600',
+        tone: 'amber',
         category: 'expiry',
         action: 'Review',
       };
     case 4: // Order Pending
       return {
         icon: Package,
-        iconBg: 'bg-blue-100',
-        iconColor: 'text-blue-600',
+        tone: 'blue',
         category: 'orders',
         action: 'View Order',
       };
     default: // LowStock / unknown
       return {
         icon: AlertTriangle,
-        iconBg: alert.priority === 'Critical' ? 'bg-red-100' : 'bg-yellow-100',
-        iconColor: alert.priority === 'Critical' ? 'text-red-600' : 'text-yellow-600',
+        tone: alert.priority === 'Critical' ? 'red' : 'amber',
         category: 'stock',
         action: 'Reorder Now',
       };
@@ -304,9 +301,7 @@ export function AlertsPage() {
                   return (
                     <div key={idx} className="alerts-feed-item p-5">
                       <div className="flex items-start gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${meta.iconBg}`}>
-                          <Icon className={`w-5 h-5 ${meta.iconColor}`} />
-                        </div>
+                        <ToneIcon icon={Icon} tone={meta.tone} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-4 mb-1">
                             <div className="flex items-center gap-2">

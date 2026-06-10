@@ -24,7 +24,7 @@ const initialForm = {
 
 export function SignupPage() {
   const navigate = useNavigate();
-  const { setSession } = useAuth();
+  const { logout, setSession } = useAuth();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,8 +76,15 @@ export function SignupPage() {
     try {
       setIsSubmitting(true);
       const response = await submitOnboarding(payload);
+      try {
+        sessionStorage.setItem("tanzeem_welcome_name", fullName || form.companyName);
+      } catch {
+        // Session storage can be unavailable in private browsing.
+      }
       if (response && typeof response !== "string") {
         await setSession(response);
+      } else {
+        logout();
       }
       navigate("/welcome", { replace: true, state: { name: fullName || form.companyName } });
     } catch (submissionError) {

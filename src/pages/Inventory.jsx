@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Download, Upload, List, Package, ShoppingCart, AlertTriangle, Loader2, ArrowRight } from 'lucide-react';
+import { PackagePlus, PackageCheck, PackageMinus, PackageSearch, Package, ShoppingCart, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router';
 import { StatCard } from '../components/StatCard';
 
@@ -57,7 +57,7 @@ function shortId(tx) { return `#TRX-${tx.id}`; }
 const ACTION_CARDS = [
   {
     to: '/add-item',
-    icon: Plus,
+    icon: PackagePlus,
     iconColor: '#0f8c5a',
     iconBg: 'rgba(15,140,90,.1)',
     title: 'Add New Item',
@@ -65,7 +65,7 @@ const ACTION_CARDS = [
   },
   {
     to: '/add-stock',
-    icon: Download,
+    icon: PackageCheck,
     iconColor: '#0f8c5a',
     iconBg: 'rgba(15,140,90,.1)',
     title: 'Add Stock',
@@ -73,7 +73,7 @@ const ACTION_CARDS = [
   },
   {
     to: '/stock-out',
-    icon: Upload,
+    icon: PackageMinus,
     iconColor: '#ef4444',
     iconBg: 'rgba(239,68,68,.1)',
     title: 'Stock Out',
@@ -81,7 +81,7 @@ const ACTION_CARDS = [
   },
   {
     to: '/products',
-    icon: List,
+    icon: PackageSearch,
     iconColor: '#8b5cf6',
     iconBg: 'rgba(139,92,246,.1)',
     title: 'Current Products',

@@ -1,6 +1,5 @@
 import { Navigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
-import UnauthorizedPage from "../pages/UnauthorizedPage";
 
 /**
  * Checks authentication first, then checks a named feature or permission.
@@ -13,11 +12,11 @@ export default function ProtectedRoute({ children, feature, permission }) {
   }
 
   if (feature && !isFeatureAllowed(feature)) {
-    return <UnauthorizedPage />;
+    return <Navigate to="/unauthorized" replace />;
   }
 
   if (permission && !can(permission)) {
-    return <UnauthorizedPage />;
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return children;

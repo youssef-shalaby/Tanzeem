@@ -1,6 +1,7 @@
 import { ArrowLeft, CheckCircle, AlertTriangle, Package } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
+import { ToneIcon } from '../components/ToneIcon';
 
 // ============================
 // Design system styles (green accent)
@@ -280,9 +281,7 @@ export function ConfirmDeliveryPage() {
       {hasDiscrepancies && (
         <div className="delivery-warning-panel">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 text-orange-600">
-              <AlertTriangle className="w-5 h-5 text-orange-600" />
-            </div>
+            <ToneIcon icon={AlertTriangle} tone="amber" />
             <div>
               <h3 className="font-semibold text-orange-900 mb-1">Quantity Discrepancy Detected</h3>
               <p className="text-sm text-orange-800">

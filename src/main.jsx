@@ -3,61 +3,54 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router";
 import { Menu } from "lucide-react";
 import { ScrollToTop } from "./components/ScrollToTop.jsx";
-
-import { DashboardPage } from "./pages/DashboardPage.jsx";
-
-import ProductsPage from "./pages/products";
-import { ViewProductPage } from "./pages/ViewProductPage";
-import { EditProductPage } from "./pages/EditProductPage.jsx";
-
-import { AddItemPage } from "./pages/AddItemPage";
 import "./index.css";
 import "./styles/app.css";
 import { Sidebar } from "./components/Sidebar";
-import { Addstockpage } from "./pages/Addstockpage";
-import { Stockoutpage } from "./pages/Stockoutpage";
-import { Inventory } from "./pages/Inventory";
-import { StockOutLogPage } from "./pages/StockOutLogPage";
-import { StockInlogs } from "./pages/StockInlogs";
 import { Header } from "./components/Header";
 import { GuidedTour } from "./components/GuidedTour.jsx";
-import { TransactionsPage } from "./pages/TransactionPage";
-
-import { OrdersPage } from "./pages/OrdersPage.jsx";
-import { CreateOrderPage } from "./pages/CreateOrderPage";
-import { ViewOrderPage } from "./pages/ViewOrderPage.jsx";
-import { ConfirmDeliveryPage } from "./pages/ConfirmDeliveryPage.jsx";
-
-import { SuppliersPage } from "./pages/SuppliersPage.jsx";
-import { ViewSupplierPage } from "./pages/ViewSupplierPage.jsx";
-import { EditSupplierPage } from "./pages/EditSupplierPage.jsx";
-import { AddSupplierPage } from "./pages/AddSupplierPage.jsx";
-
-import { ViewTransactionPage } from "./pages/ViewTransactionPage";
-
-import { AlertsPage } from "./pages/AlertsPage";
-import { AnalyticsPage } from "./pages/AnalyticsPage.jsx";
-import { DeliveryIssuesPage } from "./pages/DeliveryIssuesPage.jsx";
-import { ViewDeliveryIssuePage } from "./pages/ViewDeliveryIssuePage.jsx";
-
-import { SettingsPage } from "./pages/SettingsPage";
-import { ProfilePage } from "./pages/ProfilePage";
 
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import UnauthorizedPage from "./pages/UnauthorizedPage";
-import { SignupPage } from "./pages/SignupPage.jsx";
-import { SigninPage } from "./pages/SigninPage.jsx";
-import {
-  AboutPage,
-  FeaturesPage,
-  LandingPage,
-  PaymentPage,
-  PricingPage,
-  WelcomePage,
-} from "./pages/PublicPages.jsx";
 
-import { AuditDetailPage } from "./pages/AuditDetailPage";
+const lazyPage = (loader, exportName = "default") =>
+  lazy(() => loader().then((module) => ({ default: module[exportName] ?? module.default })));
+
+const DashboardPage = lazyPage(() => import("./pages/DashboardPage.jsx"), "DashboardPage");
+const ProductsPage = lazyPage(() => import("./pages/products"));
+const ViewProductPage = lazyPage(() => import("./pages/ViewProductPage"), "ViewProductPage");
+const EditProductPage = lazyPage(() => import("./pages/EditProductPage.jsx"), "EditProductPage");
+const AddItemPage = lazyPage(() => import("./pages/AddItemPage"), "AddItemPage");
+const Addstockpage = lazyPage(() => import("./pages/Addstockpage"), "Addstockpage");
+const Stockoutpage = lazyPage(() => import("./pages/Stockoutpage"), "Stockoutpage");
+const Inventory = lazyPage(() => import("./pages/Inventory"), "Inventory");
+const StockOutLogPage = lazyPage(() => import("./pages/StockOutLogPage"), "StockOutLogPage");
+const StockInlogs = lazyPage(() => import("./pages/StockInlogs"), "StockInlogs");
+const TransactionsPage = lazyPage(() => import("./pages/TransactionPage"), "TransactionsPage");
+const ViewTransactionPage = lazyPage(() => import("./pages/ViewTransactionPage"), "ViewTransactionPage");
+const OrdersPage = lazyPage(() => import("./pages/OrdersPage.jsx"), "OrdersPage");
+const CreateOrderPage = lazyPage(() => import("./pages/CreateOrderPage"), "CreateOrderPage");
+const ViewOrderPage = lazyPage(() => import("./pages/ViewOrderPage.jsx"), "ViewOrderPage");
+const ConfirmDeliveryPage = lazyPage(() => import("./pages/ConfirmDeliveryPage.jsx"), "ConfirmDeliveryPage");
+const SuppliersPage = lazyPage(() => import("./pages/SuppliersPage.jsx"), "SuppliersPage");
+const ViewSupplierPage = lazyPage(() => import("./pages/ViewSupplierPage.jsx"), "ViewSupplierPage");
+const EditSupplierPage = lazyPage(() => import("./pages/EditSupplierPage.jsx"), "EditSupplierPage");
+const AddSupplierPage = lazyPage(() => import("./pages/AddSupplierPage.jsx"), "AddSupplierPage");
+const AlertsPage = lazyPage(() => import("./pages/AlertsPage"), "AlertsPage");
+const AnalyticsPage = lazyPage(() => import("./pages/AnalyticsPage.jsx"), "AnalyticsPage");
+const DeliveryIssuesPage = lazyPage(() => import("./pages/DeliveryIssuesPage.jsx"), "DeliveryIssuesPage");
+const ViewDeliveryIssuePage = lazyPage(() => import("./pages/ViewDeliveryIssuePage.jsx"), "ViewDeliveryIssuePage");
+const SettingsPage = lazyPage(() => import("./pages/SettingsPage"), "SettingsPage");
+const ProfilePage = lazyPage(() => import("./pages/ProfilePage"), "ProfilePage");
+const UnauthorizedPage = lazyPage(() => import("./pages/UnauthorizedPage"));
+const SignupPage = lazyPage(() => import("./pages/SignupPage.jsx"), "SignupPage");
+const SigninPage = lazyPage(() => import("./pages/SigninPage.jsx"), "SigninPage");
+const LandingPage = lazyPage(() => import("./pages/PublicPages.jsx"), "LandingPage");
+const AboutPage = lazyPage(() => import("./pages/PublicPages.jsx"), "AboutPage");
+const FeaturesPage = lazyPage(() => import("./pages/PublicPages.jsx"), "FeaturesPage");
+const PricingPage = lazyPage(() => import("./pages/PublicPages.jsx"), "PricingPage");
+const PaymentPage = lazyPage(() => import("./pages/PublicPages.jsx"), "PaymentPage");
+const WelcomePage = lazyPage(() => import("./pages/PublicPages.jsx"), "WelcomePage");
+const AuditDetailPage = lazyPage(() => import("./pages/AuditDetailPage"), "AuditDetailPage");
 
 const publicPaths = new Set([
   "/",
@@ -76,7 +69,8 @@ const AgentationToolbar = import.meta.env.DEV
 
 export function AppRoutes() {
   return (
-    <Routes>
+    <Suspense fallback={<RouteLoading />}>
+      <Routes>
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/about" element={<AboutPage />} />
@@ -142,7 +136,18 @@ export function AppRoutes() {
 
       {/* Fallback */}
       <Route path="*" element={<RoleFallback />} />
-    </Routes>
+      </Routes>
+    </Suspense>
+  );
+}
+
+function RouteLoading() {
+  return (
+    <div className="app-route-loading" role="status" aria-label="Loading page">
+      <div className="db-skeleton h-10 w-56" />
+      <div className="db-skeleton mt-6 h-32 w-full" />
+      <div className="db-skeleton mt-4 h-32 w-full" />
+    </div>
   );
 }
 

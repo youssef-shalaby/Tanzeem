@@ -1,3 +1,13 @@
+function inferIconTone(iconColor = "", iconBg = "") {
+  const value = `${iconColor} ${iconBg}`.toLowerCase();
+  if (value.includes("ef4444") || value.includes("dc2626") || value.includes("red")) return "red";
+  if (value.includes("f59e0b") || value.includes("eab308") || value.includes("f97316") || value.includes("yellow") || value.includes("orange") || value.includes("amber")) return "amber";
+  if (value.includes("3b82f6") || value.includes("2563eb") || value.includes("blue")) return "blue";
+  if (value.includes("8b5cf6") || value.includes("7c3aed") || value.includes("purple")) return "purple";
+  if (value.includes("66706a") || value.includes("gray")) return "gray";
+  return "green";
+}
+
 export function StatCard({
   title,
   value,
@@ -16,7 +26,9 @@ export function StatCard({
   const isPositive = change >= 0;
   const Icon = icon;
   const resolvedIconBg = iconBg || iconBgColor;
-  const isInlineBg = typeof resolvedIconBg === "string" && resolvedIconBg.startsWith("#");
+  const isInlineBg = typeof resolvedIconBg === "string"
+    && /^(#|rgb|hsl|oklch|lab|color-mix|var\()/i.test(resolvedIconBg.trim());
+  const iconTone = inferIconTone(iconColor, resolvedIconBg);
 
   return (
     <div className={`app-card app-stat-card ${className}`} style={style}>
@@ -32,12 +44,13 @@ export function StatCard({
         </div>
         <div
           className={`app-stat-icon ${isInlineBg ? "" : resolvedIconBg}`}
+          data-tone={iconTone}
           style={{
             ...(isInlineBg ? { background: resolvedIconBg } : {}),
             color: iconColor,
           }}
         >
-          {Icon && <Icon className="w-5 h-5" />}
+          {Icon && <Icon className="w-5 h-5" aria-hidden="true" />}
         </div>
       </div>
 

@@ -86,6 +86,21 @@ const PROFILE_STYLES = `
     flex: 0 0 auto;
   }
 
+  .profile-avatar-admin {
+    background: #f1ebff;
+    color: #5b21b6;
+  }
+
+  .profile-avatar-manager {
+    background: #e8f0ff;
+    color: #1d4ed8;
+  }
+
+  .profile-avatar-staff {
+    background: #d6f5e8;
+    color: #0a6b45;
+  }
+
   .profile-kicker {
     display: inline-flex;
     align-items: center;
@@ -242,6 +257,36 @@ const PROFILE_STYLES = `
     flex: 0 0 auto;
   }
 
+  .profile-tone-green {
+    background: #d6f5e8;
+    color: #0a6b45;
+  }
+
+  .profile-tone-blue {
+    background: #e8f0ff;
+    color: #2563eb;
+  }
+
+  .profile-tone-amber {
+    background: #fef3c7;
+    color: #b45309;
+  }
+
+  .profile-tone-purple {
+    background: #f1ebff;
+    color: #7c3aed;
+  }
+
+  .profile-tone-red {
+    background: #fde8e8;
+    color: #c2410c;
+  }
+
+  .profile-tone-gray {
+    background: #f0f3ef;
+    color: #7b837d;
+  }
+
   .profile-info-label {
     color: #858b84;
     font-size: 10px;
@@ -267,21 +312,22 @@ const PROFILE_STYLES = `
   .profile-activity-list {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 8px;
   }
 
   .profile-activity-item {
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr) auto;
     gap: 12px;
-    padding: 11px 0;
-    border-top: 1px solid rgba(0,0,0,.06);
+    padding: 12px;
+    border: 1px solid rgba(0,0,0,.055);
+    border-radius: 13px;
+    background: #f8faf7;
     align-items: flex-start;
   }
 
   .profile-activity-item:first-child {
-    border-top: 0;
-    padding-top: 0;
+    border-top: 1px solid rgba(0,0,0,.055);
   }
 
   .profile-activity-dot {
@@ -379,7 +425,6 @@ const PROFILE_STYLES = `
     width: 42px;
     height: 42px;
     border-radius: 14px;
-    background: #f0f3ef;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -541,6 +586,69 @@ const PROFILE_STYLES = `
     }
 
   }
+
+  :root[data-theme="dark"] .profile-tone-green {
+    background: rgba(47, 186, 120, .105);
+    color: #8be6b6;
+    box-shadow: inset 0 0 0 1px rgba(47, 186, 120, .1);
+  }
+
+  :root[data-theme="dark"] .profile-tone-blue {
+    background: rgba(96, 165, 250, .105);
+    color: #9bc6fb;
+    box-shadow: inset 0 0 0 1px rgba(96, 165, 250, .1);
+  }
+
+  :root[data-theme="dark"] .profile-tone-amber {
+    background: rgba(245, 158, 11, .11);
+    color: #e8c486;
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, .1);
+  }
+
+  :root[data-theme="dark"] .profile-tone-purple {
+    background: rgba(168, 85, 247, .105);
+    color: #c7b1e6;
+    box-shadow: inset 0 0 0 1px rgba(168, 85, 247, .1);
+  }
+
+  :root[data-theme="dark"] .profile-tone-red {
+    background: rgba(239, 68, 68, .11);
+    color: #f2aaa8;
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, .1);
+  }
+
+  :root[data-theme="dark"] .profile-tone-gray {
+    background: rgba(238, 242, 239, .075);
+    color: #b9c0bb;
+    box-shadow: inset 0 0 0 1px rgba(238, 242, 239, .08);
+  }
+
+  :root[data-theme="dark"] .profile-avatar-admin {
+    background: rgba(168, 85, 247, .12);
+    color: #d7c2ff;
+    box-shadow: inset 0 0 0 1px rgba(168, 85, 247, .15), 0 14px 28px rgba(0, 0, 0, .24);
+  }
+
+  :root[data-theme="dark"] .profile-avatar-manager {
+    background: rgba(96, 165, 250, .12);
+    color: #bdd8ff;
+    box-shadow: inset 0 0 0 1px rgba(96, 165, 250, .14), 0 14px 28px rgba(0, 0, 0, .24);
+  }
+
+  :root[data-theme="dark"] .profile-avatar-staff {
+    background: rgba(47, 186, 120, .12);
+    color: #9feac0;
+    box-shadow: inset 0 0 0 1px rgba(47, 186, 120, .14), 0 14px 28px rgba(0, 0, 0, .24);
+  }
+
+  :root[data-theme="dark"] .profile-activity-item {
+    background: rgba(238, 242, 239, .035) !important;
+    border: 1px solid rgba(238, 242, 239, .075) !important;
+  }
+
+  :root[data-theme="dark"] .profile-activity-item:hover {
+    background: rgba(238, 242, 239, .052) !important;
+  }
 `;
 
 const ACTIVITY_PREVIEW_SIZE = 5;
@@ -594,6 +702,13 @@ function resolveRole(role) {
   return ROLE_CONFIG[roleToId(role)] || ROLE_CONFIG[3];
 }
 
+function roleAvatarClass(role) {
+  const roleId = roleToId(role);
+  if (roleId === 1) return "profile-avatar-admin";
+  if (roleId === 2) return "profile-avatar-manager";
+  return "profile-avatar-staff";
+}
+
 function initialsFor(name) {
   return String(name || "User")
     .trim()
@@ -624,15 +739,15 @@ function formatAuditTime(value) {
 function toneForAction(action) {
   const normalized = String(action || "").toLowerCase();
   if (normalized.includes("delete") || normalized.includes("remove") || normalized.includes("out")) {
-    return { bg: "#fde8e8", color: "#c2410c" };
+    return "red";
   }
   if (normalized.includes("update") || normalized.includes("edit") || normalized.includes("modify")) {
-    return { bg: "#e8f0ff", color: "#2563eb" };
+    return "blue";
   }
   if (normalized.includes("report") || normalized.includes("generate")) {
-    return { bg: "#fef3c7", color: "#b45309" };
+    return "amber";
   }
-  return { bg: "#d6f5e8", color: "#0a6b45" };
+  return "green";
 }
 
 function normaliseAudit(entry) {
@@ -645,10 +760,10 @@ function normaliseAudit(entry) {
   };
 }
 
-function InfoItem({ icon, label, value, tone = "#0f8c5a", soft = "#d6f5e8" }) {
+function InfoItem({ icon, label, value, tone = "green" }) {
   return (
     <div className="profile-info-item">
-      <div className="profile-info-icon" style={{ background: soft, color: tone }}>
+      <div className={`profile-info-icon profile-tone-${tone}`}>
         {createElement(icon, { size: 18 })}
       </div>
       <div>
@@ -830,7 +945,7 @@ export function ProfilePage() {
           ) : (
             <>
               <div className="profile-identity">
-                <div className="profile-avatar" style={{ background: display.roleConfig.soft, color: display.roleConfig.text }}>
+                <div className={`profile-avatar ${roleAvatarClass(display.role)}`}>
                   {initialsFor(display.name)}
                 </div>
                 <div>
@@ -903,10 +1018,10 @@ export function ProfilePage() {
                 </div>
               ) : (
                 <div className="profile-contact-grid">
-                  <InfoItem icon={Mail} label="Email address" value={display.email} tone="#2563eb" soft="#e8f0ff" />
-                  <InfoItem icon={Phone} label="Phone number" value={display.phone} tone="#b45309" soft="#fef3c7" />
-                  <InfoItem icon={IdCard} label="User ID" value={display.userId} tone="#0f8c5a" soft="#d6f5e8" />
-                  <InfoItem icon={Building2} label="Company ID" value={display.companyId} tone="#7c3aed" soft="#f1ebff" />
+                  <InfoItem icon={Mail} label="Email address" value={display.email} tone="blue" />
+                  <InfoItem icon={Phone} label="Phone number" value={display.phone} tone="amber" />
+                  <InfoItem icon={IdCard} label="User ID" value={display.userId} tone="green" />
+                  <InfoItem icon={Building2} label="Company ID" value={display.companyId} tone="purple" />
                 </div>
               )}
             </div>
@@ -937,7 +1052,7 @@ export function ProfilePage() {
                 </div>
               ) : audits.length === 0 ? (
                 <div className="profile-empty app-context-panel">
-                  <div className="profile-empty-icon">
+                  <div className="profile-empty-icon profile-tone-gray">
                     <Clock size={18} />
                   </div>
                   <div className="profile-empty-title">No recent activity found</div>
@@ -950,7 +1065,7 @@ export function ProfilePage() {
                       const tone = toneForAction(audit.action);
                       return (
                         <div className="profile-activity-item" key={audit.id}>
-                          <div className="profile-activity-dot" style={{ background: tone.bg, color: tone.color }}>
+                          <div className={`profile-activity-dot profile-tone-${tone}`}>
                             <Activity size={15} />
                           </div>
                           <div>

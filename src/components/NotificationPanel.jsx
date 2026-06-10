@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCheck, Clock, Inbox, Package, TruckIcon, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { ToneIcon } from './ToneIcon';
 
 function getToken() {
   try {
@@ -20,10 +21,10 @@ function authHeaders() {
 
 function getNotificationMeta(type) {
   switch (type) {
-    case 1:  return { Icon: AlertTriangle, label: 'Stock alert', color: 'var(--app-warning-text)', bg: 'var(--app-warning-bg)' };
-    case 2:  return { Icon: Clock,         label: 'Pending',     color: 'var(--app-warning-text)', bg: 'var(--app-warning-bg)' };
-    case 4:  return { Icon: TruckIcon,     label: 'Delivery',    color: 'var(--app-info-text)', bg: 'var(--app-info-bg)' };
-    default: return { Icon: Package,       label: 'Inventory',   color: 'var(--app-gray-text)', bg: 'var(--app-gray-bg)' };
+    case 1:  return { Icon: AlertTriangle, label: 'Stock alert', tone: 'amber' };
+    case 2:  return { Icon: Clock,         label: 'Pending',     tone: 'amber' };
+    case 4:  return { Icon: TruckIcon,     label: 'Delivery',    tone: 'blue' };
+    default: return { Icon: Package,       label: 'Inventory',   tone: 'gray' };
   }
 }
 
@@ -214,14 +215,6 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
           background: var(--app-wash-bg-soft);
           border-color: rgba(15,140,90,.12);
         }
-        .notif-icon {
-          width: 40px;
-          height: 40px;
-          border-radius: 12px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-        }
         .notif-item-head {
           display: flex;
           align-items: flex-start;
@@ -352,9 +345,7 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
             </div>
           ) : notifications.length === 0 ? (
             <div className="app-empty flex h-full flex-col items-center justify-center px-6">
-              <div className="app-stat-icon bg-gray-100 mb-4">
-                <Inbox className="w-8 h-8 text-gray-400" />
-              </div>
+              <ToneIcon icon={Inbox} tone="gray" size="lg" className="mb-4" />
               <h3 className="app-card-title mb-1">No notifications</h3>
               <p className="text-sm text-gray-600 text-center max-w-[280px]">
                 You are caught up. New stock, order, and delivery updates will appear here.
@@ -363,16 +354,14 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
           ) : (
             <div className="notif-list">
               {notifications.map((n) => {
-                const { Icon, color, bg, label } = getNotificationMeta(n.type);
+                const { Icon, tone, label } = getNotificationMeta(n.type);
                 return (
                   <button
                     key={n.id}
                     onClick={() => handleClick(n)}
                     className={`notif-item${!n.isRead ? ' unread' : ''}`}
                   >
-                    <div className="notif-icon" style={{ background: bg, color }}>
-                      <Icon className="w-5 h-5" />
-                    </div>
+                    <ToneIcon icon={Icon} tone={tone} className="notif-icon" />
                     <div className="min-w-0">
                       <div className="notif-item-head">
                         <h4 className="notif-title">

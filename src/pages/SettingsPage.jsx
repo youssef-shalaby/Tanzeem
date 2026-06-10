@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { ROLE_IDS, ROLE_KEYS, getRoleLabel, normalizeRoleKey, roleToId } from "../config/permissions";
+import { ToneIcon } from "../components/ToneIcon";
 import "../styles/account.css";
 
 const ROLE_OPTIONS = [
@@ -102,20 +103,7 @@ function formatTime(value, now = Date.now()) {
 }
 
 function IconBubble({ icon: Icon, tone = "green" }) {
-  const tones = {
-    green: "bg-[#d6f5e8] text-[#0a6b45]",
-    blue: "bg-blue-100 text-blue-700",
-    purple: "bg-purple-100 text-purple-700",
-    amber: "bg-amber-100 text-amber-700",
-    red: "bg-red-100 text-red-700",
-    gray: "bg-gray-100 text-gray-600",
-  };
-
-  return (
-    <span className={`settings-nav-icon ${tones[tone] || tones.green}`}>
-      {createElement(Icon, { className: "w-4 h-4" })}
-    </span>
-  );
+  return <ToneIcon icon={Icon} tone={tone} size="md" className="settings-nav-icon" iconClassName="w-4 h-4" />;
 }
 
 function Toggle({ checked, onChange, disabled }) {

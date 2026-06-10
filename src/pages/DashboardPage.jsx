@@ -5,9 +5,8 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, LineChart, Line, CartesianGrid, Legend,
 } from "recharts";
-import { Link } from "react-router";
+import { Link, Navigate } from "react-router";
 import { apiRequest, ForbiddenError } from "../services/api";
-import UnauthorizedPage from "./UnauthorizedPage";
 
 const CATEGORY_COLORS = ["#0f8c5a","#2c5f8a","#3b82f6","#f59e0b","#ef4444","#6b7280"];
 
@@ -90,7 +89,7 @@ export function DashboardPage() {
       });
   }, []);
 
-  if (isForbidden) return <UnauthorizedPage />;
+  if (isForbidden) return <Navigate to="/unauthorized" replace />;
 
   const chartText = "var(--app-subtle)";
   const chartGrid = "var(--app-line)";

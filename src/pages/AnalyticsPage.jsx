@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { TrendingUp, Package, AlertCircle, BarChart3, Target, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { StatCard } from '../components/StatCard';
+import { ToneIcon } from '../components/ToneIcon';
 
 // ============================
 // Design system styles (green accent instead of teal)
@@ -359,9 +360,7 @@ export function AnalyticsPage() {
       {/* AI Insights Banner (green accent) */}
       <div className="db-card db-fade-in">
         <div className="p-5 flex items-start gap-4">
-          <div className="w-10 h-10 rounded-full bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-[#0f8c5a]" />
-          </div>
+          <ToneIcon icon={Sparkles} tone="green" />
           <div className="flex-1">
             <h3 className="font-semibold text-gray-900 mb-2">AI Recommendation</h3>
             <p className="text-sm text-gray-600 mb-3">

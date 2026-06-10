@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
+import { ToneIcon } from '../components/ToneIcon';
 
 export function DeleteSupplierModal({ isOpen, onClose, onConfirm, supplierName, supplierId }) {
   const [deleting, setDeleting] = useState(false);
@@ -56,9 +57,7 @@ export function DeleteSupplierModal({ isOpen, onClose, onConfirm, supplierName, 
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <div className="app-stat-icon bg-red-100">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-              </div>
+              <ToneIcon icon={AlertTriangle} tone="red" />
               <h2 className="app-card-title">Delete Supplier</h2>
             </div>
             <button

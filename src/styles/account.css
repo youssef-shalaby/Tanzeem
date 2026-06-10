@@ -117,20 +117,20 @@
 }
 
 .settings-layout {
-  display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   margin-top: 14px;
-  align-items: start;
 }
 
 .settings-nav {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 16px;
-  padding: 6px;
-  position: sticky;
-  top: 18px;
+  padding: 7px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(142px, 1fr));
+  gap: 6px;
 }
 
 .settings-nav-button {
@@ -139,15 +139,16 @@
   background: transparent;
   color: #56615a;
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  gap: 9px;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
   align-items: center;
-  padding: 8px;
-  border-radius: 10px;
+  min-height: 58px;
+  padding: 9px 10px;
+  border-radius: 12px;
   text-align: left;
   cursor: pointer;
   font-family: "DM Sans", sans-serif;
-  transition: background .15s, color .15s;
+  transition: background .15s, color .15s, box-shadow .15s;
 }
 
 .settings-nav-button:hover {
@@ -158,12 +159,13 @@
 .settings-nav-button.active {
   background: #e9f8f1;
   color: var(--green-dark);
+  box-shadow: inset 0 0 0 1px rgba(15, 140, 90, .1);
 }
 
 .settings-nav-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -175,8 +177,10 @@
 }
 
 .settings-nav-label {
+  display: block;
   font-size: 12.5px;
   font-weight: 600;
+  line-height: 1.2;
 }
 
 .settings-nav-desc {
@@ -184,7 +188,8 @@
   color: #89918c;
   font-size: 10.5px;
   font-weight: 400;
-  margin-top: 2px;
+  line-height: 1.25;
+  margin-top: 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -986,14 +991,19 @@
     grid-template-columns: 1fr;
   }
 
-  .settings-layout {
-    grid-template-columns: 1fr;
+  .settings-nav {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .settings-nav {
-    position: static;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .settings-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settings-nav-button {
+    min-width: 168px;
   }
 
 }
@@ -1008,8 +1018,7 @@
     font-size: 28px;
   }
 
-  .account-grid-2,
-  .settings-nav {
+  .account-grid-2 {
     grid-template-columns: 1fr;
   }
 

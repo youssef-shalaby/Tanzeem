@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router';
 import { useState, useEffect } from 'react';
 import { DeleteProductModal } from '../ui/DeleteProductModal';
 import { useAuth } from '../contexts/AuthContext';
+import { ToneIcon } from '../components/ToneIcon';
 
 function getToken() {
   try {
@@ -119,8 +120,8 @@ export function ViewProductPage() {
 
   const statusStyle =
     product.status === 'Active' ? 'pill-green' :
-    product.status === 'Inactive' ? 'bg-gray-100 text-gray-600' :
-    'bg-red-100 text-red-700';
+    product.status === 'Discontinued' ? 'pill-amber' :
+    'pill-gray';
   const canEditProduct = can('edit_products');
   const canDeleteProduct = can('delete_products');
 
@@ -168,9 +169,7 @@ export function ViewProductPage() {
               <div className="text-2xl font-semibold text-gray-900">${Number(product.sellingPrice).toFixed(2)}</div>
               <div className="text-xs text-gray-500 mt-1">Cost: ${Number(product.costPrice).toFixed(2)}</div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-[#0f8c5a]/10 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-[#0f8c5a]" />
-            </div>
+            <ToneIcon icon={DollarSign} tone="green" />
           </div>
         </div>
 
@@ -185,9 +184,7 @@ export function ViewProductPage() {
                 ${(product.sellingPrice - product.costPrice).toFixed(2)} per unit
               </div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-green-600" />
-            </div>
+            <ToneIcon icon={BarChart3} tone="green" />
           </div>
         </div>
 
@@ -202,9 +199,7 @@ export function ViewProductPage() {
                 {stockStatus}
               </span>
             </div>
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <Archive className="w-5 h-5 text-blue-600" />
-            </div>
+            <ToneIcon icon={Archive} tone="blue" />
           </div>
         </div>
       </div>

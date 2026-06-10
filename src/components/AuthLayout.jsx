@@ -147,7 +147,7 @@ export function AuthInput({ label, className = "", ...props }) {
 export function AuthButton({ children, className = "", ...props }) {
   return (
     <button
-      className={`w-full rounded-xl bg-[#0f8c5a] p-4 text-base font-semibold leading-6 text-white transition hover:bg-[#0a6b45] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`auth-primary-btn w-full rounded-xl p-4 text-base font-semibold leading-6 transition disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
       {...props}
     >
       {children}

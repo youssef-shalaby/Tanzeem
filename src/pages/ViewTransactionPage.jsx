@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Package, User, DollarSign, Hash, FileText, ArrowUpCircle, ArrowDownCircle, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import { useNavigate, useParams, Link } from 'react-router';
+import { ToneIcon } from '../components/ToneIcon';
 
 // ============================
 // Design system styles (green accent)
@@ -45,6 +46,29 @@ const SOURCE_MAP = {
   10: "Found/Recovered", 11: "Transfer from Another Branch",
   12: "Inventory Adjustment", 13: "Sold to Customer",
 };
+
+const isStockOut = (type) => String(type || "").toLowerCase() === "stock out";
+
+function signedTransactionValue(value, type) {
+  const numberValue = Number(value) || 0;
+  if (isStockOut(type)) return -Math.abs(numberValue);
+  return numberValue;
+}
+
+function signedValueClass(value) {
+  if (value < 0) return "text-red-600";
+  if (value > 0) return "text-green-600";
+  return "text-gray-900";
+}
+
+function formatSignedNumber(value) {
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function formatSignedCurrency(value) {
+  const prefix = value > 0 ? "+" : value < 0 ? "-" : "";
+  return `${prefix}$${Math.abs(value).toFixed(2)}`;
+}
 
 function normalizeTransaction(t) {
   const firstItem = t.transactionItemDtos?.[0];
@@ -93,10 +117,10 @@ export function ViewTransactionPage() {
 
   const getTypeStyle = (type) => {
     switch (type) {
-      case 'Stock In':   return { badge: 'pill-green', icon: ArrowUpCircle,   iconBg: 'bg-green-100',  iconColor: 'text-green-600' };
-      case 'Stock Out':  return { badge: 'pill-red',   icon: ArrowDownCircle, iconBg: 'bg-red-100',    iconColor: 'text-red-600' };
-      case 'Adjustment': return { badge: 'pill-blue',  icon: RefreshCw,       iconBg: 'bg-blue-100',   iconColor: 'text-blue-600' };
-      default:           return { badge: 'bg-gray-100 text-gray-600', icon: Package, iconBg: 'bg-gray-100', iconColor: 'text-gray-600' };
+      case 'Stock In':   return { badge: 'pill-green', icon: ArrowUpCircle,   tone: 'green', iconColor: 'text-green-600' };
+      case 'Stock Out':  return { badge: 'pill-red',   icon: ArrowDownCircle, tone: 'red', iconColor: 'text-red-600' };
+      case 'Adjustment': return { badge: 'pill-blue',  icon: RefreshCw,       tone: 'blue', iconColor: 'text-blue-600' };
+      default:           return { badge: 'bg-gray-100 text-gray-600', icon: Package, tone: 'gray', iconColor: 'text-gray-600' };
     }
   };
 
@@ -125,6 +149,10 @@ export function ViewTransactionPage() {
 
   const typeStyle = getTypeStyle(transaction.type);
   const TypeIcon = typeStyle.icon;
+  const displayQuantity = signedTransactionValue(transaction.quantity, transaction.type);
+  const displayTotalValue = signedTransactionValue(transaction.totalValue, transaction.type);
+  const quantityLabel = isStockOut(transaction.type) ? "Units out" : "Units";
+  const valueLabel = isStockOut(transaction.type) ? "Outbound value" : "Transaction value";
 
   return (
     <div className="view-transaction-root space-y-6">
@@ -160,14 +188,12 @@ export function ViewTransactionPage() {
           </div>
           <div className="p-5 flex items-center justify-between">
             <div>
-              <div className={`text-2xl font-semibold ${transaction.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {transaction.quantity > 0 ? '+' : ''}{transaction.quantity}
+              <div className={`text-2xl font-semibold ${signedValueClass(displayQuantity)}`}>
+                {formatSignedNumber(displayQuantity)}
               </div>
-              <div className="text-xs text-gray-500 mt-1">Units</div>
+              <div className="text-xs text-gray-500 mt-1">{quantityLabel}</div>
             </div>
-            <div className={`w-10 h-10 rounded-full ${typeStyle.iconBg} flex items-center justify-center`}>
-              <Hash className={`w-5 h-5 ${typeStyle.iconColor}`} />
-            </div>
+            <ToneIcon icon={Hash} tone={typeStyle.tone} />
           </div>
         </div>
 
@@ -180,9 +206,7 @@ export function ViewTransactionPage() {
               <div className="text-2xl font-semibold text-gray-900">${transaction.unitPrice.toFixed(2)}</div>
               <div className="text-xs text-gray-500 mt-1">Per unit</div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-purple-600" />
-            </div>
+            <ToneIcon icon={DollarSign} tone="purple" />
           </div>
         </div>
 
@@ -192,14 +216,12 @@ export function ViewTransactionPage() {
           </div>
           <div className="p-5 flex items-center justify-between">
             <div>
-              <div className={`text-2xl font-semibold ${transaction.totalValue > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {transaction.totalValue > 0 ? '+' : ''}${Math.abs(transaction.totalValue).toFixed(2)}
+              <div className={`text-2xl font-semibold ${signedValueClass(displayTotalValue)}`}>
+                {formatSignedCurrency(displayTotalValue)}
               </div>
-              <div className="text-xs text-gray-500 mt-1">Transaction value</div>
+              <div className="text-xs text-gray-500 mt-1">{valueLabel}</div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-orange-600" />
-            </div>
+            <ToneIcon icon={DollarSign} tone="amber" />
           </div>
         </div>
 
@@ -212,9 +234,7 @@ export function ViewTransactionPage() {
               <div className="text-xl font-semibold text-gray-900">{transaction.performedBy}</div>
               <div className="text-xs text-gray-500 mt-1">Staff member</div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <User className="w-5 h-5 text-blue-600" />
-            </div>
+            <ToneIcon icon={User} tone="blue" />
           </div>
         </div>
       </div>
@@ -272,9 +292,7 @@ export function ViewTransactionPage() {
           </div>
           <div className="p-5">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 text-gray-600" />
-              </div>
+              <ToneIcon icon={FileText} tone="gray" />
               <p className="text-sm text-gray-700 leading-relaxed flex-1">{transaction.notes}</p>
             </div>
           </div>

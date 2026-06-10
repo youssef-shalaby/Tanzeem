@@ -1,5 +1,6 @@
 import { AlertTriangle, X } from 'lucide-react';
 import { useState } from 'react';
+import { ToneIcon } from '../components/ToneIcon';
 
 function getToken() {
   try {
@@ -58,9 +59,7 @@ export function DeleteProductModal({ isOpen, onClose, onConfirm, productName, pr
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <div className="app-stat-icon bg-red-100">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
+              <ToneIcon icon={AlertTriangle} tone="red" iconClassName="w-5 h-5" />
               <h2 className="app-card-title">Delete Product</h2>
             </div>
             <button

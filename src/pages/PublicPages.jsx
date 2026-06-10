@@ -1033,8 +1033,16 @@ export function PaymentPage() {
   );
 }
 
+function getStoredWelcomeName() {
+  try {
+    return sessionStorage.getItem("tanzeem_welcome_name");
+  } catch {
+    return null;
+  }
+}
+
 function getWelcomeName(currentUser, fallbackName) {
-  const rawName = currentUser?.name || fallbackName || "there";
+  const rawName = fallbackName || currentUser?.name || "there";
   const withoutEmailDomain = String(rawName).split("@")[0];
   const cleaned = withoutEmailDomain
     .replace(/[._-]+/g, " ")
@@ -1052,7 +1060,7 @@ function getWelcomeName(currentUser, fallbackName) {
 export function WelcomePage() {
   const location = useLocation();
   const { currentUser, getDefaultRoute } = useAuth();
-  const name = getWelcomeName(currentUser, location.state?.name);
+  const name = getWelcomeName(currentUser, location.state?.name || getStoredWelcomeName());
   const startPath = currentUser ? getDefaultRoute() : "/signin";
   const firstName = String(name).split(" ")[0] || "there";
   return (

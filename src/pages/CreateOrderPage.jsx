@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
-import { useNavigate, useLocation } from "react-router";
+import { Navigate, useNavigate, useLocation } from "react-router";
 import { apiRequest, ForbiddenError } from "../services/api";
-import UnauthorizedPage from "./UnauthorizedPage";
 
 const CO_STYLES = `
   .co-root { font-family: 'DM Sans', sans-serif; }
@@ -107,7 +106,7 @@ export function CreateOrderPage() {
       });
   }, []);
 
-  if (isForbidden) return <UnauthorizedPage />;
+  if (isForbidden) return <Navigate to="/unauthorized" replace />;
 
   const handleChange = (e) => {
     const { name, value } = e.target;

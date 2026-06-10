@@ -19,6 +19,7 @@ import {
 import { useNavigate, useParams, Link } from 'react-router';
 import { useState, useEffect } from 'react';
 import { DeleteSupplierModal } from '../ui/DeleteSupplierModal';
+import { ToneIcon } from '../components/ToneIcon';
 
 // ============================
 // Design system styles (green accent)
@@ -67,6 +68,12 @@ const VIEW_SUPPLIER_STYLES = `
 // ------- Helper Functions -------
 function mapStatus(supplierStatus) {
   return supplierStatus === 1 ? 'Active' : 'Inactive';
+}
+
+function deliveryTone(percentage) {
+  if (percentage >= 90) return 'green';
+  if (percentage >= 75) return 'amber';
+  return 'red';
 }
 
 function mapBadgeLabel(badge) {
@@ -274,15 +281,7 @@ export function ViewSupplierPage() {
                 />
               </div>
             </div>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-              supplier.onTimePercentage >= 90 ? 'bg-green-100' :
-              supplier.onTimePercentage >= 75 ? 'bg-yellow-100' : 'bg-red-100'
-            }`}>
-              <TrendingUp className={`w-5 h-5 ${
-                supplier.onTimePercentage >= 90 ? 'text-green-600' :
-                supplier.onTimePercentage >= 75 ? 'text-yellow-600' : 'text-red-600'
-              }`} />
-            </div>
+            <ToneIcon icon={TrendingUp} tone={deliveryTone(supplier.onTimePercentage)} />
           </div>
         </div>
 
@@ -295,9 +294,7 @@ export function ViewSupplierPage() {
               <div className="text-2xl font-semibold text-gray-900">{supplier.leadTime ?? '—'}</div>
               <div className="text-xs text-gray-500 mt-1">days average</div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-orange-600" />
-            </div>
+            <ToneIcon icon={Clock} tone="amber" />
           </div>
         </div>
 
@@ -310,9 +307,7 @@ export function ViewSupplierPage() {
               <div className="text-xl font-semibold text-gray-900">{mapBadgeLabel(supplier.badge)}</div>
               <div className="text-xs text-gray-500 mt-1">Performance rating</div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <Award className="w-5 h-5 text-blue-600" />
-            </div>
+            <ToneIcon icon={Award} tone="blue" />
           </div>
         </div>
       </div>
@@ -328,9 +323,7 @@ export function ViewSupplierPage() {
             <div className="supplier-detail-stack">
               {supplier.email && (
                 <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
-                  <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-4 h-4 text-[#0f8c5a]" />
-                  </div>
+                  <ToneIcon icon={Mail} tone="green" size="sm" iconClassName="w-4 h-4" />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-gray-500 mb-0.5">Email</div>
                     <a href={`mailto:${supplier.email}`} className="text-sm text-[#0f8c5a] hover:underline truncate block">
@@ -343,9 +336,7 @@ export function ViewSupplierPage() {
 
               {supplier.phone && (
                 <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
-                  <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-4 h-4 text-[#0f8c5a]" />
-                  </div>
+                  <ToneIcon icon={Phone} tone="green" size="sm" iconClassName="w-4 h-4" />
                   <div className="flex-1">
                     <div className="text-xs text-gray-500 mb-0.5">Phone</div>
                     <div className="text-sm text-gray-900">{supplier.phone}</div>
@@ -361,9 +352,7 @@ export function ViewSupplierPage() {
 
               {addressLine && (
                 <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
-                  <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-4 h-4 text-[#0f8c5a]" />
-                  </div>
+                  <ToneIcon icon={MapPin} tone="green" size="sm" iconClassName="w-4 h-4" />
                   <div className="flex-1">
                     <div className="text-xs text-gray-500 mb-0.5">Address</div>
                     <div className="text-sm text-gray-900">{addressLine}</div>
@@ -374,9 +363,7 @@ export function ViewSupplierPage() {
 
               {supplier.website && (
                 <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
-                  <div className="w-9 h-9 rounded-lg bg-[#0f8c5a]/10 flex items-center justify-center flex-shrink-0">
-                    <Globe className="w-4 h-4 text-[#0f8c5a]" />
-                  </div>
+                  <ToneIcon icon={Globe} tone="green" size="sm" iconClassName="w-4 h-4" />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-gray-500 mb-0.5">Website</div>
                     <a
@@ -415,9 +402,7 @@ export function ViewSupplierPage() {
             <div className="supplier-detail-stack">
               {supplier.contactPerson && (
                 <div className="supplier-detail-item flex items-center gap-3 px-6 py-4">
-                  <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-gray-500" />
-                  </div>
+                  <ToneIcon icon={User} tone="gray" size="sm" iconClassName="w-4 h-4" />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-gray-500 mb-0.5">Contact Person</div>
                     <div className="text-sm font-medium text-gray-900 truncate">{supplier.contactPerson}</div>
@@ -426,9 +411,7 @@ export function ViewSupplierPage() {
               )}
               {supplier.taxId && (
                 <div className="supplier-detail-item flex items-center gap-3 px-6 py-4">
-                  <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                    <Hash className="w-4 h-4 text-gray-500" />
-                  </div>
+                  <ToneIcon icon={Hash} tone="gray" size="sm" iconClassName="w-4 h-4" />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-gray-500 mb-0.5">Tax ID / VAT</div>
                     <div className="text-sm font-medium text-gray-900 truncate">{supplier.taxId}</div>

@@ -31,6 +31,13 @@ function getToken() {
   }
 }
 
+function getProductStatusPill(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "active") return "pill-green";
+  if (normalized === "discontinued") return "pill-amber";
+  return "pill-gray";
+}
+
 function ProductActionMenu({ position, onClose, onView, onEdit, onDelete, canEdit, canDelete }) {
   if (!position) return null;
 
@@ -417,9 +424,7 @@ export function ProductsPage() {
                     <td>{product.expiryDate}</td>
                     <td>{product.reorderLevel}</td>
                     <td>
-                      <span className={`db-stat-pill ${
-                        product.status === "Active" ? "pill-green" : "pill-amber"
-                      }`}>
+                      <span className={`db-stat-pill ${getProductStatusPill(product.status)}`}>
                         {product.status}
                       </span>
                     </td>
