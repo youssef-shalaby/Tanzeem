@@ -60,19 +60,19 @@ export function PublicNav() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="relative z-20 border-b border-[rgba(30,50,30,0.08)] bg-[#f9faf7]/80 px-6 py-5 backdrop-blur-md md:px-8">
+    <header className="relative z-20 border-b border-[rgba(30,50,30,0.08)] bg-[#fbfcfa]/88 px-6 py-4 backdrop-blur-md md:px-8">
       <div className="mx-auto flex max-w-[1320px] items-center justify-between gap-6">
         <TanzeemNavLogo />
 
-        <nav className="hidden items-center gap-10 lg:flex">
+        <nav className="hidden items-center gap-1 rounded-full border border-[rgba(30,50,30,0.08)] bg-white/70 p-1 lg:flex">
           {navItems.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className={`text-[15px] font-medium transition-colors ${
+              className={`rounded-full px-4 py-2 text-[14px] font-semibold transition-colors ${
                 location.pathname === item.to
-                  ? "text-[#1a1a18]"
-                  : "text-[#6b6b6b] hover:text-[#1a1a18]"
+                  ? "bg-[#eaf5ee] text-[#0a6b45]"
+                  : "text-[#66736d] hover:bg-[#f5f7f4] hover:text-[#1a1a18]"
               }`}
             >
               {item.label}
@@ -92,13 +92,13 @@ export function PublicNav() {
           </button>
           <Link
             to="/signin"
-            className="hidden rounded-full border border-[rgba(26,26,24,0.2)] px-[18px] py-2 text-[14px] font-medium text-[#1a1a18] transition-colors hover:border-[#0f8c5a] hover:text-[#0f8c5a] sm:block"
+            className="hidden rounded-full border border-[rgba(26,26,24,0.16)] bg-white/60 px-[18px] py-2 text-[14px] font-semibold text-[#1a1a18] transition-colors hover:border-[#0f8c5a] hover:text-[#0f8c5a] sm:block"
           >
             Sign in
           </Link>
           <Link
             to="/signup"
-            className="rounded-full bg-[#1a1a18] px-[18px] py-2 text-[14px] font-medium text-[#f0faf5] transition-colors hover:bg-[#0f8c5a]"
+            className="rounded-full bg-[#0f8c5a] px-[18px] py-2 text-[14px] font-semibold text-white shadow-[0_10px_24px_rgba(15,140,90,.22)] transition hover:-translate-y-0.5 hover:bg-[#0a6b45]"
           >
             Get started
           </Link>

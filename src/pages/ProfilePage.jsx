@@ -450,6 +450,18 @@ const PROFILE_STYLES = `
     animation: profileShimmer 1.4s infinite;
   }
 
+  :root[data-theme="dark"] .profile-skeleton {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(238, 242, 239, .045) 25%,
+        rgba(238, 242, 239, .085) 50%,
+        rgba(238, 242, 239, .045) 75%
+      ) !important;
+    background-size: 200% 100% !important;
+    box-shadow: inset 0 0 0 1px rgba(238, 242, 239, .045);
+  }
+
   .profile-fade-in {
     animation: profileFadeIn .38s ease both;
   }
@@ -593,6 +605,20 @@ const PROFILE_STYLES = `
     box-shadow: inset 0 0 0 1px rgba(47, 186, 120, .1);
   }
 
+  :root[data-theme="dark"] .profile-hero-tile {
+    background: rgba(238, 242, 239, .035);
+    border-color: rgba(238, 242, 239, .08);
+    box-shadow: inset 0 0 0 1px rgba(238, 242, 239, .02);
+  }
+
+  :root[data-theme="dark"] .profile-tile-label {
+    color: rgba(238, 242, 239, .48);
+  }
+
+  :root[data-theme="dark"] .profile-tile-value {
+    color: rgba(238, 242, 239, .9);
+  }
+
   :root[data-theme="dark"] .profile-tone-blue {
     background: rgba(96, 165, 250, .105);
     color: #9bc6fb;
@@ -652,6 +678,34 @@ const PROFILE_STYLES = `
 `;
 
 const ACTIVITY_PREVIEW_SIZE = 5;
+const ACTIVITY_FALLBACK_PAGE_SIZE = 50;
+
+const AUDIT_ID_FIELDS = [
+  "userId",
+  "UserId",
+  "performedById",
+  "performedByUserId",
+  "actorId",
+  "createdById",
+  "employeeId",
+  "adminId",
+];
+
+const AUDIT_TEXT_FIELDS = [
+  "userName",
+  "UserName",
+  "performedBy",
+  "performedByName",
+  "performedByEmail",
+  "actor",
+  "actorName",
+  "actorEmail",
+  "createdBy",
+  "createdByName",
+  "createdByEmail",
+  "email",
+  "userEmail",
+];
 
 const ROLE_CONFIG = {
   1: {
@@ -702,6 +756,15 @@ function resolveRole(role) {
   return ROLE_CONFIG[roleToId(role)] || ROLE_CONFIG[3];
 }
 
+function normalizeCompany(data) {
+  return {
+    name: data?.name ?? data?.Name ?? "",
+    field: data?.field ?? data?.Field ?? "",
+    email: data?.email ?? data?.Email ?? "",
+    phone: data?.phone ?? data?.Phone ?? "",
+  };
+}
+
 function roleAvatarClass(role) {
   const roleId = roleToId(role);
   if (roleId === 1) return "profile-avatar-admin";
@@ -750,6 +813,84 @@ function toneForAction(action) {
   return "green";
 }
 
+function normaliseComparable(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function addComparable(set, value) {
+  const normalized = normaliseComparable(value);
+  if (normalized) set.add(normalized);
+}
+
+function buildUserAuditIdentity(currentUser, profile) {
+  const ids = new Set();
+  const text = new Set();
+  const sources = [currentUser, profile];
+
+  sources.forEach((source) => {
+    if (!source) return;
+    [
+      source.id,
+      source.userId,
+      source.UserId,
+      source.employeeId,
+      source.adminId,
+    ].forEach((value) => addComparable(ids, value));
+
+    [
+      source.name,
+      source.fullName,
+      source.userName,
+      source.email,
+    ].forEach((value) => addComparable(text, value));
+  });
+
+  return { ids, text };
+}
+
+function auditMatchesCurrentUser(entry, identity) {
+  const hasIdMatch = AUDIT_ID_FIELDS.some((field) => {
+    const value = normaliseComparable(entry?.[field]);
+    return value && identity.ids.has(value);
+  });
+
+  if (hasIdMatch) return true;
+
+  return AUDIT_TEXT_FIELDS.some((field) => {
+    const value = normaliseComparable(entry?.[field]);
+    return value && identity.text.has(value);
+  });
+}
+
+function parseAuditPayload(data) {
+  const items = data?.data ?? data ?? [];
+  return {
+    items: Array.isArray(items) ? items : [],
+    totalCount: data?.totalCount ?? (Array.isArray(items) ? items.length : 0),
+  };
+}
+
+async function fetchAuditPage(path) {
+  const response = await fetch(path, { headers: authHeaders() });
+  const text = await response.text();
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!response.ok) {
+    const message = typeof data === "string"
+      ? data
+      : data?.message || data?.title || "Recent activity could not be loaded.";
+    throw new Error(message);
+  }
+
+  return parseAuditPayload(data);
+}
+
 function normaliseAudit(entry) {
   const action = entry.action ?? entry.actionName ?? entry.eventType ?? entry.type ?? "Workspace activity";
   return {
@@ -757,6 +898,16 @@ function normaliseAudit(entry) {
     action,
     detail: entry.description ?? entry.detail ?? entry.details ?? entry.message ?? entry.entityName ?? "",
     time: entry.createdAt ?? entry.timestamp ?? entry.date ?? entry.actionDate ?? null,
+  };
+}
+
+function normaliseNotificationActivity(entry) {
+  const action = entry.title ?? entry.typeName ?? "Workspace notification";
+  return {
+    id: `notification-${entry.id ?? entry.createdAt ?? Math.random()}`,
+    action,
+    detail: entry.message ?? entry.description ?? "",
+    time: entry.createdAt ?? entry.timestamp ?? entry.date ?? null,
   };
 }
 
@@ -857,8 +1008,10 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const { currentUser, can } = useAuth();
   const [profile, setProfile] = useState(null);
+  const [company, setCompany] = useState(null);
   const [audits, setAudits] = useState([]);
   const [auditTotalCount, setAuditTotalCount] = useState(0);
+  const [auditError, setAuditError] = useState("");
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingAudits, setLoadingAudits] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
@@ -884,26 +1037,113 @@ export function ProfilePage() {
 
   useEffect(() => {
     let active = true;
+    const companyId = profile?.companyId ?? currentUser?.companyId;
 
-    fetch(`/api/AuditLogs/Get-Audits-User?Page=1&Page_Size=${ACTIVITY_PREVIEW_SIZE}`, { headers: authHeaders() })
+    if (!companyId) {
+      setCompany(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    fetch(`/api/Company/Get-Company/${companyId}`, { headers: authHeaders() })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
-        const items = data?.data ?? data ?? [];
-        if (active) {
-          const totalCount = data?.totalCount ?? (Array.isArray(items) ? items.length : 0);
-          setAudits(Array.isArray(items) ? items.slice(0, ACTIVITY_PREVIEW_SIZE).map(normaliseAudit) : []);
-          setAuditTotalCount(totalCount);
-        }
+        if (active && data) setCompany(normalizeCompany(data));
       })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setLoadingAudits(false);
+      .catch(() => {
+        if (active) setCompany(null);
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [currentUser?.companyId, profile?.companyId]);
+
+  useEffect(() => {
+    let active = true;
+    const isAdmin = roleToId(profile?.role ?? currentUser?.role) === 1;
+
+    if (!isAdmin) {
+      setAudits([]);
+      setAuditTotalCount(0);
+      setAuditError("");
+      setLoadingAudits(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    async function loadActivity() {
+      setLoadingAudits(true);
+      setAuditError("");
+
+      try {
+        let userAudits = { items: [], totalCount: 0 };
+        let userAuditError = null;
+
+        try {
+          userAudits = await fetchAuditPage(`/api/AuditLogs/Get-Audits-User?Page=1&Page_Size=${ACTIVITY_PREVIEW_SIZE}`);
+        } catch (error) {
+          userAuditError = error;
+        }
+
+        let items = userAudits.items;
+        let totalCount = userAudits.totalCount;
+
+        if (items.length === 0) {
+          let branchAudits;
+
+          try {
+            branchAudits = await fetchAuditPage(`/api/AuditLogs/Get-Audits-Branch?Page=1&Page_Size=${ACTIVITY_FALLBACK_PAGE_SIZE}`);
+          } catch {
+            if (userAuditError) throw userAuditError;
+            throw new Error("Recent activity could not be loaded.");
+          }
+
+          const identity = buildUserAuditIdentity(currentUser, profile);
+          items = branchAudits.items.filter((entry) => auditMatchesCurrentUser(entry, identity));
+          totalCount = items.length;
+        }
+
+        if (items.length === 0) {
+          const notifications = await fetchAuditPage(`/api/Notification?Page=1&Page_Size=${ACTIVITY_PREVIEW_SIZE}`);
+          items = notifications.items.map(normaliseNotificationActivity);
+          totalCount = notifications.totalCount;
+        } else {
+          items = items.map(normaliseAudit);
+        }
+
+        if (active) {
+          setAudits(items.slice(0, ACTIVITY_PREVIEW_SIZE));
+          setAuditTotalCount(totalCount);
+        }
+      } catch (error) {
+        try {
+          const notifications = await fetchAuditPage(`/api/Notification?Page=1&Page_Size=${ACTIVITY_PREVIEW_SIZE}`);
+          if (active) {
+            setAudits(notifications.items.slice(0, ACTIVITY_PREVIEW_SIZE).map(normaliseNotificationActivity));
+            setAuditTotalCount(notifications.totalCount);
+            setAuditError("");
+          }
+        } catch {
+          if (active) {
+            setAudits([]);
+            setAuditTotalCount(0);
+            setAuditError(error.message || "Recent activity could not be loaded.");
+          }
+        }
+      } finally {
+        if (active) setLoadingAudits(false);
+      }
+    }
+
+    loadActivity();
+
+    return () => {
+      active = false;
+    };
+  }, [currentUser, profile]);
 
   const display = useMemo(() => {
     const role = profile?.role ?? currentUser?.role;
@@ -913,17 +1153,20 @@ export function ProfilePage() {
       phone: profile?.phoneNumber || currentUser?.phoneNumber || "-",
       userId: profile?.userId ?? currentUser?.id ?? "-",
       companyId: profile?.companyId ?? currentUser?.companyId ?? "-",
+      companyName: company?.name || "",
+      companyField: company?.field || "",
       branchId: profile?.branchId ?? currentUser?.branchId ?? "-",
       role,
       roleConfig: resolveRole(role),
     };
-  }, [currentUser, profile]);
+  }, [company, currentUser, profile]);
 
   const heroTiles = [
     { label: "Email", value: display.email },
-    { label: "Company ID", value: display.companyId },
+    { label: "Company", value: display.companyName || (display.companyId === "-" ? "Current workspace" : `Company ${display.companyId}`) },
     { label: "Branch", value: display.branchId === "-" ? "Current branch" : `Branch ${display.branchId}` },
   ];
+  const showRecentActivity = roleToId(display.role) === 1;
 
   return (
     <div className="profile-root profile-main-stack">
@@ -1021,71 +1264,90 @@ export function ProfilePage() {
                   <InfoItem icon={Mail} label="Email address" value={display.email} tone="blue" />
                   <InfoItem icon={Phone} label="Phone number" value={display.phone} tone="amber" />
                   <InfoItem icon={IdCard} label="User ID" value={display.userId} tone="green" />
-                  <InfoItem icon={Building2} label="Company ID" value={display.companyId} tone="purple" />
+                  <InfoItem
+                    icon={Building2}
+                    label={display.companyName ? "Company" : "Company ID"}
+                    value={
+                      display.companyName
+                        ? `${display.companyName}${display.companyField ? ` - ${display.companyField}` : ""}`
+                        : display.companyId
+                    }
+                    tone="purple"
+                  />
                 </div>
               )}
             </div>
           </section>
 
-          <section className="profile-card profile-fade-in" style={{ animationDelay: ".1s" }}>
-            <div className="profile-card-header">
-              <div className="profile-card-title">
-                <Activity size={17} />
-                My recent activity
+          {showRecentActivity && (
+            <section className="profile-card profile-fade-in" style={{ animationDelay: ".1s" }}>
+              <div className="profile-card-header">
+                <div className="profile-card-title">
+                  <Activity size={17} />
+                  My recent activity
+                </div>
+                {canOpenAuditTrail ? (
+                  <button className="profile-button profile-button-secondary" onClick={() => navigate("/settings?tab=audit")}>
+                    Open audit trail
+                  </button>
+                ) : (
+                  <span style={{ color: "var(--app-subtle)", fontSize: 12 }}>
+                    Latest {audits.length}
+                  </span>
+                )}
               </div>
-              {canOpenAuditTrail ? (
-                <button className="profile-button profile-button-secondary" onClick={() => navigate("/settings?tab=audit")}>
-                  Open audit trail
-                </button>
-              ) : (
-                <span style={{ color: "var(--app-subtle)", fontSize: 12 }}>
-                  Latest {audits.length}
-                </span>
-              )}
-            </div>
-            <div className="profile-card-body">
-              {loadingAudits ? (
-                <div className="profile-main-stack">
-                  {[1, 2, 3, 4].map((item) => (
-                    <SkeletonBlock key={item} height={58} />
-                  ))}
-                </div>
-              ) : audits.length === 0 ? (
-                <div className="profile-empty app-context-panel">
-                  <div className="profile-empty-icon profile-tone-gray">
-                    <Clock size={18} />
+              <div className="profile-card-body">
+                {loadingAudits ? (
+                  <div className="profile-main-stack">
+                    {[1, 2, 3, 4].map((item) => (
+                      <SkeletonBlock key={item} height={58} />
+                    ))}
                   </div>
-                  <div className="profile-empty-title">No recent activity found</div>
-                  <div className="profile-empty-copy">Activity related to your account will appear here.</div>
-                </div>
-              ) : (
-                <>
-                  <div className="profile-activity-list">
-                    {audits.map((audit) => {
-                      const tone = toneForAction(audit.action);
-                      return (
-                        <div className="profile-activity-item" key={audit.id}>
-                          <div className={`profile-activity-dot profile-tone-${tone}`}>
-                            <Activity size={15} />
-                          </div>
-                          <div>
-                            <div className="profile-activity-title">{audit.action}</div>
-                            {audit.detail && <div className="profile-activity-copy">{audit.detail}</div>}
-                          </div>
-                          <div className="profile-activity-time">{formatAuditTime(audit.time)}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {auditTotalCount > audits.length && (
-                    <div style={{ color: "var(--app-muted)", fontSize: 12, marginTop: 14 }}>
-                      Showing the latest {audits.length} personal events.
+                ) : auditError ? (
+                  <div className="profile-empty app-context-panel">
+                    <div className="profile-empty-icon profile-tone-amber">
+                      <Clock size={18} />
                     </div>
-                  )}
-                </>
-              )}
-            </div>
-          </section>
+                    <div className="profile-empty-title">Recent activity is unavailable</div>
+                    <div className="profile-empty-copy">{auditError}</div>
+                  </div>
+                ) : audits.length === 0 ? (
+                  <div className="profile-empty app-context-panel">
+                    <div className="profile-empty-icon profile-tone-gray">
+                      <Clock size={18} />
+                    </div>
+                    <div className="profile-empty-title">No recent activity found</div>
+                    <div className="profile-empty-copy">Activity related to your account will appear here.</div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="profile-activity-list">
+                      {audits.map((audit) => {
+                        const tone = toneForAction(audit.action);
+                        return (
+                          <div className="profile-activity-item" key={audit.id}>
+                            <div className={`profile-activity-dot profile-tone-${tone}`}>
+                              <Activity size={15} />
+                            </div>
+                            <div>
+                              <div className="profile-activity-title">{audit.action}</div>
+                              {audit.detail && <div className="profile-activity-copy">{audit.detail}</div>}
+                            </div>
+                            <div className="profile-activity-time">{formatAuditTime(audit.time)}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {auditTotalCount > audits.length && (
+                      <div style={{ color: "var(--app-muted)", fontSize: 12, marginTop: 14 }}>
+                        Showing the latest {audits.length} recent events.
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </section>
+          )}
         </div>
       </div>
 

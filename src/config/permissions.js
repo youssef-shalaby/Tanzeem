@@ -82,6 +82,7 @@ export const permissions = {
     "view_transactions",
     "view_all_transactions",
     "create_transactions",
+    "view_audit_logs",
     "view_alerts",
     "view_alert_dashboard",
     "view_alert_config",

@@ -37,6 +37,15 @@ const ROLE_OPTIONS = [
   { id: ROLE_IDS.STAFF, label: "Staff" },
 ];
 
+const EMPTY_NEW_EMPLOYEE = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phoneNumber: "",
+  role: ROLE_IDS.STAFF,
+  tempPassword: "",
+};
+
 const AUDIT_PAGE_SIZE = 5;
 
 const INITIAL_STORE_INFO = {
@@ -77,6 +86,29 @@ async function apiFetch(url, options = {}) {
   if (!response.ok) throw new Error(`Request failed: ${response.status}`);
   const text = await response.text();
   return text ? JSON.parse(text) : null;
+}
+
+function randomPasswordChar(characters) {
+  const values = new Uint32Array(1);
+  window.crypto?.getRandomValues?.(values);
+  const index = values[0] ? values[0] % characters.length : Math.floor(Math.random() * characters.length);
+  return characters[index];
+}
+
+function generateTemporaryPassword() {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghijkmnopqrstuvwxyz";
+  const numbers = "23456789";
+  const symbols = "!@#$%";
+  const pool = `${upper}${lower}${numbers}${symbols}`;
+  const required = [
+    randomPasswordChar(upper),
+    randomPasswordChar(lower),
+    randomPasswordChar(numbers),
+    randomPasswordChar(symbols),
+  ];
+  const rest = Array.from({ length: 8 }, () => randomPasswordChar(pool));
+  return [...required, ...rest].sort(() => Math.random() - 0.5).join("");
 }
 
 function statusClass(status) {
@@ -653,7 +685,9 @@ function UserManagement() {
   const [submitting, setSubmitting] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [assigning, setAssigning] = useState(false);
-  const [newEmployee, setNewEmployee] = useState({ name: "", email: "", phoneNumber: "", role: ROLE_IDS.STAFF, tempPassword: "" });
+  const [newEmployee, setNewEmployee] = useState(EMPTY_NEW_EMPLOYEE);
+  const [employeeFormError, setEmployeeFormError] = useState("");
+  const [createdEmployee, setCreatedEmployee] = useState(null);
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -695,28 +729,51 @@ function UserManagement() {
   }, [employees, query, roleFilter]);
 
   const createEmployee = async () => {
-    if (!newEmployee.name || !newEmployee.email || !newEmployee.phoneNumber) {
-      alert("Please fill name, email, and phone number.");
+    const firstName = newEmployee.firstName.trim();
+    const lastName = newEmployee.lastName.trim();
+    const email = newEmployee.email.trim();
+    const phoneNumber = newEmployee.phoneNumber.trim();
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    if (!firstName || !lastName || !email || !phoneNumber) {
+      setEmployeeFormError("First name, last name, email, and phone are required.");
       return;
     }
+    setEmployeeFormError("");
     setSubmitting(true);
     try {
       const payload = {
-        name: newEmployee.name,
-        email: newEmployee.email,
+        name: fullName,
+        email,
         role: Number(newEmployee.role),
-        phoneNumber: newEmployee.phoneNumber,
+        phoneNumber,
         ...(newEmployee.tempPassword.trim() ? { tempPassword: newEmployee.tempPassword } : {}),
       };
       await apiFetch("/api/BusinessCore/Create-Employee", { method: "POST", body: JSON.stringify(payload) });
       await fetchEmployees();
-      setShowAdd(false);
-      setNewEmployee({ name: "", email: "", phoneNumber: "", role: ROLE_IDS.STAFF, tempPassword: "" });
+      setCreatedEmployee({
+        name: fullName,
+        email,
+        role: Number(newEmployee.role),
+      });
     } catch {
-      alert("Failed to create employee.");
+      setEmployeeFormError("Failed to create employee. Please check the details and try again.");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const closeAddEmployee = () => {
+    setShowAdd(false);
+    setEmployeeFormError("");
+    setCreatedEmployee(null);
+    setNewEmployee(EMPTY_NEW_EMPLOYEE);
+  };
+
+  const createAnotherEmployee = () => {
+    setEmployeeFormError("");
+    setCreatedEmployee(null);
+    setNewEmployee(EMPTY_NEW_EMPLOYEE);
   };
 
   const openEmployee = async (employee) => {
@@ -885,11 +942,15 @@ function UserManagement() {
           subtitle="Create a team member account and assign a role."
           employee={newEmployee}
           setEmployee={setNewEmployee}
-          onClose={() => setShowAdd(false)}
+          onClose={closeAddEmployee}
           onSave={createEmployee}
           saving={submitting}
           saveLabel="Add employee"
           allowPassword
+          createMode
+          errorMessage={employeeFormError}
+          createdEmployee={createdEmployee}
+          onCreateAnother={createAnotherEmployee}
         />
       )}
 
@@ -909,53 +970,126 @@ function UserManagement() {
   );
 }
 
-function EmployeeModal({ title, subtitle, employee, setEmployee, onClose, onSave, saving, saveLabel, allowPassword = false }) {
+function EmployeeModal({
+  title,
+  subtitle,
+  employee,
+  setEmployee,
+  onClose,
+  onSave,
+  saving,
+  saveLabel,
+  allowPassword = false,
+  createMode = false,
+  errorMessage = "",
+  createdEmployee = null,
+  onCreateAnother,
+}) {
   const setField = (field, value) => setEmployee((current) => ({ ...current, [field]: value }));
+
+  if (createdEmployee) {
+    return (
+      <div className="account-modal-backdrop">
+        <div className="account-modal account-modal-narrow">
+          <div className="account-modal-head">
+            <div>
+              <div className="account-section-title text-[24px]">Employee added</div>
+              <div className="account-card-copy">The new team member is ready for workspace access.</div>
+            </div>
+            <button className="account-modal-close" onClick={onClose} aria-label="Close modal">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="account-card-body">
+            <div className="account-success-panel">
+              <div className="account-success-icon">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3>{createdEmployee.name}</h3>
+              <p>{createdEmployee.email}</p>
+              <div className="account-success-meta">
+                <span>{getRoleLabel(createdEmployee.role)}</span>
+              </div>
+            </div>
+          </div>
+          <div className="account-modal-footer">
+            <button className="account-btn secondary" onClick={onCreateAnother}>Add another</button>
+            <button className="account-btn primary" onClick={onClose}>
+              <CheckCircle2 className="w-4 h-4" />
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="account-modal-backdrop">
       <div className="account-modal">
-        <div className="account-card-head">
+        <div className="account-modal-head">
           <div>
             <div className="account-section-title text-[24px]">{title}</div>
             <div className="account-card-copy">{subtitle}</div>
           </div>
-          <button className="account-icon-btn" onClick={onClose}><X className="w-4 h-4" /></button>
+          <button className="account-modal-close" onClick={onClose} aria-label="Close modal">
+            <X className="w-4 h-4" />
+          </button>
         </div>
         <div className="account-card-body">
+          {errorMessage && <div className="account-form-error">{errorMessage}</div>}
           <div className="account-grid-2">
-            <div className="account-field">
-              <label>Full name</label>
-              <input className="account-input" value={employee.name || ""} onChange={(event) => setField("name", event.target.value)} />
-            </div>
+            {createMode ? (
+              <>
+                <div className="account-field">
+                  <label>First name</label>
+                  <input className="account-input" value={employee.firstName || ""} onChange={(event) => setField("firstName", event.target.value)} autoComplete="given-name" />
+                </div>
+                <div className="account-field">
+                  <label>Last name</label>
+                  <input className="account-input" value={employee.lastName || ""} onChange={(event) => setField("lastName", event.target.value)} autoComplete="family-name" />
+                </div>
+              </>
+            ) : (
+              <div className="account-field account-field-wide">
+                <label>Full name</label>
+                <input className="account-input" value={employee.name || ""} onChange={(event) => setField("name", event.target.value)} autoComplete="name" />
+              </div>
+            )}
             <div className="account-field">
               <label>Email</label>
-              <input className="account-input" type="email" value={employee.email || ""} onChange={(event) => setField("email", event.target.value)} />
+              <input className="account-input" type="email" value={employee.email || ""} onChange={(event) => setField("email", event.target.value)} autoComplete="email" />
             </div>
             <div className="account-field">
               <label>Phone</label>
-              <input className="account-input" type="tel" value={employee.phoneNumber || ""} onChange={(event) => setField("phoneNumber", event.target.value)} />
+              <input className="account-input" type="tel" value={employee.phoneNumber || ""} onChange={(event) => setField("phoneNumber", event.target.value)} autoComplete="tel" />
             </div>
-            <div className="account-field">
+            <div className="account-field account-field-wide">
               <label>Role</label>
               <select className="account-select" value={employee.role || ROLE_IDS.STAFF} onChange={(event) => setField("role", Number(event.target.value))}>
                 {ROLE_OPTIONS.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
               </select>
             </div>
             {allowPassword && (
-              <div className="account-field md:col-span-2">
+              <div className="account-field account-field-wide">
                 <label>Temporary password</label>
-                <input className="account-input" value={employee.tempPassword || ""} onChange={(event) => setField("tempPassword", event.target.value)} placeholder="Auto-generate if left empty" />
+                <div className="account-input-row">
+                  <input className="account-input" value={employee.tempPassword || ""} onChange={(event) => setField("tempPassword", event.target.value)} placeholder="Auto-generate if left empty" />
+                  <button className="account-btn secondary" type="button" onClick={() => setField("tempPassword", generateTemporaryPassword())}>
+                    <RefreshCcw className="w-4 h-4" />
+                    Generate
+                  </button>
+                </div>
               </div>
             )}
           </div>
-          <div className="account-actions mt-5">
-            <button className="account-btn secondary" onClick={onClose}>Cancel</button>
-            <button className="account-btn primary" onClick={onSave} disabled={saving}>
-              <Save className="w-4 h-4" />
-              {saving ? "Saving..." : saveLabel}
-            </button>
-          </div>
+        </div>
+        <div className="account-modal-footer">
+          <button className="account-btn secondary" onClick={onClose}>Cancel</button>
+          <button className="account-btn primary" onClick={onSave} disabled={saving}>
+            <Save className="w-4 h-4" />
+            {saving ? "Saving..." : saveLabel}
+          </button>
         </div>
       </div>
     </div>

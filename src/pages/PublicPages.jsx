@@ -1,8 +1,6 @@
 import { Link, useLocation } from "react-router";
 import {
   ArrowRight,
-  CircleX,
-  CreditCard,
   Zap,
   Bell,
   BarChart2,
@@ -33,15 +31,16 @@ const PUBLIC_STYLES = `
     display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
     transition: background .2s, transform .15s;
     text-decoration: none;
+    box-shadow: 0 14px 34px rgba(15,140,90,.22), inset 0 1px 0 rgba(255,255,255,.18);
   }
   .public-btn-primary:hover { background: #0a6b45; transform: translateY(-1px); }
   .public-btn-secondary {
-    background: transparent; border: 1px solid rgba(0,0,0,.12); color: #444;
+    background: rgba(255,255,255,.68); border: 1px solid rgba(26,26,24,.16); color: #343a36;
     border-radius: 100px; padding: 14px 28px; font-size: 15px; font-weight: 500;
     display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
-    transition: background .15s; text-decoration: none;
+    transition: background .15s, border-color .15s, color .15s, transform .15s; text-decoration: none;
   }
-  .public-btn-secondary:hover { background: #f5f6f3; }
+  .public-btn-secondary:hover { background: #fff; border-color: rgba(15,140,90,.28); color: #0a6b45; transform: translateY(-1px); }
   .public-card {
     background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 16px;
     padding: 20px; transition: box-shadow .2s;
@@ -745,26 +744,28 @@ const pricingPlans = [
     name: "Starter",
     price: "0 LE",
     note: "Free forever",
-    tags: ["Small teams", "First branch"],
-    button: "Create free workspace",
+    description: "For a team that wants to start tracking products, stock, and basic movement right away.",
+    tags: ["Start now", "First branch"],
+    button: "Create workspace",
+    to: "/signup",
+    highlighted: false,
     includes: [
       "Basic inventory management",
       "Add and manage items",
       "Track stock levels",
-    ],
-    excludes: [
-      "Custom integrations",
-      "Enterprise-level support",
-      "Dedicated onboarding",
+      "Use the core dashboard",
     ],
   },
   {
     name: "Pro Plan",
     price: "999 LE",
-    note: "Paid Yearly",
-    tags: ["Growing teams"],
-    banner: "Yearly billing",
-    button: "Review Pro checkout",
+    note: "Per year",
+    description: "For growing teams that need more access, support, and workflow flexibility.",
+    tags: ["Growing teams", "Admin support"],
+    banner: "Optional upgrade",
+    button: "View Pro details",
+    to: "/payment",
+    highlighted: true,
     includes: [
       "Unlimited users",
       "API access",
@@ -786,29 +787,30 @@ export function PricingPage() {
         minHeight: "100vh",
         overflow: "hidden",
         position: "relative",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       <PublicStyle />
-      {/* Background blobs (same as LandingPage) */}
       <style>{`
-        .lp-blob-1{position:absolute;bottom:-100px;left:50%;transform:translateX(-50%);width:900px;height:500px;background:radial-gradient(ellipse,#c8f5e0 0%,#c8eee0 40%,#d4f0e8 65%,transparent 80%);filter:blur(40px);opacity:.7;pointer-events:none;}
+        .lp-blob-1{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:min(900px,90vw);height:500px;background:radial-gradient(ellipse,#c8f5e0 0%,#c8eee0 42%,#d4f0e8 64%,transparent 80%);filter:blur(44px);opacity:.58;pointer-events:none;}
         .lp-blob-2{position:absolute;top:-60px;right:-120px;width:400px;height:400px;background:radial-gradient(circle,#e0faf0 0%,transparent 70%);filter:blur(50px);opacity:.5;pointer-events:none;}
         .pricing-card {
-  background: #fff;
-  border: 1px solid rgba(0,0,0,.08);
-  border-radius: 24px;
-  padding: 32px;
-  height: 100%;
-  transition: all .25s ease;
-}
-
-.pricing-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(15,140,90,.2);
-  box-shadow:
-    0 10px 25px rgba(15,140,90,.08),
-    0 20px 40px rgba(0,0,0,.08);
-}
+          background: rgba(255,255,255,.9);
+          border: 1px solid rgba(26,26,24,.1);
+          border-radius: 18px;
+          padding: 28px;
+          height: 100%;
+          transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+        }
+        .pricing-card.is-highlighted {
+          border-color: rgba(15,140,90,.42);
+          box-shadow: 0 18px 50px rgba(15,140,90,.11);
+        }
+        .pricing-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(15,140,90,.24);
+        }
         .pricing-badge {
           display: inline-flex;
           align-items: center;
@@ -820,61 +822,57 @@ export function PricingPage() {
           font-weight: 500;
           color: #0a6b45;
         }
+        .pricing-price {
+          font-size: clamp(42px, 5vw, 64px);
+          line-height: .95;
+          letter-spacing: -0.02em;
+          color: #111827;
+          font-weight: 700;
+        }
+        .pricing-card-copy {
+          color: #66736d;
+          line-height: 1.65;
+          font-size: 15px;
+        }
       `}</style>
       <div className="lp-blob-1" />
       <div className="lp-blob-2" />
 
       <PublicNav />
 
-      <section className="relative z-10 mx-auto max-w-[1100px] px-6 py-16 text-center">
+      <section className="relative z-10 mx-auto w-full max-w-[1120px] flex-1 px-6 py-16 text-center">
         <h1 className="hero-h1" style={{ fontSize: 52, maxWidth: "none" }}>
-          Plans and Pricing
+          Plans for every inventory team
         </h1>
         <p
           className="hero-p"
           style={{ maxWidth: 600, marginLeft: "auto", marginRight: "auto" }}
         >
-          Start with the basics, then add advanced team controls and workflow support when your operation grows.
+          Start with the free workspace. When the team needs more support or integrations, review the Pro details before upgrading.
         </p>
 
         <div className="mt-16 grid gap-6 md:grid-cols-2">
           {pricingPlans.map((plan) => (
             <div
               key={plan.name}
-              className={`pricing-card text-left flex flex-col h-full ${
-                plan.name === "Pro Plan"
-                  ? "ring-2 ring-[#0f8c5a] relative"
-                  : "relative"
-              }`}
+              className={`pricing-card text-left flex flex-col h-full relative ${plan.highlighted ? "is-highlighted" : ""}`}
             >
-              {plan.name === "Pro Plan" && (
-                <div className="absolute top-6 right-6">
-                  <span className="pricing-badge">Most Popular</span>
-                </div>
-              )}
-              <div className="mb-4 min-h-[28px]">
-                {plan.banner && (
-                  <span className="pricing-badge">{plan.banner}</span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap gap-2 mb-5 pr-0">
+                {plan.banner && <span className="pricing-badge">{plan.banner}</span>}
                 {plan.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="pricing-badge bg-black/5 border-black/10 text-black/70"
+                    className="pricing-badge bg-white/70 border-black/10 text-black/70"
                   >
                     {tag}
                   </span>
                 ))}
               </div>
               <h2 className="text-2xl font-bold text-gray-900">{plan.name}</h2>
-              <div className="mt-4 flex items-end gap-1 min-h-[72px]">
-                <span className="text-5xl font-bold text-gray-900">
-                  {plan.price}
-                </span>
-                <span className="text-gray-500">
-                  /{plan.note === "Free forever" ? "month" : "year"}
-                </span>
+              <p className="pricing-card-copy mt-3">{plan.description}</p>
+              <div className="mt-8 flex items-end gap-2 min-h-[72px]">
+                <span className="pricing-price">{plan.price}</span>
+                <span className="pb-2 text-gray-500">{plan.note === "Free forever" ? "/month" : "/year"}</span>
               </div>
               <p className="mt-1 text-sm text-gray-500">{plan.note}</p>
               <div className="my-6 h-px bg-gray-200" />
@@ -882,31 +880,13 @@ export function PricingPage() {
                 Includes:
               </p>
               <CheckList items={plan.includes} />
-              {plan.excludes && (
-                <>
-                  <p className="mb-3 mt-6 text-sm font-semibold text-gray-900">
-                    Not included:
-                  </p>
-                  <div className="space-y-2">
-                    {plan.excludes.map((item) => (
-                      <div
-                        key={item}
-                        className="flex items-center gap-2 text-sm text-gray-500"
-                      >
-                        <CircleX className="h-4 w-4 text-gray-400" />
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
               <div className="mt-auto pt-8">
                 <Link
-                  to={plan.name === "Pro Plan" ? "/payment" : "/signup"}
-                  className={plan.name === "Pro Plan" ? "public-btn-primary w-full justify-center" : "public-btn-secondary w-full justify-center"}
-                  style={plan.name === "Pro Plan" ? {} : { borderColor: "#1a1a18", color: "#1a1a18" }}
+                  to={plan.to}
+                  className={plan.highlighted ? "public-btn-primary w-full justify-center" : "public-btn-secondary w-full justify-center"}
                 >
                   {plan.button}
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>
@@ -931,12 +911,13 @@ export function PaymentPage() {
         minHeight: "100vh",
         overflow: "hidden",
         position: "relative",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       <PublicStyle />
-      {/* Background blobs (same as LandingPage) */}
       <style>{`
-        .lp-blob-1{position:absolute;bottom:-100px;left:50%;transform:translateX(-50%);width:900px;height:500px;background:radial-gradient(ellipse,#c8f5e0 0%,#c8eee0 40%,#d4f0e8 65%,transparent 80%);filter:blur(40px);opacity:.7;pointer-events:none;}
+        .lp-blob-1{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:min(900px,90vw);height:500px;background:radial-gradient(ellipse,#c8f5e0 0%,#c8eee0 42%,#d4f0e8 64%,transparent 80%);filter:blur(44px);opacity:.58;pointer-events:none;}
         .lp-blob-2{position:absolute;top:-60px;right:-120px;width:400px;height:400px;background:radial-gradient(circle,#e0faf0 0%,transparent 70%);filter:blur(50px);opacity:.5;pointer-events:none;}
       `}</style>
       <div className="lp-blob-1" />
@@ -944,26 +925,26 @@ export function PaymentPage() {
 
       <PublicNav />
 
-      <section className="relative z-10 mx-auto max-w-6xl px-6 py-20">
+      <section className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-6 py-20">
         <div className="grid items-end gap-10 lg:grid-cols-[1fr_340px]">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#cfe7d9] bg-white/75 px-4 py-2 text-sm font-semibold text-[#0a6b45]">
-              <CreditCard className="h-4 w-4" />
-              Payment setup required
+              <Zap className="h-4 w-4" />
+              Pro plan details
             </div>
             <h1 className="hero-h1 mt-6" style={{ fontSize: 56 }}>
-              Upgrade to Pro
+              Review Pro before you grow
             </h1>
             <p className="hero-p" style={{ maxWidth: 560 }}>
-              Pro is ready for your team. Create your workspace now, then connect a payment provider from billing when checkout is enabled.
+              Tanzeem does not collect payment here. Use this page to understand the Pro plan, then create a workspace when you are ready.
             </p>
           </div>
 
           <div className="rounded-2xl border border-[#dfe8e2] bg-white/80 p-5">
-            <div className="text-sm font-semibold text-[#555]">Amount due today</div>
+            <div className="text-sm font-semibold text-[#555]">Online charge today</div>
             <div className="mt-2 text-4xl font-semibold tracking-tight text-[#111827]">0 LE</div>
             <div className="mt-2 text-sm leading-6 text-[#66736d]">
-              No card is charged on this screen.
+              No card form is shown because checkout is not required.
             </div>
           </div>
         </div>
@@ -974,7 +955,7 @@ export function PaymentPage() {
               <div>
                 <h2 className="text-2xl font-semibold text-[#111827]">Pro Plan</h2>
                 <p className="mt-2 text-sm leading-6 text-[#66736d]">
-                  Built for growing teams that need more control, support, and API access.
+                  For growing teams that need more control, support, and API access.
                 </p>
               </div>
               <div className="text-left sm:text-right">
@@ -1000,18 +981,18 @@ export function PaymentPage() {
               <Link to="/signup" className="public-btn-primary justify-center">
                 Create workspace <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link to="/#pricing" className="public-btn-secondary justify-center">
+              <Link to="/pricing" className="public-btn-secondary justify-center">
                 Back to pricing
               </Link>
             </div>
           </div>
 
           <aside className="public-card p-8">
-            <h2 className="text-xl font-semibold text-[#111827]">Checkout status</h2>
+            <h2 className="text-xl font-semibold text-[#111827]">Plan status</h2>
             <div className="mt-6 space-y-5">
               {[
-                { label: "Payment provider", value: "Not connected" },
-                { label: "Card collection", value: "Disabled" },
+                { label: "Payment form", value: "Not required" },
+                { label: "Card collection", value: "Not shown" },
                 { label: "Next step", value: "Create workspace" },
               ].map((row) => (
                 <div key={row.label} className="flex items-center justify-between gap-6 border-b border-[#edf1ee] pb-5 last:border-b-0 last:pb-0">
@@ -1022,7 +1003,7 @@ export function PaymentPage() {
             </div>
 
             <div className="mt-8 rounded-xl bg-[#eef8f2] p-4 text-sm leading-6 text-[#0a6b45]">
-              A provider-hosted checkout can be connected later without changing the Pro plan.
+              If paid checkout is added later, this can become a provider-hosted checkout without changing the plan page.
             </div>
           </aside>
         </div>

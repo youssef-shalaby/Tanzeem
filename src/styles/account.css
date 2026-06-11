@@ -653,13 +653,149 @@
 }
 
 .account-modal {
-  width: min(620px, 100%);
+  width: min(760px, 100%);
   max-height: 90vh;
-  overflow: auto;
+  overflow: hidden;
   background: var(--panel);
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, .25);
   box-shadow: 0 24px 80px rgba(0, 0, 0, .25);
+  display: flex;
+  flex-direction: column;
+}
+
+.account-modal-narrow {
+  width: min(520px, 100%);
+}
+
+.account-modal-head {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 auto;
+}
+
+.account-modal .account-card-body {
+  overflow: auto;
+  min-height: 0;
+}
+
+.account-modal-close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.account-modal-close:hover {
+  background: var(--app-soft, #f7f9f6);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.account-modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+.account-field-wide {
+  grid-column: 1 / -1;
+}
+
+.account-field-help {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+  margin-top: 6px;
+}
+
+.account-form-error {
+  border: 1px solid rgba(220, 38, 38, .18);
+  background: rgba(254, 226, 226, .72);
+  color: #b91c1c;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.account-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.account-input-row .account-input {
+  flex: 1;
+}
+
+.account-success-panel {
+  text-align: center;
+  padding: 16px 8px 8px;
+}
+
+.account-success-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: var(--app-success-bg, #e9f8f1);
+  color: var(--green-dark);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.account-success-panel h3 {
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.account-success-panel p {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.account-success-meta {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.account-success-meta span {
+  border: 1px solid var(--line);
+  background: var(--app-soft, #f7f9f6);
+  color: var(--green-dark);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .account-code {
@@ -925,6 +1061,31 @@
   color: var(--app-ink);
 }
 
+:root[data-theme="dark"] .account-modal {
+  border-color: var(--app-line);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .58);
+}
+
+:root[data-theme="dark"] .account-modal-footer {
+  background: rgba(21, 24, 25, .88);
+}
+
+:root[data-theme="dark"] .account-modal-close:hover,
+:root[data-theme="dark"] .account-success-meta span {
+  background: var(--app-soft);
+  border-color: var(--app-line);
+}
+
+:root[data-theme="dark"] .account-success-meta span {
+  color: #9ddfba;
+}
+
+:root[data-theme="dark"] .account-form-error {
+  background: rgba(127, 29, 29, .2);
+  border-color: rgba(248, 113, 113, .2);
+  color: #fca5a5;
+}
+
 :root[data-theme="dark"] .account-banner {
   background: var(--app-info-bg);
   color: var(--app-info-text);
@@ -1020,6 +1181,17 @@
 
   .account-grid-2 {
     grid-template-columns: 1fr;
+  }
+
+  .account-input-row,
+  .account-modal-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .account-input-row .account-btn,
+  .account-modal-footer .account-btn {
+    width: 100%;
   }
 
   .account-section-head,
