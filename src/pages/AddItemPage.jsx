@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, ScanLine, Sparkles, Loader2, Plus, Trash2, ChevronDown, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { BrowserMultiFormatReader } from '@zxing/browser';
+import { BarcodeFormat, DecodeHintType } from '@zxing/library';
 import { toIsoTimestamp } from '../utils/dateTime';
 import { lookupCategories } from '../services/categoriesApi';
 import { getApiErrorMessage, parseApiResponse } from '../services/api';
@@ -226,89 +228,71 @@ function CategoryCombobox({ value, onChange, categories, canAddCategory = false 
 
 function BarcodeScannerModal({ onClose, onDetected }) {
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const frameRef = useRef(null);
+  const controlsRef = useRef(null);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let active = true;
-    let detector = null;
 
-    const stopCamera = () => {
-      if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
+    const stopScanner = () => {
+      controlsRef.current?.stop();
+      controlsRef.current = null;
     };
 
-    const scan = async () => {
-      if (!active || !detector || !videoRef.current) return;
-
-      const video = videoRef.current;
-      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        try {
-          const codes = await detector.detect(video);
-          const barcode = codes.find((code) => code.rawValue)?.rawValue;
-          if (barcode) {
-            onDetected(barcode);
-            return;
-          }
-        } catch {
-          // Keep scanning while the camera frame settles.
-        }
-      }
-
-      frameRef.current = window.requestAnimationFrame(scan);
-    };
-
-    const startCamera = async () => {
-      if (!('BarcodeDetector' in window)) {
-        setError('Barcode scanning is not supported in this browser. Enter the barcode manually.');
-        return;
-      }
-
+    const startScanner = async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
         setError('Camera access is not available in this browser. Enter the barcode manually.');
         return;
       }
 
       try {
-        const supportedFormats = await window.BarcodeDetector.getSupportedFormats?.();
-        const preferredFormats = [
-          'ean_13',
-          'ean_8',
-          'upc_a',
-          'upc_e',
-          'code_128',
-          'code_39',
-          'code_93',
-          'qr_code',
-        ];
-        const formats = Array.isArray(supportedFormats)
-          ? preferredFormats.filter((format) => supportedFormats.includes(format))
-          : preferredFormats;
+        const hints = new Map();
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+          BarcodeFormat.EAN_13,
+          BarcodeFormat.EAN_8,
+          BarcodeFormat.UPC_A,
+          BarcodeFormat.UPC_E,
+          BarcodeFormat.CODE_128,
+          BarcodeFormat.CODE_39,
+          BarcodeFormat.CODE_93,
+          BarcodeFormat.QR_CODE,
+        ]);
 
-        detector = new window.BarcodeDetector(formats.length ? { formats } : undefined);
+        const reader = new BrowserMultiFormatReader(hints, {
+          delayBetweenScanAttempts: 150,
+          delayBetweenScanSuccess: 500,
+        });
 
-        const stream = await navigator.mediaDevices.getUserMedia({
+        const controls = await reader.decodeFromConstraints({
           audio: false,
           video: {
             facingMode: { ideal: 'environment' },
             width: { ideal: 1280 },
             height: { ideal: 720 },
           },
+        }, videoRef.current, (result, scanError, scanControls) => {
+          if (!active) return;
+
+          const barcode = result?.getText();
+          if (barcode) {
+            scanControls.stop();
+            onDetected(barcode);
+            return;
+          }
+
+          if (scanError && !['NotFoundException', 'ChecksumException', 'FormatException'].includes(scanError.name)) {
+            console.warn('Barcode scan error:', scanError);
+          }
         });
 
         if (!active) {
-          stream.getTracks().forEach((track) => track.stop());
+          controls.stop();
           return;
         }
 
-        streamRef.current = stream;
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        controlsRef.current = controls;
         setReady(true);
-        scan();
       } catch (err) {
         setError(err?.name === 'NotAllowedError'
           ? 'Camera permission was blocked. Allow camera access or enter the barcode manually.'
@@ -316,11 +300,11 @@ function BarcodeScannerModal({ onClose, onDetected }) {
       }
     };
 
-    startCamera();
+    startScanner();
 
     return () => {
       active = false;
-      stopCamera();
+      stopScanner();
     };
   }, [onDetected]);
 
