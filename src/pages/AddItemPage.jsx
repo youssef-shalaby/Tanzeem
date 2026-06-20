@@ -226,10 +226,15 @@ function CategoryCombobox({ value, onChange, categories, canAddCategory = false 
   );
 }
 
+function isWebsiteScan(value) {
+  return /^https?:\/\//i.test(value) || /^www\./i.test(value);
+}
+
 function BarcodeScannerModal({ onClose, onDetected }) {
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   const [error, setError] = useState('');
+  const [scanHint, setScanHint] = useState('');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -272,8 +277,14 @@ function BarcodeScannerModal({ onClose, onDetected }) {
         }, videoRef.current, (result, scanError, scanControls) => {
           if (!active) return;
 
-          const barcode = result?.getText();
+          const barcode = result?.getText()?.trim();
           if (barcode) {
+            if (isWebsiteScan(barcode)) {
+              setScanHint('That looks like a QR link. Aim at the product barcode instead.');
+              return;
+            }
+
+            setScanHint('');
             scanControls.stop();
             onDetected(barcode);
             return;
@@ -333,6 +344,7 @@ function BarcodeScannerModal({ onClose, onDetected }) {
               <p className="text-sm text-gray-600">
                 {ready ? 'Hold the barcode inside the camera view.' : 'Starting camera...'}
               </p>
+              {scanHint && <div className="app-alert-danger">{scanHint}</div>}
             </>
           )}
           <div className="flex justify-end">
