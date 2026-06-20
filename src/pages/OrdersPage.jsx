@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
 import {
   Search,
+  Plus,
   DollarSign,
   Clock,
   CheckCircle,
   AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { StatCard } from "../components/StatCard";
+import { EmptyState } from "../components/EmptyState";
+import { formatAppDate } from "../utils/dateTime";
 
 // ============================
 // Design system styles (green accent, DM Sans, etc.)
@@ -227,6 +231,7 @@ export function OrdersPage() {
     for (let i = start; i <= end; i++) pages.push(i);
     return pages;
   };
+  const hasOrderFilters = searchTerm.trim() !== "" || filterId !== "all" || sortId !== "";
 
   return (
     <div className="orders-root space-y-6">
@@ -248,9 +253,9 @@ export function OrdersPage() {
 
       {/* Stats Cards (Dashboard style) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <StatCard title="Total Revenue" value={`$${Number(dashboardStats.totalOrdersRevenue || 0).toLocaleString()}`} change={12} sub="vs last period" icon={DollarSign} iconColor="#0f8c5a" iconBgColor="bg-[#0f8c5a]/10" className="db-fade-in" />
+        <StatCard title="Total Revenue" value={`$${Number(dashboardStats.totalOrdersRevenue || 0).toLocaleString()}`} sub="Order revenue" icon={DollarSign} iconColor="#0f8c5a" iconBgColor="bg-[#0f8c5a]/10" className="db-fade-in" />
         <StatCard title="Pending Orders" value={dashboardStats.pendingOrdersCount} sub="Need attention" subColor="#d97706" icon={Clock} iconColor="#eab308" iconBgColor="bg-yellow-100" className="db-fade-in" />
-        <StatCard title="Completed Orders" value={dashboardStats.deliveredOrdersCount} change={5} sub="vs last period" icon={CheckCircle} iconColor="#22c55e" iconBgColor="bg-green-100" className="db-fade-in" />
+        <StatCard title="Completed Orders" value={dashboardStats.deliveredOrdersCount} sub="Delivered orders" icon={CheckCircle} iconColor="#22c55e" iconBgColor="bg-green-100" className="db-fade-in" />
       </div>
 
       {/* Search + Filters Card */}
@@ -317,7 +322,7 @@ export function OrdersPage() {
         <div className="db-card-header">
           <span className="db-card-title">Order List</span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="app-table-frame overflow-x-auto">
           {loading ? (
             <div className="p-10 space-y-3">
               {[...Array(5)].map((_, i) => (
@@ -326,6 +331,40 @@ export function OrdersPage() {
             </div>
           ) : error ? (
             <div className="p-10 text-center text-sm text-red-600">{error}</div>
+          ) : ordersList.length === 0 ? (
+            <EmptyState
+              icon={hasOrderFilters ? Search : Plus}
+              tone={hasOrderFilters ? "blue" : "green"}
+              title={hasOrderFilters ? "No orders match these filters" : "Create your first order"}
+              message={
+                hasOrderFilters
+                  ? "Orders that match the current search, status, and sort settings will appear here."
+                  : "Orders connect suppliers to incoming stock, delivery checks, and issue follow-up."
+              }
+              actions={
+                hasOrderFilters
+                  ? [
+                      {
+                        label: "Clear filters",
+                        icon: RotateCcw,
+                        variant: "secondary",
+                        onClick: () => {
+                          setSearchTerm("");
+                          setFilterId("all");
+                          setSortId("");
+                          setCurrentPage(1);
+                        },
+                      },
+                    ]
+                  : [
+                      {
+                        label: "Create order",
+                        icon: Plus,
+                        onClick: () => navigate("/orders/create"),
+                      },
+                    ]
+              }
+            />
           ) : (
             <table className="db-table">
               <thead>
@@ -340,14 +379,7 @@ export function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {ordersList.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-10 text-gray-500">
-                      No orders found.
-                    </td>
-                  </tr>
-                ) : (
-                  ordersList.map((ord) => {
+                {ordersList.map((ord) => {
                     const status = getStatus(ord.status);
                     const issueCount = issueMap[ord.id] || 0;
                     const showDelivery = status === "Delivered";
@@ -358,7 +390,7 @@ export function OrdersPage() {
                           {ord.stringId || `#${ord.id}`}
                         </td>
                         <td>
-                          {new Date(ord.orderDate).toLocaleDateString(undefined, {
+                          {formatAppDate(ord.orderDate, {
                             year: "numeric",
                             month: "short",
                             day: "numeric",
@@ -392,15 +424,13 @@ export function OrdersPage() {
                               navigate(`/orders/${ord.id}`, { state: { order: ord } })
                             }
                             className="db-secondary-btn"
-                            style={{ padding: "6px 12px", fontSize: "12px" }}
                           >
                             View
                           </button>
                         </td>
                       </tr>
                     );
-                  })
-                )}
+                  })}
               </tbody>
             </table>
           )}

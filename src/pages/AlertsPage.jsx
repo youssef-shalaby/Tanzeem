@@ -1,11 +1,13 @@
 import {
   AlertTriangle, Clock, XCircle, Package, Info,
-  Bell, ChevronRight, Skull,
+  Bell, ChevronRight, Skull, CheckCircle2, RotateCcw,
 } from 'lucide-react';
 import { createElement, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import { StatCard } from '../components/StatCard';
 import { ToneIcon } from '../components/ToneIcon';
+import { EmptyState } from '../components/EmptyState';
+import { formatRelativeTime, parseAppDate } from '../utils/dateTime';
 
 // ============================
 // Design system styles (green accent)
@@ -97,6 +99,38 @@ function getToken() {
   }
 }
 
+function getAlertTimestamp(alert) {
+  return (
+    alert.createdAt ??
+    alert.CreatedAt ??
+    alert.timestamp ??
+    alert.Timestamp ??
+    alert.alertCreatedAt ??
+    alert.alertDate ??
+    null
+  );
+}
+
+function formatAlertSubTitle(alert) {
+  const subtitle = String(alert.alertSubTitle || '').trim();
+  const timestamp = getAlertTimestamp(alert);
+  const relativeTime = formatRelativeTime(timestamp);
+
+  if (relativeTime !== '-') {
+    return subtitle.replace(/at:\s*.+$/i, `at: ${relativeTime}`);
+  }
+
+  const subtitleDate = subtitle.match(/at:\s*(.+)$/i)?.[1];
+  const parsedSubtitleDate = parseAppDate(subtitleDate);
+  const isMidnightOnly =
+    parsedSubtitleDate &&
+    parsedSubtitleDate.getHours() === 0 &&
+    parsedSubtitleDate.getMinutes() === 0 &&
+    parsedSubtitleDate.getSeconds() === 0;
+
+  return isMidnightOnly ? subtitle.replace(/\s+at:\s*.+$/i, '') : subtitle;
+}
+
 export function AlertsPage() {
   const navigate = useNavigate();
 
@@ -175,6 +209,7 @@ export function AlertsPage() {
   // Category counts (from current page)
   const countByCategory = (cat) =>
     cat === 'all' ? alerts.length : alerts.filter((a) => getAlertMeta(a).category === cat).length;
+  const hasAlertFilters = selectedCategory !== 'all' || filterPriority !== 'all';
 
   const categories = [
     { id: 'all',       name: 'All Alerts',       icon: Bell,          color: 'text-gray-500' },
@@ -291,12 +326,37 @@ export function AlertsPage() {
                 <div className="db-skeleton h-16" />
               </div>
             ) : filteredAlerts.length === 0 ? (
-              <div className="p-10 text-center text-sm text-gray-400">No alerts in this category.</div>
+              <EmptyState
+                icon={hasAlertFilters ? Bell : CheckCircle2}
+                tone={hasAlertFilters ? 'blue' : 'green'}
+                title={hasAlertFilters ? 'No alerts match this view' : 'No active alerts'}
+                message={
+                  hasAlertFilters
+                    ? 'Alerts that match the selected category and priority will appear here.'
+                    : 'Stock, expiry, order, and dead-stock alerts will appear here when something needs attention.'
+                }
+                actions={
+                  hasAlertFilters
+                    ? [
+                        {
+                          label: 'Show all alerts',
+                          icon: RotateCcw,
+                          variant: 'secondary',
+                          onClick: () => {
+                            setSelectedCategory('all');
+                            setFilterPriority('all');
+                          },
+                        },
+                      ]
+                    : []
+                }
+              />
             ) : (
               <div className="alerts-feed">
                 {filteredAlerts.map((alert, idx) => {
                   const meta = getAlertMeta(alert);
                   const Icon = meta.icon;
+                  const subtitle = formatAlertSubTitle(alert);
 
                   return (
                     <div key={idx} className="alerts-feed-item p-5">
@@ -316,7 +376,7 @@ export function AlertsPage() {
                             </div>
                           </div>
                           <p className="text-sm text-gray-600 mb-1">{alert.alertDescription}</p>
-                          <p className="text-xs text-gray-400 mb-2">{alert.alertSubTitle}</p>
+                          {subtitle && <p className="text-xs text-gray-400 mb-2">{subtitle}</p>}
                           {meta.action && (
                             <button
                               onClick={() => handleAction(alert)}

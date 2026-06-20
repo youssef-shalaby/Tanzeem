@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router-dom';
+import { PageLoadingState } from '../components/LoadingStates';
+import { parseAppDate, toDateInputValue, toIsoTimestamp } from '../utils/dateTime';
+import { lookupCategories } from '../services/categoriesApi';
 
 function getToken() {
   try {
@@ -35,8 +38,8 @@ function productToForm(p) {
     reorderLevel: String(p.reorderLevel ?? ''),
     expiryDate: (() => {
       if (!p.expiryDate || p.expiryDate === 'N/A' || p.expiryDate === '—') return '';
-      const d = new Date(p.expiryDate);
-      return d.getFullYear() >= 2099 ? '' : d.toISOString().split('T')[0];
+      const d = parseAppDate(p.expiryDate);
+      return !d || d.getFullYear() >= 2099 ? '' : toDateInputValue(d);
     })(),
     barcode: p.barcode && p.barcode !== '—' ? p.barcode : '',
     description: p.description || '',
@@ -50,8 +53,21 @@ export function EditProductPage() {
 
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    lookupCategories()
+      .then((items) => {
+        if (!cancelled) setCategories(items);
+      })
+      .catch((error) => console.error('Failed to load categories:', error));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Fetch product by id — use router state if available to avoid extra round-trip
   useEffect(() => {
@@ -92,7 +108,7 @@ export function EditProductPage() {
       stock: parseInt(formData.stockLevel, 10) || 0,
       costPrice: parseFloat(formData.costPrice) || 0,
       sellingPrice: parseFloat(formData.sellingPrice) || 0,
-      expiryDate: formData.expiryDate ? new Date(formData.expiryDate).toISOString() : "2099-12-31T00:00:00.000Z",
+      expiryDate: toIsoTimestamp(formData.expiryDate, "2099-12-31T00:00:00.000Z"),
       barcode: formData.barcode || '',
       description: formData.description,
       reorderLevel: parseInt(formData.reorderLevel, 10) || 0,
@@ -126,9 +142,11 @@ export function EditProductPage() {
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center h-96 text-sm text-gray-500">
-      Loading product...
-    </div>
+    <PageLoadingState
+      title="Loading product"
+      detail="Preparing product fields, stock thresholds, and pricing."
+      variant="detail"
+    />
   );
 
   if (!id) return (
@@ -210,14 +228,20 @@ export function EditProductPage() {
                   <label className="app-form-label">
                     Category <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.category}
                     onChange={(e) => handleChange('category', e.target.value)}
-                    className="db-input"
-                    placeholder="Enter category"
+                    className="db-select w-full"
                     required
-                  />
+                  >
+                    <option value="">Select category</option>
+                    {categories.map((category) => (
+                      <option key={category.id || category.name} value={category.name}>{category.name}</option>
+                    ))}
+                    {formData.category && !categories.some((category) => category.name.toLowerCase() === formData.category.toLowerCase()) && (
+                      <option value={formData.category}>{formData.category}</option>
+                    )}
+                  </select>
                 </div>
 
                 <div>

@@ -1,5 +1,5 @@
 import { ArrowLeft, Home, LockKeyhole, ShieldOff } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { getRoleLabel } from "../config/permissions";
 import { useAuth } from "../contexts/AuthContext";
 

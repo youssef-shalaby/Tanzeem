@@ -1,21 +1,18 @@
 import { ArrowLeft, Package, Edit, Trash2, DollarSign, BarChart3, AlertTriangle, Archive } from 'lucide-react';
-import { useNavigate, useParams, Link } from 'react-router';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { DeleteProductModal } from '../ui/DeleteProductModal';
 import { useAuth } from '../contexts/AuthContext';
 import { ToneIcon } from '../components/ToneIcon';
-
-function getToken() {
-  try {
-    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
-  } catch {
-    return null;
-  }
-}
+import { apiRequest } from '../services/api';
+import { PageLoadingState } from '../components/LoadingStates';
+import { formatAppDate } from '../utils/dateTime';
 
 function normalize(raw) {
+  if (!raw) return null;
+
   return {
-    id: raw.id,
+    id: raw.id ?? raw.productId ?? raw.productID,
     name: raw.name,
     sku: raw.sku,
     category: raw.category,
@@ -25,8 +22,7 @@ function normalize(raw) {
     sellingPrice: raw.sellingPrice ?? raw.price ?? 0,
     expiryDate: (() => {
       if (!raw.expiryDate) return '—';
-      const d = new Date(raw.expiryDate);
-      return d.getFullYear() >= 2099 ? '—' : d.toLocaleDateString();
+      return formatAppDate(raw.expiryDate);
     })(),
     barcode: raw.barcode || '—',
     description: raw.description || '',
@@ -55,24 +51,21 @@ export function ViewProductPage() {
         return;
       }
 
-      fetch(`/api/Products/Get-Product/${id}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-        },
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error(`Server returned ${res.status}`);
-          return res.json();
-        })
+      apiRequest(`/api/Products/Get-Product/${id}`)
         .then((data) => {
           if (cancelled) return;
-          setProduct(normalize(data?.data ?? data));
+          const normalized = normalize(data?.data ?? data);
+          if (normalized?.id === null || normalized?.id === undefined || normalized?.id === "") {
+            throw new Error(`Product ${id} was not returned by the server.`);
+          }
+          setProduct(normalized);
           setLoading(false);
         })
         .catch((err) => {
           if (cancelled) return;
-          setError(err.message);
+          const details = err.details?.length ? ` ${err.details.slice(0, 3).join(' ')}` : '';
+          const status = err.status ? ` (status ${err.status})` : '';
+          setError(`Could not load product ${id}${status}. ${err.message || 'Please try again.'}${details}`);
           setLoading(false);
         });
     }, 0);
@@ -86,9 +79,12 @@ export function ViewProductPage() {
   const handleDelete = () => { setDeleteModalOpen(false); navigate('/products'); };
 
   if (loading) return (
-    <div className="view-product-root flex items-center justify-center h-96 text-sm text-gray-500">
-      Loading product...
-    </div>
+    <PageLoadingState
+      className="view-product-root"
+      title="Loading product"
+      detail="Fetching stock levels, pricing, and reorder details."
+      variant="detail"
+    />
   );
   if (error) return (
     <div className="view-product-root flex flex-col items-center justify-center h-96">

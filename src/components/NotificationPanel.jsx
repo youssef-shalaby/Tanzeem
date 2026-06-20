@@ -1,7 +1,8 @@
 import { AlertTriangle, CheckCheck, Clock, Inbox, Package, TruckIcon, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import { ToneIcon } from './ToneIcon';
+import { formatRelativeTime } from '../utils/dateTime';
 
 function getToken() {
   try {
@@ -29,15 +30,8 @@ function getNotificationMeta(type) {
 }
 
 function formatTime(createdAt) {
-  if (!createdAt) return '';
-  const diff = Date.now() - new Date(createdAt).getTime();
-  const mins  = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days  = Math.floor(diff / 86400000);
-  if (mins < 1)   return 'Just now';
-  if (mins < 60)  return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  return `${days}d ago`;
+  const formatted = formatRelativeTime(createdAt);
+  return formatted === '-' ? '' : formatted;
 }
 
 export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMarkAllRead }) {
@@ -131,7 +125,7 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
         .notif-backdrop {
           position: fixed;
           inset: 0;
-          z-index: 40;
+          z-index: var(--app-z-drawer-backdrop);
           background: rgba(15, 23, 42, .22);
           backdrop-filter: blur(2px);
         }
@@ -140,6 +134,7 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
           background: var(--app-panel);
           box-shadow: -14px 0 34px rgba(15, 23, 42, .1);
           border-left: 1px solid var(--app-line);
+          z-index: var(--app-z-drawer);
         }
         .notif-header {
           position: relative;
@@ -292,7 +287,7 @@ export function NotificationPanel({ isOpen, onClose, onUnreadCountChange, onMark
       <div className="notif-backdrop" onClick={onClose} />
 
       {/* Panel */}
-      <div className="notif-panel fixed top-0 right-0 h-full w-[440px] max-w-[100vw] z-50 flex flex-col">
+      <div className="notif-panel fixed top-0 right-0 h-full w-[440px] max-w-[100vw] flex flex-col">
         
         {/* Header */}
         <div className="notif-header px-6 py-5">

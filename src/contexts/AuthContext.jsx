@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../services/api";
 import {
   FEATURE_PERMISSIONS,
@@ -86,8 +86,20 @@ function decodeJWT(token) {
         ] || "",
       role,
       roleId: roleToId(role),
-      companyId: payload["CompanyId"] || null,
-      branchId: payload["BranchId"] || null,
+      companyId:
+        payload["CompanyId"] ||
+        payload["companyId"] ||
+        payload["CompanyID"] ||
+        payload["companyID"] ||
+        payload["company_id"] ||
+        null,
+      branchId:
+        payload["BranchId"] ||
+        payload["branchId"] ||
+        payload["BranchID"] ||
+        payload["branchID"] ||
+        payload["branch_id"] ||
+        null,
     };
   } catch {
     return null;
@@ -154,15 +166,19 @@ export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState(() => {
     const stored = readStoredAuth();
     const deniedFeatures = new Set(stored?.deniedFeatures || []);
+    const tokenUser = stored?.token ? decodeJWT(stored.token) : null;
+    const currentUser = tokenUser
+      ? { ...(stored?.currentUser || {}), ...tokenUser }
+      : stored?.currentUser || null;
 
     return {
-      currentUser: stored?.currentUser || null,
+      currentUser,
       token: stored?.token || null,
       backendResponse: stored?.backendResponse || null,
       deniedFeatures,
-      allowedFeatures: stored?.currentUser ? deriveAllowedFeatures(stored.currentUser, deniedFeatures) : new Set(),
-      permissions: stored?.currentUser ? getPermissionsForRole(stored.currentUser.role) : new Set(),
-      permissionsReady: !stored?.currentUser || Array.isArray(stored?.deniedFeatures),
+      allowedFeatures: currentUser ? deriveAllowedFeatures(currentUser, deniedFeatures) : new Set(),
+      permissions: currentUser ? getPermissionsForRole(currentUser.role) : new Set(),
+      permissionsReady: !currentUser || Array.isArray(stored?.deniedFeatures),
     };
   });
 
@@ -187,7 +203,7 @@ export function AuthProvider({ children }) {
   }, [authState.backendResponse, authState.currentUser, authState.token]);
 
   /* LOGIN */
-  const setSession = async (data) => {
+  const setSession = useCallback(async (data) => {
     const token = typeof data === "string" ? data : extractToken(data);
     const currentUser = token ? decodeJWT(token) || normalizeUser(data) : normalizeUser(data);
 
@@ -202,33 +218,36 @@ export function AuthProvider({ children }) {
     setAuthState({ ...nextState, deniedFeatures, allowedFeatures, permissions, permissionsReady: true });
 
     return { ...nextState, deniedFeatures, allowedFeatures, permissions, permissionsReady: true };
-  };
+  }, []);
 
-  const setCurrentUser = (currentUser) => {
+  const setCurrentUser = useCallback((currentUser) => {
     const normalizedUser = {
       ...currentUser,
       role: normalizeRoleKey(currentUser?.role || currentUser?.roleId || currentUser?.role_id),
       roleId: roleToId(currentUser?.role || currentUser?.roleId || currentUser?.role_id),
     };
-    const nextState = {
-      ...authState,
-      currentUser: normalizedUser,
-      permissions: getPermissionsForRole(normalizedUser.role),
-      allowedFeatures: deriveAllowedFeatures(normalizedUser, authState.deniedFeatures),
-      permissionsReady: true,
-    };
 
-    persistAuthSession({
-      currentUser: normalizedUser,
-      token: authState.token,
-      backendResponse: authState.backendResponse,
-      deniedFeatures: authState.deniedFeatures,
+    setAuthState((prev) => {
+      const nextState = {
+        ...prev,
+        currentUser: normalizedUser,
+        permissions: getPermissionsForRole(normalizedUser.role),
+        allowedFeatures: deriveAllowedFeatures(normalizedUser, prev.deniedFeatures),
+        permissionsReady: true,
+      };
+
+      persistAuthSession({
+        currentUser: normalizedUser,
+        token: prev.token,
+        backendResponse: prev.backendResponse,
+        deniedFeatures: prev.deniedFeatures,
+      });
+
+      return nextState;
     });
+  }, []);
 
-    setAuthState(nextState);
-  };
-
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
 
     setAuthState({
@@ -240,31 +259,44 @@ export function AuthProvider({ children }) {
       permissions: new Set(),
       permissionsReady: true,
     });
-  };
+  }, []);
 
-  const isFeatureAllowed = (feature) => {
+  const isFeatureAllowed = useCallback((feature) => {
     if (!authState.currentUser) return false;
     return authState.allowedFeatures.has(feature);
-  };
+  }, [authState.allowedFeatures, authState.currentUser]);
 
-  const can = (permission) => {
+  const can = useCallback((permission) => {
     if (!authState.currentUser) return false;
     return hasPermission(authState.currentUser.role, permission);
-  };
+  }, [authState.currentUser]);
+
+  const getDefaultRoute = useCallback(
+    () => getDefaultRouteForRole(authState.currentUser?.role),
+    [authState.currentUser?.role]
+  );
+
+  const value = useMemo(() => ({
+    ...authState,
+    isAuthenticated: !!authState.currentUser,
+    isFeatureAllowed,
+    can,
+    getDefaultRoute,
+    setSession,
+    setCurrentUser,
+    logout,
+  }), [
+    authState,
+    isFeatureAllowed,
+    can,
+    getDefaultRoute,
+    setSession,
+    setCurrentUser,
+    logout,
+  ]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        ...authState,
-        isAuthenticated: !!authState.currentUser,
-        isFeatureAllowed,
-        can,
-        getDefaultRoute: () => getDefaultRouteForRole(authState.currentUser?.role),
-        setSession,
-        setCurrentUser,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

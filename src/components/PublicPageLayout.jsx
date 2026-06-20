@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation } from "react-router-dom";
 import { Check, Menu, X } from "lucide-react";
 import Logo from "../assets/TanzeemGreen.svg";
 
@@ -9,30 +9,8 @@ const navItems = [
   { label: "Pricing", to: "/pricing" },
 ];
 
-/* ─── Shell ──────────────────────────────────────────────────── */
-export function MarketingShell({ children, className = "" }) {
-  return (
-    <main
-      className={`min-h-screen overflow-hidden bg-[#f9faf7] text-[#1a1a18] ${className}`}
-    >
-      {children}
-    </main>
-  );
-}
-
-/* ─── Ambient background ─────────────────────────────────────── */
-export function SoftBackground() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute -top-40 left-1/4 h-[600px] w-[600px] rounded-full bg-[#c8f5e0]/40 blur-[140px]" />
-      <div className="absolute right-0 top-20 h-[500px] w-[500px] rounded-full bg-[#d4ede0]/30 blur-[120px]" />
-      <div className="absolute bottom-[-80px] left-0 h-[400px] w-[700px] rounded-full bg-[#d0e8d8]/25 blur-[100px]" />
-    </div>
-  );
-}
-
 /* ─── Shared logo — SVG mark + DM Serif wordmark ─────────────── */
-export const TanzeemNavLogo = () => (
+const TanzeemNavLogo = () => (
   <Link
     to="/"
     style={{
@@ -92,7 +70,7 @@ export function PublicNav() {
           </button>
           <Link
             to="/signin"
-            className="hidden rounded-full border border-[rgba(26,26,24,0.16)] bg-white/60 px-[18px] py-2 text-[14px] font-semibold text-[#1a1a18] transition-colors hover:border-[#0f8c5a] hover:text-[#0f8c5a] sm:block"
+            className="db-secondary-btn hidden sm:inline-flex"
           >
             Sign in
           </Link>
@@ -130,39 +108,6 @@ export function PublicNav() {
         </nav>
       )}
     </header>
-  );
-}
-
-/* ─── Inner page frame ───────────────────────────────────────── */
-export function PageFrame({ children, gray = true }) {
-  return (
-    <MarketingShell className={gray ? "bg-[#f9faf7]" : "bg-white"}>
-      <div className="relative min-h-screen">
-        <SoftBackground />
-        <PublicNav />
-        <div className="relative z-10 mx-auto max-w-[1320px] px-6 pb-20 pt-12 md:px-12">
-          {children}
-        </div>
-      </div>
-    </MarketingShell>
-  );
-}
-
-/* ─── Accent badge (no teal) ─────────────────────────────────── */
-export function AccentBadge({ children }) {
-  return (
-    <span className="inline-flex rounded-full border border-[#d4ead9] bg-[#eaf5ee] px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.06em] text-[#0a6b45]">
-      {children}
-    </span>
-  );
-}
-
-/* ─── Icon container (green, not teal) ──────────────────────── */
-export function TealIcon({ icon }) {
-  return (
-    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0f8c5a]/10 text-[#0f8c5a]">
-      {icon}
-    </div>
   );
 }
 

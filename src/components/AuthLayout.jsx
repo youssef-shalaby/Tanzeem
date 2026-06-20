@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
 const steps = [
@@ -132,14 +132,43 @@ export function AuthHeader({ title, copy }) {
   );
 }
 
-export function AuthInput({ label, className = "", ...props }) {
+export function AuthInput({ label, className = "", icon, hint, error, required = false, ...props }) {
+  const inputId = props.id || props.name;
+  const hintId = inputId ? `${inputId}-hint` : undefined;
+  const errorId = inputId ? `${inputId}-error` : undefined;
+  const describedBy = [
+    error ? errorId : null,
+    hint ? hintId : null,
+    props["aria-describedby"],
+  ].filter(Boolean).join(" ") || undefined;
+
   return (
     <label className={`block ${className}`}>
-      <span className="mb-2.5 block text-base font-medium leading-6 text-[#1a1a18]">{label}</span>
-      <input
-        className="w-full rounded-xl bg-[#f5f5f5] px-5 py-3.5 text-base leading-6 text-[#1a1a18] outline-none transition placeholder:text-[#6b6b6b] focus:bg-white focus:ring-2 focus:ring-[#0f8c5a]/25 xl:py-4"
-        {...props}
-      />
+      <span className="mb-2.5 flex items-center gap-1.5 text-base font-medium leading-6 text-[#1a1a18]">
+        {label}
+      </span>
+      <span
+        className={`flex items-center rounded-xl bg-[#f5f5f5] px-5 py-3.5 transition focus-within:bg-white focus-within:ring-2 xl:py-4 ${
+          error
+            ? "ring-2 ring-[#b42318]/20"
+            : "focus-within:ring-[#0f8c5a]/25"
+        }`}
+      >
+        {icon && <span className="mr-3 flex h-5 w-5 shrink-0 items-center justify-center text-[#66706a]">{icon}</span>}
+        <input
+          id={inputId}
+          aria-invalid={error ? "true" : undefined}
+          aria-describedby={describedBy}
+          className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[#1a1a18] outline-none placeholder:text-[#6b6b6b]"
+          required={required}
+          {...props}
+        />
+      </span>
+      {error ? (
+        <span id={errorId} className="mt-2 block text-sm font-medium leading-5 text-[#b42318]">{error}</span>
+      ) : hint ? (
+        <span id={hintId} className="mt-2 block text-sm leading-5 text-[#66706a]">{hint}</span>
+      ) : null}
     </label>
   );
 }

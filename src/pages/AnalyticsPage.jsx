@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, Package, AlertCircle, BarChart3, Target, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, Package, AlertCircle, BarChart3, Target, Sparkles } from 'lucide-react';
 import { StatCard } from '../components/StatCard';
-import { ToneIcon } from '../components/ToneIcon';
+import { EmptyState } from '../components/EmptyState';
 
 // ============================
 // Design system styles (green accent instead of teal)
@@ -121,10 +121,6 @@ export function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
 
-  const scrollToForecast = () => {
-    document.getElementById('demand-forecast-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
   // Fetch mini dashboard summary stats
   useEffect(() => {
     fetch('/api/DemandForecasting/Get_mini_dashboard', {
@@ -217,13 +213,7 @@ export function AnalyticsPage() {
             sku: item.sku,
             predictedDemand: item.predicted_units ?? 0,
             confidence: Math.round((item.confidence ?? 0) * 100),
-            trend: item.demand_occurs ? 'up' : (item.segment === 'zero' ? 'down' : 'stable'),
             segment: item.segment,
-            recommendedAction: item.demand_occurs
-              ? `Order ${item.predicted_units} units`
-              : item.segment === 'zero'
-              ? 'No demand expected'
-              : 'Monitor stock levels',
           }));
           setForecastData(mapped);
           setTotalCount(body.totalCount ?? 0);
@@ -242,18 +232,6 @@ export function AnalyticsPage() {
       window.clearTimeout(timer);
     };
   }, [currentPage]);
-
-  const getTrendIcon = (trend) => {
-    if (trend === 'up') return <ArrowUpRight className="w-4 h-4 text-green-600" />;
-    if (trend === 'down') return <ArrowDownRight className="w-4 h-4 text-red-600" />;
-    return <div className="w-4 h-4 rounded-full border-2 border-gray-400" />;
-  };
-
-  const getTrendColor = (trend) => {
-    if (trend === 'up') return 'text-green-600 bg-green-50';
-    if (trend === 'down') return 'text-red-600 bg-red-50';
-    return 'text-gray-600 bg-gray-50';
-  };
 
   const getConfidenceColor = (confidence) => {
     if (confidence >= 90) return 'text-green-700 bg-green-100';
@@ -357,59 +335,39 @@ export function AnalyticsPage() {
         />
       </div>
 
-      {/* AI Insights Banner (green accent) */}
-      <div className="db-card db-fade-in">
-        <div className="p-5 flex items-start gap-4">
-          <ToneIcon icon={Sparkles} tone="green" />
-          <div className="flex-1">
-            <h3 className="font-semibold text-gray-900 mb-2">AI Recommendation</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              Based on historical sales patterns and demand forecasting data, review items marked as high demand and restock before stockout occurs. Items with confidence above 90% are highly reliable signals.
-            </p>
-            <button
-              className="db-primary-btn"
-              onClick={scrollToForecast}
-            >
-              View Detailed Analysis
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Demand Forecast Table */}
       <div id="demand-forecast-table" className="db-card db-fade-in">
         <div className="db-card-header flex items-center justify-between">
           <span className="db-card-title">Demand Forecast (Next 30 Days)</span>
           <span className="text-sm text-gray-500">{totalCount} products</span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="app-table-frame overflow-x-auto">
           {loading ? (
             <div className="p-6 space-y-3">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="db-skeleton h-10" />
               ))}
             </div>
+          ) : forecastData.length === 0 ? (
+            <EmptyState
+              icon={TrendingUp}
+              tone="blue"
+              title="No forecast data yet"
+              message="Demand forecasts appear after products and enough movement history are available."
+              actions={[{ label: 'Add product', icon: Package, to: '/add-item' }]}
+            />
           ) : (
             <table className="db-table">
               <thead>
                 <tr>
                   <th>Product</th>
                   <th>Predicted Demand</th>
-                  <th>Trend</th>
                   <th>Confidence</th>
                   <th>Segment</th>
-                  <th>AI Recommendation</th>
                 </tr>
               </thead>
               <tbody>
-                {forecastData.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-10 text-gray-500">
-                      No forecast data available.
-                    </td>
-                  </tr>
-                ) : (
-                  forecastData.map((item) => (
+                {forecastData.map((item) => (
                     <tr key={item.id}>
                       <td>
                         <div className="font-medium text-gray-900">{item.productName}</div>
@@ -419,12 +377,6 @@ export function AnalyticsPage() {
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4 text-gray-400" />
                           <span className="font-semibold text-gray-900">{item.predictedDemand}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getTrendColor(item.trend)}`}>
-                          {getTrendIcon(item.trend)}
-                          <span className="capitalize">{item.trend}</span>
                         </div>
                       </td>
                       <td>
@@ -438,15 +390,8 @@ export function AnalyticsPage() {
                           {item.segment}
                         </span>
                       </td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-[#0f8c5a]" />
-                          <span className="text-sm text-gray-900">{item.recommendedAction}</span>
-                        </div>
-                      </td>
                     </tr>
-                  ))
-                )}
+                  ))}
               </tbody>
             </table>
           )}
@@ -526,13 +471,13 @@ export function AnalyticsPage() {
                 ))}
               </div>
             ) : topCategories.length === 0 ? (
-              <div className="app-empty">
-                <BarChart3 className="w-6 h-6 mx-auto mb-3 text-[#0f8c5a]" />
-                <div className="font-semibold text-gray-900">No category forecast yet</div>
-                <div className="text-sm text-gray-500 mt-1">
-                  Category rankings will appear after forecasted demand is available.
-                </div>
-              </div>
+              <EmptyState
+                compact
+                icon={BarChart3}
+                tone="blue"
+                title="No category forecast yet"
+                message="Category rankings will appear after forecasted demand is available."
+              />
             ) : (
               <div className="space-y-5">
                 {topCategories.map((cat) => (

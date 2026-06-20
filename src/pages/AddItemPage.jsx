@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, ScanLine, Sparkles, Loader2, Plus, Trash2, ChevronDown } from 'lucide-react';
-import { useNavigate } from 'react-router';
-import { useAuth } from '../contexts/AuthContext';
-import { normalizeRoleKey, ROLE_KEYS } from '../config/permissions';
+import { X, ScanLine, Sparkles, Loader2, Plus, Trash2, ChevronDown, Camera } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toIsoTimestamp } from '../utils/dateTime';
+import { lookupCategories } from '../services/categoriesApi';
+import { getApiErrorMessage, parseApiResponse } from '../services/api';
 
 // ============================
 // Design system styles (green accent)
@@ -60,7 +61,7 @@ const ADD_ITEM_STYLES = `
   .cat-input-wrap input { flex: 1; border: none; outline: none; background: transparent; font-size: 13px; font-family: 'DM Sans',sans-serif; color: #1a1a18; min-width: 0; }
   .cat-chevron { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none; transition: transform .2s; }
   .cat-chevron.open { transform: translateY(-50%) rotate(180deg); }
-  .cat-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50; background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.1); overflow: hidden; max-height: 220px; overflow-y: auto; }
+  .cat-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: var(--app-z-dropdown); background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.1); overflow: hidden; max-height: 220px; overflow-y: auto; }
   .cat-option { padding: 9px 14px; font-size: 13px; font-family: 'DM Sans',sans-serif; color: #1a1a18; cursor: pointer; transition: background .12s; }
   .cat-option:hover { background: #f9faf7; }
   .cat-option.new-hint { color: #0f8c5a; font-weight: 500; }
@@ -101,6 +102,13 @@ const ADD_ITEM_STYLES = `
     border-color: var(--app-green);
     background: #fff;
   }
+  .barcode-scanner-video {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: var(--app-radius-card);
+    background: #111;
+  }
 `;
 
 function getToken() {
@@ -140,7 +148,7 @@ const emptyProduct = (id) => ({
 });
 
 
-function CategoryCombobox({ value, onChange, categories, onAddCategory, canAddCategory = false }) {
+function CategoryCombobox({ value, onChange, categories, canAddCategory = false }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value || '');
   const wrapRef = useRef(null);
@@ -172,7 +180,6 @@ function CategoryCombobox({ value, onChange, categories, onAddCategory, canAddCa
       if (!trimmed) return;
       if (exactMatch) select(exactMatch);
       else if (isNew) {
-        onAddCategory(trimmed);
         select(trimmed);
       } else if (filtered[0]) select(filtered[0]);
     } else if (e.key === 'Escape') {
@@ -204,8 +211,8 @@ function CategoryCombobox({ value, onChange, categories, onAddCategory, canAddCa
             <div key={c} className="cat-option" onMouseDown={() => select(c)}>{c}</div>
           ))}
           {isNew && (
-            <div className="cat-option new-hint" onMouseDown={() => { onAddCategory(query.trim()); select(query.trim()); }}>
-              + Add "{query.trim()}"
+            <div className="cat-option new-hint" onMouseDown={() => select(query.trim())}>
+              Use new category "{query.trim()}"
             </div>
           )}
           {!canAddCategory && query.trim() && filtered.length === 0 && (
@@ -217,29 +224,177 @@ function CategoryCombobox({ value, onChange, categories, onAddCategory, canAddCa
   );
 }
 
+function BarcodeScannerModal({ onClose, onDetected }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const frameRef = useRef(null);
+  const [error, setError] = useState('');
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let detector = null;
+
+    const stopCamera = () => {
+      if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    };
+
+    const scan = async () => {
+      if (!active || !detector || !videoRef.current) return;
+
+      const video = videoRef.current;
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        try {
+          const codes = await detector.detect(video);
+          const barcode = codes.find((code) => code.rawValue)?.rawValue;
+          if (barcode) {
+            onDetected(barcode);
+            return;
+          }
+        } catch {
+          // Keep scanning while the camera frame settles.
+        }
+      }
+
+      frameRef.current = window.requestAnimationFrame(scan);
+    };
+
+    const startCamera = async () => {
+      if (!('BarcodeDetector' in window)) {
+        setError('Barcode scanning is not supported in this browser. Enter the barcode manually.');
+        return;
+      }
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError('Camera access is not available in this browser. Enter the barcode manually.');
+        return;
+      }
+
+      try {
+        const supportedFormats = await window.BarcodeDetector.getSupportedFormats?.();
+        const preferredFormats = [
+          'ean_13',
+          'ean_8',
+          'upc_a',
+          'upc_e',
+          'code_128',
+          'code_39',
+          'code_93',
+          'qr_code',
+        ];
+        const formats = Array.isArray(supportedFormats)
+          ? preferredFormats.filter((format) => supportedFormats.includes(format))
+          : preferredFormats;
+
+        detector = new window.BarcodeDetector(formats.length ? { formats } : undefined);
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+
+        if (!active) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setReady(true);
+        scan();
+      } catch (err) {
+        setError(err?.name === 'NotAllowedError'
+          ? 'Camera permission was blocked. Allow camera access or enter the barcode manually.'
+          : 'Unable to start the camera. Enter the barcode manually.');
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      active = false;
+      stopCamera();
+    };
+  }, [onDetected]);
+
+  return (
+    <div className="app-modal-layer fixed inset-0 z-[var(--app-z-modal)] flex items-center justify-center bg-black/50 p-4">
+      <div className="db-card w-full max-w-lg overflow-hidden">
+        <div className="db-card-header flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Camera className="w-4 h-4 text-[var(--app-green)]" />
+            <span className="db-card-title">Scan Barcode</span>
+          </div>
+          <button type="button" onClick={onClose} className="db-icon-btn" aria-label="Close barcode scanner">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          {error ? (
+            <div className="app-alert-danger">{error}</div>
+          ) : (
+            <>
+              <video
+                ref={videoRef}
+                className="barcode-scanner-video"
+                muted
+                playsInline
+                aria-label="Barcode scanner camera preview"
+              />
+              <p className="text-sm text-gray-600">
+                {ready ? 'Hold the barcode inside the camera view.' : 'Starting camera...'}
+              </p>
+            </>
+          )}
+          <div className="flex justify-end">
+            <button type="button" onClick={onClose} className="db-secondary-btn">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AddItemPage() {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
   const nextProductId = useRef(1);
   const [products, setProducts] = useState(() => [emptyProduct(`product-${nextProductId.current++}`)]);
+  const [categories, setCategories] = useState(CATEGORIES);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [aiSuggesting, setAiSuggesting] = useState({});
   const [aiSuggestions, setAiSuggestions] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
-  const [categories, setCategories] = useState(CATEGORIES);
-  const canAddCategory = [ROLE_KEYS.ADMIN, ROLE_KEYS.MANAGER].includes(normalizeRoleKey(currentUser?.role || currentUser?.roleId));
+  const [scanningProductId, setScanningProductId] = useState(null);
 
-  const handleAddCategory = (cat) => {
-    if (!canAddCategory) return;
-    setCategories(prev => prev.includes(cat) ? prev : [...prev, cat]);
-  };
+  useEffect(() => {
+    let cancelled = false;
+    lookupCategories()
+      .then((items) => {
+        if (!cancelled && items.length) setCategories(items.map((category) => category.name));
+      })
+      .catch((error) => {
+        console.error('Failed to load categories:', error);
+      })
+      .finally(() => {
+        if (!cancelled) setCategoriesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleChange = (id, field, value) => {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
-  };
-
-  const handleScanBarcode = () => {
-    alert('Barcode scanning feature would be activated here');
   };
 
   const handleAISuggestCategory = async (id) => {
@@ -253,34 +408,15 @@ export function AddItemPage() {
     setAiSuggestions(prev => ({ ...prev, [id]: '' }));
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 100,
-          messages: [
-            {
-              role: 'user',
-              content: `You are a product categorization assistant. Given a product name and description, respond with ONLY the single best matching category from this list, nothing else:
-${CATEGORIES.join(', ')}
-
-Product name: ${product.productName}
-Description: ${product.description}
-
-Category:`,
-            },
-          ],
-        }),
-      });
-
-      const data = await response.json();
-      const suggested = data.content?.[0]?.text?.trim();
-      const matched = CATEGORIES.find(c => c.toLowerCase() === suggested?.toLowerCase()) || suggested;
-
-      setAiSuggestions(prev => ({ ...prev, [id]: matched }));
+      const text = `${product.productName || ''} ${product.description || ''}`.toLowerCase();
+      const matched = categories.find((category) => text.includes(category.toLowerCase()));
+      if (matched) {
+        setAiSuggestions(prev => ({ ...prev, [id]: matched }));
+      } else {
+        setSubmitError('AI category suggestions need a backend endpoint. Please select an existing category.');
+      }
     } catch (err) {
-      console.error('AI suggestion failed:', err);
+      console.error('Category suggestion failed:', err);
     } finally {
       setAiSuggesting(prev => ({ ...prev, [id]: false }));
     }
@@ -289,12 +425,11 @@ Category:`,
   const applyAISuggestion = (id) => {
     const suggestion = aiSuggestions[id];
     const existing = categories.find(category => category.toLowerCase() === suggestion?.toLowerCase());
-    if (suggestion && (existing || canAddCategory)) {
-      if (!existing && canAddCategory) handleAddCategory(suggestion);
-      handleChange(id, 'category', suggestion);
+    if (suggestion && existing) {
+      handleChange(id, 'category', existing);
       setAiSuggestions(prev => { const n = { ...prev }; delete n[id]; return n; });
     } else if (suggestion) {
-      setSubmitError('Staff can only select an existing category. Ask a manager or admin to add a new category.');
+      setSubmitError('Select an existing category, or add a new one in Settings first.');
     }
   };
 
@@ -312,16 +447,25 @@ Category:`,
     }
   };
 
+  const handleBarcodeDetected = (barcode) => {
+    if (scanningProductId) {
+      handleChange(scanningProductId, 'barcode', barcode);
+    }
+    setScanningProductId(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setSubmitError(null);
 
-    const invalidCategory = products.some(product =>
-      !product.category || !categories.some(category => category.toLowerCase() === product.category.toLowerCase())
-    );
+    const invalidCategory = products.some(product => {
+      const category = product.category.trim();
+      const existingCategory = categories.some(existing => existing.toLowerCase() === category.toLowerCase());
+      return !category || !existingCategory;
+    });
     if (invalidCategory) {
-      setSubmitError(canAddCategory ? 'Please add or select a valid category for every product.' : 'Please select an existing category for every product.');
+      setSubmitError('Please select an existing category for every product. Add new categories in Settings first.');
       setSubmitting(false);
       return;
     }
@@ -334,11 +478,11 @@ Category:`,
           const payload = {
             name: product.productName,
             sku: product.sku,
-            category: product.category,
+            category: product.category.trim(),
             stock: parseInt(product.stock, 10) || 0,
             costPrice: parseFloat(product.costPrice) || 0,
             sellingPrice: parseFloat(product.unitPrice) || 0,
-            expiryDate: product.expiryDate ? new Date(product.expiryDate).toISOString() : "2099-12-31T00:00:00.000Z",
+            expiryDate: toIsoTimestamp(product.expiryDate, "2099-12-31T00:00:00.000Z"),
             barcode: product.barcode || '',
             description: product.description || '',
             reorderLevel: parseInt(product.reorderLevel, 10) || 0,
@@ -354,13 +498,9 @@ Category:`,
             body: JSON.stringify(payload),
           });
 
+          const data = await parseApiResponse(res);
           if (!res.ok) {
-            const text = await res.text();
-            let msg = `Failed to create "${product.productName}".`;
-            try { msg = JSON.parse(text)?.message || msg; } catch {
-              // Keep the fallback message when the API returns non-JSON text.
-            }
-            throw new Error(msg);
+            throw new Error(getApiErrorMessage(data, `Failed to create "${product.productName}".`));
           }
 
           return res;
@@ -448,7 +588,7 @@ Category:`,
                     />
                     <button
                       type="button"
-                      onClick={() => handleScanBarcode(product.id)}
+                      onClick={() => setScanningProductId(product.id)}
                       className="db-icon-btn absolute right-1 top-1/2 -translate-y-1/2"
                       title="Scan barcode"
                       aria-label="Scan barcode"
@@ -466,7 +606,7 @@ Category:`,
                     type="button"
                     onClick={() => handleAISuggestCategory(product.id)}
                     disabled={aiSuggesting[product.id]}
-                    className="db-secondary-btn min-h-8 px-3 py-1 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="db-secondary-btn disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {aiSuggesting[product.id] ? (
                       <><Loader2 className="w-3.5 h-3.5 animate-spin" />Analyzing...</>
@@ -479,9 +619,9 @@ Category:`,
                   value={product.category}
                   onChange={(val) => handleChange(product.id, 'category', val)}
                   categories={categories}
-                  onAddCategory={handleAddCategory}
-                  canAddCategory={canAddCategory}
+                  canAddCategory={false}
                 />
+                {categoriesLoading && <p className="mt-2 text-xs text-gray-500">Loading categories...</p>}
 
                 {aiSuggestions[product.id] && (
                   <div className="mt-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-soft)] p-3">
@@ -498,7 +638,7 @@ Category:`,
                           Apply
                         </button>
                         <button type="button" onClick={() => dismissAISuggestion(product.id)}
-                          className="db-secondary-btn min-h-8 px-3 py-1 text-xs">
+                          className="db-secondary-btn">
                           Dismiss
                         </button>
                       </div>
@@ -637,6 +777,13 @@ Category:`,
           </button>
         </div>
       </form>
+
+      {scanningProductId && (
+        <BarcodeScannerModal
+          onClose={() => setScanningProductId(null)}
+          onDetected={handleBarcodeDetected}
+        />
+      )}
     </div>
   );
 }

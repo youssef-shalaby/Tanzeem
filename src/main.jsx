@@ -1,6 +1,6 @@
 import { StrictMode, Suspense, lazy, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { ScrollToTop } from "./components/ScrollToTop.jsx";
 import "./index.css";
@@ -8,12 +8,17 @@ import "./styles/app.css";
 import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { GuidedTour } from "./components/GuidedTour.jsx";
+import { PageLoadingState } from "./components/LoadingStates.jsx";
 
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-const lazyPage = (loader, exportName = "default") =>
-  lazy(() => loader().then((module) => ({ default: module[exportName] ?? module.default })));
+const lazyPage = (loader, exportName = "default") => {
+  const load = () => loader().then((module) => ({ default: module[exportName] ?? module.default }));
+  const Component = lazy(load);
+  Component.preload = load;
+  return Component;
+};
 
 const DashboardPage = lazyPage(() => import("./pages/DashboardPage.jsx"), "DashboardPage");
 const ProductsPage = lazyPage(() => import("./pages/products"));
@@ -23,8 +28,6 @@ const AddItemPage = lazyPage(() => import("./pages/AddItemPage"), "AddItemPage")
 const Addstockpage = lazyPage(() => import("./pages/Addstockpage"), "Addstockpage");
 const Stockoutpage = lazyPage(() => import("./pages/Stockoutpage"), "Stockoutpage");
 const Inventory = lazyPage(() => import("./pages/Inventory"), "Inventory");
-const StockOutLogPage = lazyPage(() => import("./pages/StockOutLogPage"), "StockOutLogPage");
-const StockInlogs = lazyPage(() => import("./pages/StockInlogs"), "StockInlogs");
 const TransactionsPage = lazyPage(() => import("./pages/TransactionPage"), "TransactionsPage");
 const ViewTransactionPage = lazyPage(() => import("./pages/ViewTransactionPage"), "ViewTransactionPage");
 const OrdersPage = lazyPage(() => import("./pages/OrdersPage.jsx"), "OrdersPage");
@@ -52,6 +55,34 @@ const PaymentPage = lazyPage(() => import("./pages/PublicPages.jsx"), "PaymentPa
 const WelcomePage = lazyPage(() => import("./pages/PublicPages.jsx"), "WelcomePage");
 const AuditDetailPage = lazyPage(() => import("./pages/AuditDetailPage"), "AuditDetailPage");
 
+const privatePages = [
+  DashboardPage,
+  ProductsPage,
+  ViewProductPage,
+  EditProductPage,
+  AddItemPage,
+  Addstockpage,
+  Stockoutpage,
+  Inventory,
+  TransactionsPage,
+  ViewTransactionPage,
+  OrdersPage,
+  CreateOrderPage,
+  ViewOrderPage,
+  ConfirmDeliveryPage,
+  SuppliersPage,
+  ViewSupplierPage,
+  EditSupplierPage,
+  AddSupplierPage,
+  AlertsPage,
+  AnalyticsPage,
+  DeliveryIssuesPage,
+  ViewDeliveryIssuePage,
+  SettingsPage,
+  ProfilePage,
+  AuditDetailPage,
+];
+
 const publicPaths = new Set([
   "/",
   "/about",
@@ -68,8 +99,11 @@ const AgentationToolbar = import.meta.env.DEV
   : null;
 
 export function AppRoutes() {
+  const location = useLocation();
+  const isPublic = publicPaths.has(location.pathname);
+
   return (
-    <Suspense fallback={<RouteLoading />}>
+    <Suspense fallback={<RouteLoading isPublic={isPublic} />}>
       <Routes>
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
@@ -98,8 +132,6 @@ export function AppRoutes() {
       {/* Transactions */}
       <Route path="/transactions" element={<ProtectedRoute feature="transactions"><TransactionsPage /></ProtectedRoute>} />
       <Route path="/transactions/:transactionId" element={<ProtectedRoute feature="transactions"><ViewTransactionPage /></ProtectedRoute>} />
-      <Route path="/stock-out-log" element={<ProtectedRoute feature="transactions"><StockOutLogPage /></ProtectedRoute>} />
-      <Route path="/stock-in-logs" element={<ProtectedRoute feature="transactions"><StockInlogs /></ProtectedRoute>} />
 
       {/* Orders */}
       <Route path="/orders" element={<ProtectedRoute feature="orders"><OrdersPage /></ProtectedRoute>} />
@@ -141,13 +173,15 @@ export function AppRoutes() {
   );
 }
 
-function RouteLoading() {
+function RouteLoading({ isPublic = false }) {
+  if (isPublic) return null;
+
   return (
-    <div className="app-route-loading" role="status" aria-label="Loading page">
-      <div className="db-skeleton h-10 w-56" />
-      <div className="db-skeleton mt-6 h-32 w-full" />
-      <div className="db-skeleton mt-4 h-32 w-full" />
-    </div>
+    <PageLoadingState
+      className="app-route-loading"
+      title="Loading"
+      detail="Preparing this view."
+    />
   );
 }
 
@@ -195,6 +229,22 @@ export function AppShell() {
     }
   }, [isPublic, theme]);
 
+  useEffect(() => {
+    if (isPublic) return undefined;
+
+    const preloadPrivatePages = () => {
+      privatePages.forEach((Page) => Page.preload?.());
+    };
+
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(preloadPrivatePages, { timeout: 2000 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timerId = window.setTimeout(preloadPrivatePages, 300);
+    return () => window.clearTimeout(timerId);
+  }, [isPublic]);
+
   if (isPublic) {
     return <AppRoutes />;
   }
@@ -207,7 +257,7 @@ export function AppShell() {
           position: fixed;
           top: 14px;
           left: 14px;
-          z-index: 70;
+          z-index: var(--app-z-mobile-sidebar);
           width: 36px;
           height: 36px;
           border-radius: 10px;
@@ -222,7 +272,7 @@ export function AppShell() {
           display: none;
           position: fixed;
           inset: 0;
-          z-index: 75;
+          z-index: var(--app-z-mobile-backdrop);
           background: rgba(15, 23, 42, .34);
         }
         @media (max-width: 900px) {

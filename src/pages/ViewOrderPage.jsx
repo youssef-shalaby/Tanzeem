@@ -14,7 +14,9 @@ import {
   ExternalLink,
   RefreshCw,
 } from "lucide-react";
-import { useNavigate, useParams, useLocation, Link } from "react-router";
+import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
+import { PageLoadingState } from "../components/LoadingStates";
+import { formatAppDate, toIsoTimestamp } from "../utils/dateTime";
 
 // ============================
 // Design system styles (green accent)
@@ -169,7 +171,7 @@ function CancelModal({ orderId, orderIdDisplay, onClose, onCancelled }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="app-modal-layer fixed inset-0 flex items-center justify-center bg-black/40">
       <div className="app-card w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="app-card-title">Cancel Order</h2>
@@ -259,15 +261,9 @@ function EditModal({ order, items: initialItems, onClose, onSaved }) {
     try {
       const payload = {
         supplierId: Number(form.supplierId),
-        orderDate: form.orderDate
-          ? new Date(form.orderDate).toISOString()
-          : new Date().toISOString(),
-        expectedDeliveryDate: form.expectedDeliveryDate
-          ? new Date(form.expectedDeliveryDate).toISOString()
-          : new Date().toISOString(),
-        recievedDeliveryDate: form.recievedDeliveryDate
-          ? new Date(form.recievedDeliveryDate).toISOString()
-          : new Date().toISOString(),
+        orderDate: toIsoTimestamp(form.orderDate, new Date().toISOString()),
+        expectedDeliveryDate: toIsoTimestamp(form.expectedDeliveryDate, new Date().toISOString()),
+        recievedDeliveryDate: toIsoTimestamp(form.recievedDeliveryDate, new Date().toISOString()),
         notes: form.notes,
         shippingCost: Number(form.shippingCost),
         taxes: Number(form.taxes),
@@ -296,7 +292,7 @@ function EditModal({ order, items: initialItems, onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
+    <div className="app-modal-layer fixed inset-0 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
       <div className="app-card w-full max-w-2xl mx-4">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="app-card-title">Edit Order</h2>
@@ -398,6 +394,21 @@ const ISSUE_TYPE_STYLES = {
   Defective: "bg-yellow-100 text-yellow-700",
 };
 
+function getOrderItemProductName(item) {
+  return (
+    item.productName ||
+    item.name ||
+    item.product?.name ||
+    item.product?.Name ||
+    item.product?.productName ||
+    item.product?.ProductName ||
+    item.ProductName ||
+    item.Product?.Name ||
+    item.Product?.ProductName ||
+    `Product #${item.productId}`
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function ViewOrderPage() {
   const navigate = useNavigate();
@@ -498,7 +509,14 @@ export function ViewOrderPage() {
   };
 
   if (loading)
-    return <div className="view-order-root p-6 text-sm text-gray-500">Loading order details...</div>;
+    return (
+      <PageLoadingState
+        className="view-order-root"
+        title="Loading order details"
+        detail="Collecting the order summary, supplier, and item status."
+        variant="detail"
+      />
+    );
   if (error || !confirmationData)
     return <div className="view-order-root p-6 text-sm text-red-600">Failed to render: {error}</div>;
 
@@ -515,7 +533,7 @@ export function ViewOrderPage() {
     confirmationData.items || confirmationData.itemsConfirmResponseDtos || [];
   const items = rawItems.map((item) => ({
     productId: item.productId,
-    productName: item.productName || `Product #${item.productId}`,
+    productName: getOrderItemProductName(item),
     sku: item.sku || "—",
     quantity: item.quantity || item.orderedQuantity || 0,
     price: item.price || 0,
@@ -530,7 +548,7 @@ export function ViewOrderPage() {
   const total = confirmationData.total ?? subtotal + tax + shipping;
 
   const orderDate = confirmationData.orderDate
-    ? new Date(confirmationData.orderDate).toLocaleDateString(undefined, {
+    ? formatAppDate(confirmationData.orderDate, {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -538,7 +556,7 @@ export function ViewOrderPage() {
     : "—";
 
   const expectedDelivery = confirmationData.expectedDeliveryDate
-    ? new Date(confirmationData.expectedDeliveryDate).toLocaleDateString(undefined, {
+    ? formatAppDate(confirmationData.expectedDeliveryDate, {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -548,10 +566,10 @@ export function ViewOrderPage() {
   const receivedDate =
     confirmationData.recievedDeliveryDate ||
     confirmationData.receivedDeliveryDate
-      ? new Date(
+      ? formatAppDate(
           confirmationData.recievedDeliveryDate ||
             confirmationData.receivedDeliveryDate,
-        ).toLocaleDateString(undefined, {
+          {
           year: "numeric",
           month: "short",
           day: "numeric",
@@ -751,7 +769,7 @@ export function ViewOrderPage() {
             </div>
             {items.length > 0 ? (
               <>
-                <div className="overflow-x-auto">
+                <div className="app-table-frame overflow-x-auto">
                   <table className="db-table">
                     <thead>
                       <tr>
@@ -868,6 +886,7 @@ export function ViewOrderPage() {
                           order: confirmationData,
                           items: items.map((i) => ({
                             productId: i.productId,
+                            productName: i.productName,
                             orderedQuantity: i.quantity,
                             sku: i.sku,
                             price: i.price,

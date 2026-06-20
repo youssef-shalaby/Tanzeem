@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { PackagePlus, PackageCheck, PackageMinus, PackageSearch, Package, ShoppingCart, AlertTriangle, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link } from 'react-router-dom';
 import { StatCard } from '../components/StatCard';
+import { EmptyState } from '../components/EmptyState';
+import { formatAppTime, parseAppDate } from '../utils/dateTime';
 
 const INV_STYLES = `
   .inv-action-card {
@@ -28,14 +30,12 @@ const authHeaders = () => {
 const TYPE_LABEL = { 1: 'Stock In', 2: 'Stock Out' };
 const TYPE_PILL  = { 1: 'pill-green', 2: 'pill-red' };
 
-const STATUS_LABEL = (s) => (s === 4 ? 'Completed' : 'Pending');
-const STATUS_PILL  = (s) => (s === 4 ? 'pill-green' : 'pill-amber');
-
 function formatDate(isoString) {
-  const date = new Date(isoString);
+  const date = parseAppDate(isoString);
+  if (!date) return '-';
   const now = new Date();
   const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const timeStr = formatAppTime(date, { hour: '2-digit', minute: '2-digit' });
   if (diffDays === 0) return `Today, ${timeStr}`;
   if (diffDays === 1) return `Yesterday, ${timeStr}`;
   return `${diffDays} days ago, ${timeStr}`;
@@ -53,6 +53,10 @@ function transactionLabel(tx) {
 }
 
 function shortId(tx) { return `#TRX-${tx.id}`; }
+
+function hasBranchInventoryProduct(product) {
+  return product.stock !== null && product.stock !== undefined;
+}
 
 const ACTION_CARDS = [
   {
@@ -108,8 +112,9 @@ export function Inventory() {
         if (!prodRes.ok) throw new Error(`Products: ${prodRes.status}`);
         const [txData, prodData] = await Promise.all([txRes.json(), prodRes.json()]);
         const sorted = [...(Array.isArray(txData) ? txData : [])].sort((a, b) => b.id - a.id);
+        const branchProducts = (Array.isArray(prodData) ? prodData : []).filter(hasBranchInventoryProduct);
         setTransactions(sorted);
-        setProducts(Array.isArray(prodData) ? prodData : []);
+        setProducts(branchProducts);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -121,7 +126,6 @@ export function Inventory() {
 
   const totalSKUs         = products.length;
   const lowStockCount     = products.filter(p => p.stock <= p.reorderLevel).length;
-  const pendingCount      = transactions.filter(t => t.status !== 4).length;
   const recentTransactions = transactions.slice(0, 5);
 
   const stats = [
@@ -144,10 +148,10 @@ export function Inventory() {
       iconBg: 'rgba(245,158,11,.1)',
     },
     {
-      title: 'Pending Transactions',
-      value: loading ? null : pendingCount,
-      sub: pendingCount > 0 ? 'To be processed' : 'All up to date',
-      subColor: pendingCount > 0 ? '#3b82f6' : '#0f8c5a',
+      title: 'Transactions',
+      value: loading ? null : transactions.length,
+      sub: 'Recorded movements',
+      subColor: 'var(--app-subtle)',
       icon: ShoppingCart,
       iconColor: '#3b82f6',
       iconBg: 'rgba(59,130,246,.1)',
@@ -193,6 +197,7 @@ export function Inventory() {
             <Link
               key={card.to}
               to={card.to}
+              state={{ from: "/inventory" }}
               className="inv-action-card app-action-card inv-fade-in"
               style={{ animationDelay: `${0.1 + i * 0.04}s` }}
             >
@@ -222,22 +227,29 @@ export function Inventory() {
           </Link>
         </div>
 
-        {loading ? (
-          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="inv-skeleton" style={{ height: 40 }} />
-            ))}
-          </div>
-        ) : error ? (
-          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 13, color: 'var(--app-danger-text)' }}>
-            Failed to load: {error}
-          </div>
-        ) : recentTransactions.length === 0 ? (
-          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 13, color: 'var(--app-subtle)' }}>
-            No transactions yet.
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
+        <div className="app-table-frame" style={{ overflowX: 'auto' }}>
+          {loading ? (
+            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="inv-skeleton" style={{ height: 40 }} />
+              ))}
+            </div>
+          ) : error ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 13, color: 'var(--app-danger-text)', display: 'grid', placeItems: 'center' }}>
+              Failed to load: {error}
+            </div>
+          ) : recentTransactions.length === 0 ? (
+            <EmptyState
+              compact
+              icon={PackageCheck}
+              title="Record your first stock movement"
+              message="Recent stock in and stock out activity appears here once products start moving."
+              actions={[
+                { label: 'Add stock', icon: PackageCheck, to: '/add-stock', state: { from: '/inventory' } },
+                { label: 'Stock out', icon: PackageMinus, to: '/stock-out', state: { from: '/inventory' }, variant: 'secondary' },
+              ]}
+            />
+          ) : (
             <table className="inv-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -245,7 +257,6 @@ export function Inventory() {
                   <th>Type</th>
                   <th>Items</th>
                   <th>Date</th>
-                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -259,17 +270,12 @@ export function Inventory() {
                     </td>
                     <td>{transactionLabel(tx)}</td>
                     <td style={{ color: 'var(--app-muted)' }}>{formatDate(tx.createdAt)}</td>
-                    <td>
-                      <span className={`inv-pill ${STATUS_PILL(tx.status)}`}>
-                        {STATUS_LABEL(tx.status)}
-                      </span>
-                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

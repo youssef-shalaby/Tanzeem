@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router";
+import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Package,
@@ -10,6 +10,7 @@ import {
   Bell,
   AlertTriangle,
   TrendingUp,
+  RefreshCw,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const menuItems = [
     tour: "nav-dashboard",
   },
   { icon: Package, label: "Inventory", path: "/inventory", feature: "inventory", tour: "nav-inventory" },
+  { icon: RefreshCw, label: "Transactions", path: "/transactions", feature: "transactions", tour: "nav-transactions" },
   { icon: Box, label: "Products", path: "/products", feature: "products", tour: "nav-products" },
   { icon: Bell, label: "Alerts", path: "/alerts", feature: "alerts", tour: "nav-alerts" },
   { icon: ShoppingCart, label: "Orders", path: "/orders", feature: "orders", tour: "nav-orders" },
@@ -162,7 +164,7 @@ export function Sidebar({ isCollapsed = false, isMobileOpen = false, onNavigate,
             position: fixed !important;
             inset: 0 auto 0 0;
             width: 240px !important;
-            z-index: 80;
+            z-index: var(--app-z-mobile-sidebar);
             transform: translateX(-100%);
             box-shadow: 20px 0 44px rgba(15, 23, 42, .18);
           }

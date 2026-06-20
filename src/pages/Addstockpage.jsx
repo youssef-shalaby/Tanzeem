@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { X, Search, Plus, FileText, Loader2 } from 'lucide-react';
+import { toIsoTimestamp } from '../utils/dateTime';
 
 // ============================
 // Design system styles (green accent)
@@ -113,8 +114,7 @@ function norm(product) {
 }
 
 function parseDate(dateStr) {
-  const [month, day, year] = dateStr.split('/');
-  return new Date(`${year}-${month}-${day}T00:00:00.000Z`).toISOString();
+  return toIsoTimestamp(dateStr);
 }
 
 function createEmptySlot() {
@@ -190,9 +190,26 @@ function ProductSearchInput({ item, onProductSelect }) {
     }, 300);
   };
 
-  const handleSelect = (product) => {
+  const handleSelect = async (product) => {
     const p = norm(product);
-    onProductSelect(item.id, p);
+    setIsLoading(true);
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/Products/Get-Product/${p.id}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) throw new Error('Failed to fetch product details');
+      const details = await res.json();
+      onProductSelect(item.id, norm({ ...product, ...details }));
+    } catch (err) {
+      console.error('Product details API error:', err);
+      onProductSelect(item.id, p);
+    } finally {
+      setIsLoading(false);
+    }
     setQuery(`${p.name} (SKU: ${p.sku})`);
     setShowDropdown(false);
     setResults([]);
@@ -211,7 +228,7 @@ function ProductSearchInput({ item, onProductSelect }) {
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => query && setShowDropdown(true)}
-          className="flex-1 py-2 pr-3 text-sm bg-transparent focus:outline-none"
+          className="min-w-0 flex-1 py-2 pr-3 text-sm bg-transparent focus:outline-none"
           style={{ fontFamily: "'DM Sans', sans-serif" }}
         />
         {isLoading && (
@@ -221,7 +238,7 @@ function ProductSearchInput({ item, onProductSelect }) {
         )}
       </div>
       {showDropdown && (results.length > 0 || isLoading) && (
-        <div className="app-menu absolute z-20 mt-1 w-full max-h-56 overflow-y-auto">
+        <div className="app-menu app-dropdown-layer absolute mt-1 w-full max-h-56 overflow-y-auto">
           {isLoading && results.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-500">Searching...</div>
           ) : results.length === 0 ? (
@@ -253,6 +270,7 @@ function ProductSearchInput({ item, onProductSelect }) {
 
 export function Addstockpage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
     return `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
@@ -316,6 +334,8 @@ export function Addstockpage() {
 
   const grandTotal = stockItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const allSelected = stockItems.every(item => item.productSelected);
+  const returnTo = location.state?.from === '/transactions' ? '/transactions' : '/inventory';
+  const handleExit = () => navigate(returnTo);
 
   const handleConfirm = async () => {
     if (!allSelected) return;
@@ -377,7 +397,7 @@ export function Addstockpage() {
       }
 
       setSubmitSuccess(true);
-      setTimeout(() => navigate('/inventory'), 1500);
+      setTimeout(() => navigate(returnTo), 1500);
     } catch (err) {
       setSubmitError(err.message || 'Something went wrong. Please try again.');
     } finally {
@@ -395,7 +415,7 @@ export function Addstockpage() {
           <h1 className="app-page-title">Add Stock</h1>
           <p className="app-page-subtitle">Search for products to replenish inventory from suppliers or returns.</p>
         </div>
-        <button onClick={() => navigate('/inventory')} className="db-icon-btn" aria-label="Close add stock">
+        <button onClick={handleExit} className="db-icon-btn" aria-label="Close add stock">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -601,7 +621,7 @@ export function Addstockpage() {
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
-          <Link to="/inventory" className="db-secondary-btn">Cancel</Link>
+          <button type="button" onClick={handleExit} className="db-secondary-btn">Cancel</button>
           <button
             onClick={handleConfirm}
             disabled={isSubmitting || !allSelected}

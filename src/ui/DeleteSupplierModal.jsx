@@ -47,12 +47,12 @@ export function DeleteSupplierModal({ isOpen, onClose, onConfirm, supplierName, 
     <div className="db-root">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-200"
+        className="app-modal-backdrop fixed inset-0 bg-black/50 transition-opacity duration-200"
         onClick={handleClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="app-modal-layer fixed inset-0 flex items-center justify-center p-4">
         <div className="app-card db-fade-in w-full max-w-md">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">

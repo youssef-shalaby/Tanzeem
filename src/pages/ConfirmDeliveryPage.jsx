@@ -1,7 +1,9 @@
-import { ArrowLeft, CheckCircle, AlertTriangle, Package } from 'lucide-react';
-import { useNavigate, useParams, useLocation } from 'react-router';
+import { ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { ToneIcon } from '../components/ToneIcon';
+import { PageLoadingState } from '../components/LoadingStates';
+import { toDateInputValue, toIsoTimestamp } from '../utils/dateTime';
 
 // ============================
 // Design system styles (green accent)
@@ -9,10 +11,24 @@ import { ToneIcon } from '../components/ToneIcon';
 const CONFIRM_DELIVERY_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
   .confirm-delivery-root { font-family: 'DM Sans', sans-serif; }
-  .db-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.07); }
-  .db-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .db-card-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
-  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: #1a1a18; letter-spacing: -0.3px; }
+  .confirm-delivery-root .text-gray-900 { color: var(--app-ink) !important; }
+  .confirm-delivery-root .text-gray-600 { color: var(--app-muted) !important; }
+  .confirm-delivery-root .text-gray-500 { color: var(--app-subtle) !important; }
+  .confirm-delivery-root .text-green-600 { color: var(--app-success-text) !important; }
+  .confirm-delivery-root .text-orange-600 { color: var(--app-warning-text) !important; }
+  .confirm-delivery-root .text-orange-800,
+  .confirm-delivery-root .text-orange-900 { color: var(--app-warning-text) !important; }
+  .confirm-delivery-root .border-gray-200 { border-color: var(--app-line) !important; }
+  .db-card {
+    background: var(--app-panel); border-radius: var(--app-radius-card);
+    border: 1px solid var(--app-line); box-shadow: var(--app-shadow-card);
+  }
+  .db-card-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--app-line);
+    background: linear-gradient(180deg, var(--app-panel-raised, var(--app-panel)), var(--app-panel));
+  }
+  .db-card-title { font-size: 14px; font-weight: 600; color: var(--app-ink); }
+  .db-section-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--app-ink); letter-spacing: -0.3px; }
   .db-primary-btn {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 8px 16px; background: #0f8c5a; color: white;
@@ -22,49 +38,273 @@ const CONFIRM_DELIVERY_STYLES = `
   .db-primary-btn:hover { background: #0a6b45; }
   .db-secondary-btn {
     display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 16px; background: transparent; border: 1px solid rgba(0,0,0,.12);
+    padding: 8px 16px; background: var(--app-panel); border: 1px solid var(--app-line-strong);
     border-radius: 100px; font-size: 13px; font-weight: 500;
-    color: #444; cursor: pointer; transition: background .15s;
+    color: var(--app-ink); cursor: pointer; transition: background .15s;
   }
-  .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-secondary-btn:hover { background: var(--app-soft); }
   .db-icon-btn {
-    width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
+    width: 36px; height: 36px; border-radius: 10px; background: var(--app-panel); border: 1px solid var(--app-line-strong);
     display: inline-flex; align-items: center; justify-content: center;
-    color: #666; cursor: pointer; transition: background .15s, color .15s;
+    color: var(--app-muted); cursor: pointer; transition: background .15s, color .15s;
   }
-  .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
+  .db-icon-btn:hover { background: var(--app-soft); color: var(--app-ink); }
   .db-stat-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 100px; }
-  .pill-green { background: #d6f5e8; color: #0a6b45; }
-  .pill-orange { background: #ffedd5; color: #c2410c; }
+  .pill-green { background: var(--app-success-bg); color: var(--app-success-text); }
+  .pill-orange { background: var(--app-warning-bg); color: var(--app-warning-text); }
+  .pill-issue { background: var(--app-gray-bg); color: var(--app-gray-text); border: 1px solid var(--app-line); }
   .db-fade-in { animation: dbFadeIn .4s ease both; }
   @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .db-input {
     width: 100%; padding: 9px 14px;
-    background: #fff; border: 1px solid rgba(0,0,0,.12);
+    background: var(--app-panel); border: 1px solid var(--app-line-strong);
     border-radius: 12px; font-size: 13px; font-family: 'DM Sans', sans-serif;
-    color: #1a1a18; outline: none; transition: border-color .2s;
+    color: var(--app-ink); outline: none; transition: border-color .2s, box-shadow .2s, background .2s;
   }
   .db-input:focus { border-color: #0f8c5a; box-shadow: 0 0 0 2px rgba(15,140,90,.1); }
-  .delivery-info-panel {
-    border: 1px solid rgba(0,0,0,.08); border-radius: 14px;
-    background: #fafbf8; padding: 20px;
+  .delivery-command-panel {
+    display: grid;
+    grid-template-columns: minmax(220px, .72fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: stretch;
+    padding: 16px;
+    border: 1px solid var(--app-line);
+    border-radius: var(--app-radius-card);
+    background: var(--app-panel);
+  }
+  .delivery-date-control,
+  .delivery-status-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .delivery-date-control {
+    padding-right: 16px;
+    border-right: 1px solid var(--app-line);
+  }
+  .delivery-field-label {
+    color: var(--app-muted);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .delivery-status-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--app-ink);
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .delivery-status-copy {
+    max-width: 74ch;
+    color: var(--app-muted);
+    font-size: 13px;
+    line-height: 1.45;
   }
   .delivery-warning-panel {
-    border: 1px solid #fed7aa; border-radius: 14px;
-    background: #fff7ed; padding: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border: 1px solid color-mix(in srgb, var(--app-warning-text) 28%, transparent); border-radius: 14px;
+    background: var(--app-warning-bg); padding: 14px 16px;
+  }
+  .delivery-warning-title {
+    margin: 0 0 3px;
+    color: var(--app-warning-text);
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .delivery-warning-copy {
+    margin: 0;
+    color: var(--app-warning-text);
+    font-size: 13px;
+    line-height: 1.45;
   }
   .delivery-item-panel {
-    border: 1px solid rgba(0,0,0,.08); border-radius: 14px;
-    background: #fafbf8; padding: 20px;
+    border: 1px solid var(--app-line); border-radius: 14px;
+    background: var(--app-panel); padding: 18px;
   }
-  .delivery-item-panel.has-issues { border-color: #fed7aa; background: #fff7ed; }
+  .delivery-item-panel.has-issues {
+    border-color: color-mix(in srgb, var(--app-warning-text) 28%, transparent);
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--app-warning-text) 6%, transparent), transparent 58%),
+      var(--app-panel);
+  }
+  .delivery-item-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .delivery-product-name {
+    color: var(--app-ink);
+    font-size: 15px;
+    font-weight: 750;
+  }
+  .delivery-product-meta,
+  .delivery-ordered-label {
+    color: var(--app-subtle);
+    font-size: 12px;
+  }
+  .delivery-ordered-value {
+    color: var(--app-ink);
+    font-size: 17px;
+    font-weight: 750;
+  }
+  .delivery-issue-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  .delivery-issue-total {
+    color: var(--app-muted);
+    font-size: 13px;
+  }
+  .delivery-issue-total strong {
+    color: var(--app-ink);
+  }
+  .delivery-issue-total.is-warning strong {
+    color: var(--app-warning-text);
+  }
+  .delivery-issue-total.is-danger strong,
+  .delivery-overage {
+    color: var(--app-danger-text);
+  }
+  .delivery-issue-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .delivery-issue-field label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--app-muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+  .delivery-issue-summary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--app-line);
+    border-radius: 12px;
+    background: var(--app-soft);
+  }
+  .delivery-issue-summary-label {
+    color: var(--app-muted);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  :root[data-theme="dark"] .confirm-delivery-root .delivery-warning-panel {
+    border-color: rgba(245, 158, 11, .22);
+    background:
+      linear-gradient(135deg, rgba(245, 158, 11, .06), rgba(245, 158, 11, .025) 58%),
+      var(--app-panel);
+  }
+  :root[data-theme="dark"] .confirm-delivery-root .delivery-item-panel.has-issues {
+    border-color: rgba(245, 158, 11, .2);
+    background:
+      linear-gradient(135deg, rgba(245, 158, 11, .045), rgba(245, 158, 11, .018) 52%),
+      var(--app-panel);
+  }
+  :root[data-theme="dark"] .confirm-delivery-root .pill-issue {
+    background: rgba(238, 242, 239, .07);
+    border-color: var(--app-line);
+    color: var(--app-gray-text);
+  }
+  .delivery-metric-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--app-line);
+  }
   .delivery-metric {
-    border: 1px solid rgba(0,0,0,.08); border-radius: 12px;
-    background: #fff; padding: 12px;
+    min-width: 0;
+  }
+  .delivery-metric span {
+    display: block;
+    color: var(--app-muted);
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  .delivery-metric p {
+    margin: 3px 0 0;
+    font-size: 14px;
+    font-weight: 750;
+  }
+  .delivery-notes {
+    margin-top: 14px;
+  }
+  .delivery-summary-card .p-5 {
+    display: grid;
+    gap: 0;
+  }
+  .delivery-summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 0;
+    color: var(--app-muted);
+    font-size: 13px;
+    border-bottom: 1px solid var(--app-line);
+  }
+  .delivery-summary-row:last-child {
+    border-bottom: 0;
+  }
+  .delivery-summary-row strong {
+    color: var(--app-ink);
+    font-weight: 750;
+  }
+  .delivery-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 0 28px;
+  }
+  @media (max-width: 720px) {
+    .delivery-command-panel {
+      grid-template-columns: 1fr;
+    }
+    .delivery-date-control {
+      padding-right: 0;
+      padding-bottom: 14px;
+      border-right: 0;
+      border-bottom: 1px solid var(--app-line);
+    }
+    .delivery-item-head,
+    .delivery-issue-head {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .delivery-metric-strip {
+      grid-template-columns: 1fr;
+    }
+    .delivery-action-bar {
+      align-items: stretch;
+      flex-direction: column-reverse;
+    }
+    .delivery-action-bar button {
+      justify-content: center;
+      width: 100%;
+    }
   }
 `;
 
 const ISSUE_TYPE_MAP = { damaged: 0, missing: 1, incorrect: 2, defective: 3, other: 4 };
+const ISSUE_FIELDS = Object.keys(ISSUE_TYPE_MAP);
 
 function getToken() {
   try {
@@ -90,6 +330,58 @@ function createItemDetails(itemList = []) {
   return initial;
 }
 
+function getProductId(product) {
+  return product?.id ?? product?.Id ?? product?.productId ?? product?.ProductId ?? product?.productID ?? product?.ProductID;
+}
+
+function getProductName(product) {
+  return product?.name ?? product?.Name ?? product?.productName ?? product?.ProductName;
+}
+
+function getProductSku(product) {
+  return product?.sku ?? product?.SKU ?? product?.Sku;
+}
+
+function createProductLookup(products = []) {
+  return products.reduce((lookup, product) => {
+    const id = getProductId(product);
+    const name = getProductName(product);
+    const sku = getProductSku(product);
+
+    if (name) {
+      if (id !== undefined && id !== null) lookup.byId[String(id)] = name;
+      if (sku) lookup.bySku[String(sku)] = name;
+    }
+
+    return lookup;
+  }, { byId: {}, bySku: {} });
+}
+
+function getProductListFromResponse(data) {
+  if (Array.isArray(data)) return data;
+  return data?.items || data?.products || data?.data || data?.result || [];
+}
+
+function getConfirmItemProductName(item, productLookup) {
+  const productId = item.productId ?? item.ProductId ?? item.productID ?? item.ProductID;
+  const sku = item.sku ?? item.SKU ?? item.Sku;
+
+  return (
+    item.productName ||
+    item.name ||
+    item.product?.name ||
+    item.product?.Name ||
+    item.product?.productName ||
+    item.product?.ProductName ||
+    item.ProductName ||
+    item.Product?.Name ||
+    item.Product?.ProductName ||
+    productLookup.byId[String(productId)] ||
+    productLookup.bySku[String(sku)] ||
+    `Product #${productId ?? item.productId}`
+  );
+}
+
 export function ConfirmDeliveryPage() {
   const navigate = useNavigate();
   const { orderId } = useParams();
@@ -105,10 +397,11 @@ export function ConfirmDeliveryPage() {
   const [loading, setLoading] = useState(() => !hasStateItems);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [productLookup, setProductLookup] = useState(() => ({ byId: {}, bySku: {} }));
 
   const [itemDetails, setItemDetails] = useState(() => createItemDetails(stateItems || []));
   const [generalNotes, setGeneralNotes] = useState('');
-  const [receivedDate, setReceivedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [receivedDate, setReceivedDate] = useState(() => toDateInputValue());
 
   useEffect(() => {
     if (hasStateItems) {
@@ -130,6 +423,24 @@ export function ConfirmDeliveryPage() {
         setLoading(false);
       });
   }, [orderId, hasStateItems]);
+
+  useEffect(() => {
+    const items = order?.itemsConfirmResponseDtos || [];
+    const needsLookup = items.some((item) => getConfirmItemProductName(item, { byId: {}, bySku: {} }).startsWith('Product #'));
+    if (!needsLookup) return;
+
+    fetch('/api/Products/Get-Products-Dropdown-Menu', { headers: authHeaders() })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load product names.');
+        return res.json();
+      })
+      .then((products) => {
+        setProductLookup(createProductLookup(getProductListFromResponse(products)));
+      })
+      .catch((err) => {
+        console.error('Failed to load product names:', err);
+      });
+  }, [order]);
 
   const handleItemChange = (itemId, field, value) => {
     setItemDetails(prev => ({
@@ -161,6 +472,9 @@ export function ConfirmDeliveryPage() {
 
   const hasDiscrepancies = getTotalDiscrepancy() > 0;
   const itemsWithIssues = order?.itemsConfirmResponseDtos?.filter(item => getTotalIssues(item.productId) > 0).length ?? 0;
+  const totalOrderedUnits = order?.itemsConfirmResponseDtos?.reduce((sum, item) => sum + item.orderedQuantity, 0) ?? 0;
+  const totalGoodUnits = order?.itemsConfirmResponseDtos?.reduce((sum, item) => sum + getReceivedGood(item.productId, item.orderedQuantity), 0) ?? 0;
+  const totalIssueUnits = getTotalDiscrepancy();
 
   const handleConfirmDelivery = () => {
     const hasUnexplainedIssues = order.itemsConfirmResponseDtos?.some(item => {
@@ -180,7 +494,7 @@ export function ConfirmDeliveryPage() {
 
     const payload = {
       orderId: resolvedOrderId,
-      recievedDate: new Date(receivedDate).toISOString(),
+      recievedDate: toIsoTimestamp(receivedDate),
       notes: generalNotes,
       itemsConfirmDtos: order.itemsConfirmResponseDtos?.map((item) => {
         const d = itemDetails[item.productId] || {};
@@ -221,11 +535,18 @@ export function ConfirmDeliveryPage() {
       });
   };
 
-  if (loading) return <div className="confirm-delivery-root p-6 text-sm text-gray-500">Loading procurement snapshot details...</div>;
+  if (loading) return (
+    <PageLoadingState
+      className="confirm-delivery-root"
+      title="Loading procurement snapshot"
+      detail="Preparing received quantities and issue checks before confirmation."
+      variant="detail"
+    />
+  );
   if (error || !order) return <div className="confirm-delivery-root p-6 text-sm text-red-600">Failed to render: {error}</div>;
 
   return (
-    <div className="confirm-delivery-root max-w-4xl mx-auto space-y-6">
+    <div className="confirm-delivery-root max-w-5xl mx-auto space-y-5">
       <style>{CONFIRM_DELIVERY_STYLES}</style>
 
       {/* Header */}
@@ -239,56 +560,43 @@ export function ConfirmDeliveryPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="app-page-heading">
-            <h1 className="app-page-title">Confirm Delivery & Update Stock</h1>
-            <p className="app-page-subtitle">Order {order.orderStringId} • Review and confirm received quantities.</p>
+            <h1 className="app-page-title">Confirm Delivery and Update Stock</h1>
+            <p className="app-page-subtitle">Order {order.orderStringId}. Review received quantities before stock changes are applied.</p>
           </div>
         </div>
       </div>
 
-      {/* Delivery date card */}
-      <div className="db-card">
-        <div className="db-card-header">
-          <span className="db-card-title">Actual Delivery Date</span>
-        </div>
-        <div className="p-5">
+      <div className="delivery-command-panel">
+        <div className="delivery-date-control">
+          <label className="delivery-field-label" htmlFor="actual-delivery-date">Actual delivery date</label>
           <input
+            id="actual-delivery-date"
             type="date"
             value={receivedDate}
             onChange={(e) => setReceivedDate(e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
-            className="db-input w-full sm:w-64"
+            max={toDateInputValue()}
+            className="db-input"
           />
         </div>
-      </div>
-
-      {/* Info Banner */}
-      <div className="delivery-info-panel">
-        <div className="flex items-start gap-3">
-          <div className="app-stat-icon flex-shrink-0">
-            <Package className="w-5 h-5" />
+        <div className="delivery-status-panel">
+          <div className="delivery-status-line">
+            {hasDiscrepancies && <ToneIcon icon={AlertTriangle} tone="amber" size="sm" iconClassName="w-4 h-4" />}
+            <span>{hasDiscrepancies ? `${itemsWithIssues} item${itemsWithIssues !== 1 ? 's' : ''} need issue notes` : 'Ready to confirm received stock'}</span>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-1">Verify Received Quantities</h3>
-            <p className="text-sm text-gray-600">
-              Confirm the actual quantities received for each item. If there are any issues, specify the exact quantity for each problem type
-              (damaged, missing, incorrect, defective, or other). Stock will only be updated with confirmed good quantities.
-            </p>
-          </div>
+          <p className="delivery-status-copy">
+            Enter damaged, missing, incorrect, defective, or other quantities only where received stock differs from the order.
+          </p>
         </div>
       </div>
 
-      {/* Discrepancy Alert */}
       {hasDiscrepancies && (
         <div className="delivery-warning-panel">
-          <div className="flex items-start gap-3">
-            <ToneIcon icon={AlertTriangle} tone="amber" />
-            <div>
-              <h3 className="font-semibold text-orange-900 mb-1">Quantity Discrepancy Detected</h3>
-              <p className="text-sm text-orange-800">
-                <strong>{itemsWithIssues} item{itemsWithIssues !== 1 ? 's' : ''}</strong> with a total difference of{' '}
-                <strong>{Math.abs(getTotalDiscrepancy())} units</strong>. Please break down the issues by type and add notes for each affected item.
-              </p>
-            </div>
+          <ToneIcon icon={AlertTriangle} tone="amber" />
+          <div>
+            <h3 className="delivery-warning-title">Quantity discrepancy detected</h3>
+            <p className="delivery-warning-copy">
+              <strong>{totalIssueUnits} units</strong> will be excluded from good stock. Add item notes before confirming.
+            </p>
           </div>
         </div>
       )}
@@ -303,43 +611,41 @@ export function ConfirmDeliveryPage() {
             const totalIssues = getTotalIssues(item.productId);
             const ordered = item.orderedQuantity;
             const receivedGood = getReceivedGood(item.productId, ordered);
+            const productName = getConfirmItemProductName(item, productLookup);
 
             return (
               <div
                 key={item.productId}
                 className={`delivery-item-panel ${totalIssues > 0 ? 'has-issues' : ''}`}
               >
-                <div className="flex items-center justify-between mb-4">
+                <div className="delivery-item-head">
                   <div>
-                    <p className="font-semibold text-gray-900">Product #{item.productId}</p>
-                    <p className="text-xs text-gray-500 font-mono mt-0.5">{item.sku || '—'}</p>
+                    <p className="delivery-product-name">{productName}</p>
+                    <p className="delivery-product-meta font-mono mt-0.5">{item.sku || 'No SKU'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-gray-500">Ordered</p>
-                    <p className="text-lg font-semibold text-gray-900">{ordered} units</p>
+                    <p className="delivery-ordered-label">Ordered</p>
+                    <p className="delivery-ordered-value">{ordered} units</p>
                   </div>
                 </div>
 
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
+                <div>
+                  <div className="delivery-issue-head">
                     <label className="app-form-label">
-                      Issue Breakdown {totalIssues > 0 && <span className="text-red-500">*</span>}
+                      Issue breakdown {totalIssues > 0 && <span className="text-red-500">*</span>}
                     </label>
-                    <div className="text-sm">
-                      <span className="text-gray-600">Total Issues: </span>
-                      <span className={`font-semibold ${totalIssues === 0 ? 'text-gray-900' : totalIssues <= ordered ? 'text-orange-600' : 'text-red-600'}`}>
-                        {totalIssues}
-                      </span>
+                    <div className={`delivery-issue-total ${totalIssues > ordered ? 'is-danger' : totalIssues > 0 ? 'is-warning' : ''}`}>
+                      Total issues: <strong>{totalIssues}</strong>
                       {totalIssues > ordered && (
-                        <span className="ml-2 text-red-600 text-xs">(Cannot exceed ordered quantity!)</span>
+                        <span className="delivery-overage ml-2 text-xs">Cannot exceed ordered quantity</span>
                       )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {['damaged', 'missing', 'incorrect', 'defective', 'other'].map((field) => (
-                      <div key={field}>
-                        <label className="text-xs text-gray-600 mb-1.5 block capitalize">{field}</label>
+                  <div className="delivery-issue-grid">
+                    {ISSUE_FIELDS.map((field) => (
+                      <div className="delivery-issue-field" key={field}>
+                        <label>{field}</label>
                         <input
                           type="number"
                           min="0"
@@ -353,21 +659,21 @@ export function ConfirmDeliveryPage() {
                   </div>
 
                   {totalIssues > 0 && (
-                    <div className="mt-3 delivery-metric">
-                      <p className="text-xs font-medium text-gray-900 mb-2">Issue Summary:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {itemDetails[item.productId]?.damaged > 0 && <span className="db-stat-pill pill-green">Damaged: {itemDetails[item.productId].damaged}</span>}
-                        {itemDetails[item.productId]?.missing > 0 && <span className="db-stat-pill pill-green">Missing: {itemDetails[item.productId].missing}</span>}
-                        {itemDetails[item.productId]?.incorrect > 0 && <span className="db-stat-pill pill-green">Incorrect: {itemDetails[item.productId].incorrect}</span>}
-                        {itemDetails[item.productId]?.defective > 0 && <span className="db-stat-pill pill-green">Defective: {itemDetails[item.productId].defective}</span>}
-                        {itemDetails[item.productId]?.other > 0 && <span className="db-stat-pill pill-green">Other: {itemDetails[item.productId].other}</span>}
-                      </div>
+                    <div className="delivery-issue-summary">
+                      <span className="delivery-issue-summary-label">Issue summary</span>
+                      {ISSUE_FIELDS.map((field) => (
+                        itemDetails[item.productId]?.[field] > 0 && (
+                          <span className="db-stat-pill pill-issue" key={field}>
+                            {field[0].toUpperCase() + field.slice(1)}: {itemDetails[item.productId][field]}
+                          </span>
+                        )
+                      ))}
                     </div>
                   )}
                 </div>
 
                 {totalIssues > 0 && (
-                  <div>
+                  <div className="delivery-notes">
                     <label className="app-form-label">
                       Notes <span className="text-red-500">*</span>
                     </label>
@@ -381,17 +687,17 @@ export function ConfirmDeliveryPage() {
                   </div>
                 )}
 
-                <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                <div className="delivery-metric-strip">
                   <div className="delivery-metric">
-                    <span className="text-gray-600">Good Stock:</span>
+                    <span>Good stock</span>
                     <p className="font-semibold text-green-600">{receivedGood} units</p>
                   </div>
                   <div className="delivery-metric">
-                    <span className="text-gray-600">Issues:</span>
+                    <span>Issues</span>
                     <p className="font-semibold text-orange-600">{totalIssues} units</p>
                   </div>
                   <div className="delivery-metric">
-                    <span className="text-gray-600">Total:</span>
+                    <span>Total</span>
                     <p className="font-semibold text-gray-900">{receivedGood + totalIssues} / {ordered}</p>
                   </div>
                 </div>
@@ -421,38 +727,32 @@ export function ConfirmDeliveryPage() {
       )}
 
       {/* Summary Card */}
-      <div className="db-card">
+      <div className="db-card delivery-summary-card">
         <div className="db-card-header">
           <span className="db-card-title">Summary</span>
         </div>
-        <div className="p-5 space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Total Items</span>
-            <span className="font-medium text-gray-900">{order.itemsConfirmResponseDtos?.length}</span>
+        <div className="p-5">
+          <div className="delivery-summary-row">
+            <span>Total items</span>
+            <strong>{order.itemsConfirmResponseDtos?.length}</strong>
           </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Total Ordered Units</span>
-            <span className="font-medium text-gray-900">
-              {order.itemsConfirmResponseDtos?.reduce((sum, item) => sum + item.orderedQuantity, 0)} units
-            </span>
+          <div className="delivery-summary-row">
+            <span>Total ordered units</span>
+            <strong>{totalOrderedUnits} units</strong>
           </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Total Received (Good) Units</span>
-            <span className="font-medium text-green-600">
-              {order.itemsConfirmResponseDtos?.reduce((sum, item) => sum + getReceivedGood(item.productId, item.orderedQuantity), 0)} units
-            </span>
+          <div className="delivery-summary-row">
+            <span>Total received good units</span>
+            <strong className="text-green-600">{totalGoodUnits} units</strong>
           </div>
           {hasDiscrepancies && (
             <>
-              <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
-                <span className="text-orange-600 font-medium">Total Issues</span>
-                <span className="font-semibold text-orange-600">
-                  {order.itemsConfirmResponseDtos?.reduce((sum, item) => sum + getTotalIssues(item.productId), 0)} units
-                </span>
+              <div className="delivery-summary-row">
+                <span className="text-orange-600 font-medium">Total issues</span>
+                <strong className="text-orange-600">{totalIssueUnits} units</strong>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-orange-600 font-medium">Items with Issues</span>
-                <span className="font-semibold text-orange-600">{itemsWithIssues} of {order.itemsConfirmResponseDtos?.length}</span>
+              <div className="delivery-summary-row">
+                <span className="text-orange-600 font-medium">Items with issues</span>
+                <strong className="text-orange-600">{itemsWithIssues} of {order.itemsConfirmResponseDtos?.length}</strong>
               </div>
             </>
           )}
@@ -460,7 +760,7 @@ export function ConfirmDeliveryPage() {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-3 pb-8">
+      <div className="delivery-action-bar">
         <button
           onClick={() => navigate(`/orders/${orderId}`)}
           className="db-secondary-btn"

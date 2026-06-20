@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { formatRelativeTime } from "../utils/dateTime";
 
 const PROFILE_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -479,7 +480,7 @@ const PROFILE_STYLES = `
   .profile-modal-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 50;
+    z-index: var(--app-z-modal);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -783,20 +784,8 @@ function initialsFor(name) {
 }
 
 function formatAuditTime(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 30) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
+  const formatted = formatRelativeTime(value);
+  return formatted === "-" ? "" : formatted;
 }
 
 function toneForAction(action) {

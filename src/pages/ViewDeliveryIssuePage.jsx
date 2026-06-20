@@ -1,6 +1,8 @@
-import { ArrowLeft, AlertTriangle, Package, Calendar, User, FileText } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router';
+import { ArrowLeft, AlertTriangle, Package, Calendar, User, FileText, Phone } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { PageLoadingState } from '../components/LoadingStates';
+import { formatAppDate, formatAppTime } from '../utils/dateTime';
 
 // ============================
 // Design system styles (green accent)
@@ -95,6 +97,10 @@ const ISSUE_TYPE_STYLES = {
   'Defective': 'bg-yellow-100 text-yellow-700',
 };
 
+function formatTel(phone) {
+  return `tel:${String(phone).replace(/[^\d+]/g, '')}`;
+}
+
 export function ViewDeliveryIssuePage() {
   const navigate = useNavigate();
   const { issueId } = useParams();
@@ -102,7 +108,6 @@ export function ViewDeliveryIssuePage() {
   const [issue, setIssue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [resolutionNotes, setResolutionNotes] = useState('');
 
   useEffect(() => {
     fetch(`/api/DeliveryIssues/${issueId}`, {
@@ -125,14 +130,21 @@ export function ViewDeliveryIssuePage() {
       });
   }, [issueId]);
 
-  if (loading) return <div className="view-issue-root p-6 text-gray-500">Loading issue details...</div>;
+  if (loading) return (
+    <PageLoadingState
+      className="view-issue-root"
+      title="Loading issue details"
+      detail="Retrieving the delivery discrepancy, items, and resolution status."
+      variant="detail"
+    />
+  );
   if (error) return <div className="view-issue-root p-6 text-red-600">Error: {error}</div>;
   if (!issue) return null;
 
-  const formattedDate = new Date(issue.recievedDate).toLocaleDateString('en-US', {
+  const formattedDate = formatAppDate(issue.recievedDate, {
     year: 'numeric', month: 'short', day: 'numeric'
   });
-  const formattedTime = new Date(issue.recievedDate).toLocaleTimeString('en-US', {
+  const formattedTime = formatAppTime(issue.recievedDate, {
     hour: '2-digit', minute: '2-digit'
   });
 
@@ -252,6 +264,13 @@ export function ViewDeliveryIssuePage() {
                         })}
                       </div>
                     </div>
+
+                    {item.notes && (
+                      <div className="mt-3 flex items-start gap-2 text-sm text-gray-700">
+                        <FileText className="w-4 h-4 text-gray-400 mt-0.5" />
+                        <p className="leading-relaxed">{item.notes}</p>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -299,11 +318,23 @@ export function ViewDeliveryIssuePage() {
                 </div>
               )}
             </div>
-            <div className="px-5 pb-5">
-              <button className="w-full db-secondary-btn justify-center">
-                Contact Supplier
-              </button>
-            </div>
+            {(issue.supplierPhone || (!issue.supplierEmail && !issue.supplierPhone)) && (
+              <div className="px-5 pb-5">
+                {issue.supplierPhone ? (
+                <a
+                  href={formatTel(issue.supplierPhone)}
+                  className="w-full db-secondary-btn justify-center"
+                >
+                  <Phone className="w-4 h-4" />
+                  Call Supplier
+                </a>
+                ) : (
+                <p className="text-xs text-gray-500 text-center">
+                  No supplier contact details available.
+                </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Summary */}
@@ -329,27 +360,6 @@ export function ViewDeliveryIssuePage() {
             </div>
           </div>
 
-          {/* Resolution Notes */}
-          <div className="db-card">
-            <div className="db-card-header">
-              <span className="db-card-title">Resolution Notes</span>
-            </div>
-            <div className="p-5 space-y-3">
-              <textarea
-                rows={4}
-                placeholder="Add notes about the resolution..."
-                className="db-input resize-none"
-                value={resolutionNotes}
-                onChange={(e) => setResolutionNotes(e.target.value)}
-              />
-              <button
-                onClick={() => alert('Resolution notes saved!')}
-                className="w-full db-primary-btn justify-center"
-              >
-                Save Notes
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

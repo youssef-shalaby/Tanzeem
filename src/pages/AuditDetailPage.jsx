@@ -2,6 +2,7 @@ import { createElement, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Calendar, Database, FileText, User } from "lucide-react";
 import "../styles/account.css";
+import { formatAppDateTime } from "../utils/dateTime";
 
 function actionPill(action) {
   const normalized = String(action || "").toLowerCase();
@@ -12,9 +13,7 @@ function actionPill(action) {
 }
 
 function formatDate(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
+  return formatAppDateTime(value);
 }
 
 function prettyValue(value) {

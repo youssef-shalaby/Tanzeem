@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Compass, X } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -274,7 +274,7 @@ export function GuidedTour() {
   return (
     <div className="tour-root" aria-live="polite">
       <style>{`
-        .tour-root { font-family:'DM Sans',sans-serif; position:fixed; inset:0; z-index:80; pointer-events:none; }
+        .tour-root { font-family:'DM Sans',sans-serif; position:fixed; inset:0; z-index:var(--app-z-tour); pointer-events:none; }
         .tour-scrim { position:absolute; inset:0; pointer-events:auto; }
         .tour-scrim.is-full { background:rgba(17,22,20,.52); }
         .tour-scrim.has-target { background:transparent; }

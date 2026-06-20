@@ -1,14 +1,47 @@
 import { useEffect, useState } from "react";
 import { StatCard } from "../components/StatCard";
-import { DollarSign, AlertTriangle, XCircle, Clock, Sparkles, ArrowRight } from "lucide-react";
+import { DollarSign, AlertTriangle, XCircle, Clock, Sparkles, ArrowRight, PackagePlus, Activity } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, LineChart, Line, CartesianGrid, Legend,
 } from "recharts";
-import { Link, Navigate } from "react-router";
+import { Link, Navigate } from "react-router-dom";
 import { apiRequest, ForbiddenError } from "../services/api";
+import { EmptyState } from "../components/EmptyState";
 
 const CATEGORY_COLORS = ["#0f8c5a","#2c5f8a","#3b82f6","#f59e0b","#ef4444","#6b7280"];
+
+function hasBranchInventoryProduct(product) {
+  const stock = product?.stock ?? product?.Stock;
+  return stock !== null && stock !== undefined;
+}
+
+function buildCategoryDistribution(categories = [], products = []) {
+  const dashboardCategories = (categories || [])
+    .map((category, index) => ({
+      name: category.categoryName,
+      value: category.count,
+      color: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+    }))
+    .filter((category) => category.name && Number(category.value) > 0);
+
+  if (dashboardCategories.length > 0) return dashboardCategories;
+
+  const counts = new Map();
+  (products || []).filter(hasBranchInventoryProduct).forEach((product) => {
+    const category = product.category || product.Category || "Uncategorized";
+    counts.set(category, (counts.get(category) || 0) + 1);
+  });
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, value], index) => ({
+      name,
+      value,
+      color: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+    }));
+}
 
 const DB_STYLES = `
   .db-insight-card {
@@ -68,17 +101,12 @@ export function DashboardPage() {
       apiRequest("/api/Dashboard/get_category_distribution"),
       apiRequest("/api/Dashboard/get_bar_chart_IN-OUT"),
       apiRequest("/api/Dashboard/get_line_chart_stock_value"),
+      apiRequest("/api/Products/Get-Products"),
     ])
-      .then(([boxesData, topData, catData, barChartData, lineChartData]) => {
+      .then(([boxesData, topData, catData, barChartData, lineChartData, productsData]) => {
         setBoxes(boxesData);
         setTopItems(topData || []);
-        setCategoryData(
-          (catData || []).map((c, i) => ({
-            name: c.categoryName,
-            value: c.count,
-            color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
-          }))
-        );
+        setCategoryData(buildCategoryDistribution(catData, productsData));
         setBarData(barChartData || []);
         setLineData(lineChartData || []);
         setLoading(false);
@@ -104,10 +132,10 @@ export function DashboardPage() {
   };
 
   const stats = boxes ? [
-    { title: "Total Stock Value",  value: `$${Number(boxes.totalStockValue).toLocaleString()}`, change: 18.2,  icon: DollarSign,   iconColor: "#0f8c5a", iconBgColor: "bg-[#0f8c5a]/10" },
-    { title: "Low Stock Count",    value: String(boxes.lowStockCount),                          change: -12.5, icon: AlertTriangle, iconColor: "#f59e0b", iconBgColor: "bg-orange-100" },
-    { title: "Dead Stock Count",   value: String(boxes.deadStockCount),                         change: -15.3, icon: XCircle,       iconColor: "#ef4444", iconBgColor: "bg-red-100" },
-    { title: "Items Near Expiry",  value: String(boxes.nearExpiryCount),                        change: 5.8,   icon: Clock,         iconColor: "#8b5cf6", iconBgColor: "bg-purple-100" },
+    { title: "Total Stock Value",  value: `$${Number(boxes.totalStockValue).toLocaleString()}`, icon: DollarSign,   iconColor: "#0f8c5a", iconBgColor: "bg-[#0f8c5a]/10" },
+    { title: "Low Stock Count",    value: String(boxes.lowStockCount),                          icon: AlertTriangle, iconColor: "#f59e0b", iconBgColor: "bg-orange-100" },
+    { title: "Dead Stock Count",   value: String(boxes.deadStockCount),                         icon: XCircle,       iconColor: "#ef4444", iconBgColor: "bg-red-100" },
+    { title: "Items Near Expiry",  value: String(boxes.nearExpiryCount),                        icon: Clock,         iconColor: "#8b5cf6", iconBgColor: "bg-purple-100" },
   ] : [];
 
   return (
@@ -176,6 +204,14 @@ export function DashboardPage() {
           <div style={{ padding:"20px 20px 16px" }}>
             {loading ? (
               <div className="db-skeleton" style={{ height:240 }} />
+            ) : categoryData.length === 0 ? (
+              <EmptyState
+                compact
+                icon={PackagePlus}
+                title="No categories to chart"
+                message="Category distribution appears after products have category data in the catalog."
+                actions={[{ label: "Add product", icon: PackagePlus, to: "/add-item" }]}
+              />
             ) : (
               <>
                 <ResponsiveContainer width="100%" height={200}>
@@ -209,11 +245,20 @@ export function DashboardPage() {
           <div className="db-card-header">
             <span className="db-card-title">Top moving items</span>
           </div>
-          <div style={{ overflowX:"auto" }}>
+          <div className="app-table-frame" style={{ overflowX:"auto" }}>
             {loading ? (
               <div style={{ padding:20, display:"flex", flexDirection:"column", gap:10 }}>
                 {[...Array(5)].map((_, i) => <div key={i} className="db-skeleton" style={{ height:36 }} />)}
               </div>
+            ) : topItems.length === 0 ? (
+              <EmptyState
+                compact
+                icon={Activity}
+                tone="blue"
+                title="No moving items yet"
+                message="Top moving items appear after stock out transactions create movement history."
+                actions={[{ label: "Record stock out", icon: ArrowRight, to: "/stock-out", variant: "secondary" }]}
+              />
             ) : (
               <table className="db-table" style={{ width:"100%", borderCollapse:"collapse" }}>
                 <thead>
@@ -253,16 +298,25 @@ export function DashboardPage() {
           <div style={{ padding:20 }}>
             {loading ? (
               <div className="db-skeleton" style={{ height:260 }} />
+            ) : barData.length === 0 ? (
+              <EmptyState
+                compact
+                icon={Activity}
+                tone="blue"
+                title="No stock movement yet"
+                message="Monthly stock in and stock out activity appears after transactions are recorded."
+                actions={[{ label: "Add stock", icon: ArrowRight, to: "/add-stock", variant: "secondary" }]}
+              />
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={barData} barCategoryGap="35%">
                   <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} vertical={false} />
                   <XAxis dataKey="monthName" tick={{ fontSize:12, fill:chartText, fontFamily:"'DM Sans',sans-serif" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize:12, fill:chartText, fontFamily:"'DM Sans',sans-serif" }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={chartTooltip} />
+                  <Tooltip contentStyle={chartTooltip} cursor={false} />
                   <Legend wrapperStyle={{ fontSize:12, fontFamily:"'DM Sans',sans-serif", color:"var(--app-muted)" }} />
-                  <Bar dataKey="stockIn"  name="Stock In"  fill="#0f8c5a" radius={[6,6,0,0]} />
-                  <Bar dataKey="stockOut" name="Stock Out" fill="#f59e0b" radius={[6,6,0,0]} />
+                  <Bar dataKey="stockIn" name="Stock In" fill="#0f8c5a" radius={[6,6,0,0]} activeBar={false} />
+                  <Bar dataKey="stockOut" name="Stock Out" fill="#f59e0b" radius={[6,6,0,0]} activeBar={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -276,6 +330,15 @@ export function DashboardPage() {
           <div style={{ padding:20 }}>
             {loading ? (
               <div className="db-skeleton" style={{ height:260 }} />
+            ) : lineData.length === 0 ? (
+              <EmptyState
+                compact
+                icon={DollarSign}
+                tone="green"
+                title="No stock value trend yet"
+                message="Stock value over time appears after products and inventory movements are recorded."
+                actions={[{ label: "Add product", icon: PackagePlus, to: "/add-item" }]}
+              />
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={lineData}>

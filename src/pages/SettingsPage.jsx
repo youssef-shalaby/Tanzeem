@@ -1,4 +1,5 @@
 import { createElement, useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Activity,
@@ -19,9 +20,10 @@ import {
   Shield,
   SlidersHorizontal,
   Sparkles,
+  Tags,
   ChevronDown,
   ChevronUp,
-  UserCog,
+  Trash2,
   Users,
   X,
   Zap,
@@ -29,6 +31,10 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { ROLE_IDS, ROLE_KEYS, getRoleLabel, normalizeRoleKey, roleToId } from "../config/permissions";
 import { ToneIcon } from "../components/ToneIcon";
+import { formatRelativeTime, parseAppDate } from "../utils/dateTime";
+import { createCategory, deleteCategory, getCategories, updateCategory } from "../services/categoriesApi";
+import { deleteAccountFully } from "../services/authApi";
+import { API_BASE_URL, getApiErrorMessage, parseApiResponse } from "../services/api";
 import "../styles/account.css";
 
 const ROLE_OPTIONS = [
@@ -36,6 +42,8 @@ const ROLE_OPTIONS = [
   { id: ROLE_IDS.MANAGER, label: "Manager" },
   { id: ROLE_IDS.STAFF, label: "Staff" },
 ];
+
+const CREATE_EMPLOYEE_ROLE_OPTIONS = ROLE_OPTIONS.filter(({ id }) => id !== ROLE_IDS.ADMIN);
 
 const EMPTY_NEW_EMPLOYEE = {
   firstName: "",
@@ -75,17 +83,67 @@ function authHeaders() {
 
 function getCurrentCompanyId() {
   try {
-    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.currentUser?.companyId || null;
+    const stored = JSON.parse(localStorage.getItem("tanzeem_auth"));
+    const currentUser = stored?.currentUser;
+    const backendResponse = stored?.backendResponse;
+    const backendData = backendResponse?.data || backendResponse?.user || backendResponse;
+
+    return (
+      pickValue(currentUser, ["companyId", "CompanyId", "companyID", "CompanyID", "company_id"]) ||
+      pickValue(backendData, ["companyId", "CompanyId", "companyID", "CompanyID", "company_id"]) ||
+      null
+    );
   } catch {
     return null;
   }
 }
 
+function pickValue(source, keys) {
+  if (!source || typeof source !== "object") return undefined;
+  for (const key of keys) {
+    if (source[key] !== undefined && source[key] !== null) return source[key];
+  }
+  return undefined;
+}
+
+function normalizeStatus(status) {
+  const normalized = String(status ?? "").trim().toLowerCase();
+  if (status === true || normalized === "1" || normalized === "active") return "Active";
+  if (status === false || normalized === "0" || normalized === "inactive") return "Inactive";
+  return status || "Inactive";
+}
+
+function normalizeEmployee(employee) {
+  const id = pickValue(employee, ["id", "Id", "employeeId", "EmployeeId", "userId", "UserId"]);
+  const email = pickValue(employee, ["email", "Email"]) || "";
+  const name = pickValue(employee, ["name", "Name", "fullName", "FullName", "userName", "UserName"]) || email || "Employee";
+  const companyId = pickValue(employee, ["companyId", "CompanyId", "companyID", "CompanyID", "company_id"]);
+  const branchId = pickValue(employee, ["branchId", "BranchId", "branchID", "BranchID", "branch_id"]);
+
+  return {
+    ...employee,
+    id,
+    employeeId: pickValue(employee, ["employeeId", "EmployeeId"]) ?? id,
+    userId: pickValue(employee, ["userId", "UserId"]) ?? id,
+    name,
+    email,
+    phoneNumber: pickValue(employee, ["phoneNumber", "PhoneNumber", "phone", "Phone"]) || "",
+    role: roleToId(pickValue(employee, ["role", "Role", "roleId", "RoleId", "role_id"])),
+    status: normalizeStatus(pickValue(employee, ["status", "Status", "isActive", "IsActive"])),
+    branchId,
+    branchName: pickValue(employee, ["branchName", "BranchName"]),
+    companyId,
+    lastActive: pickValue(employee, ["lastActive", "LastActive", "lastLogin", "LastLogin"]),
+  };
+}
+
 async function apiFetch(url, options = {}) {
-  const response = await fetch(url, { ...options, headers: { ...authHeaders(), ...options.headers } });
-  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
+  const response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers: { ...authHeaders(), ...options.headers } });
+  const data = await parseApiResponse(response);
+  if (!response.ok) {
+    throw new Error(getApiErrorMessage(data, `Request failed: ${response.status}`));
+  }
+  return data;
 }
 
 function randomPasswordChar(characters) {
@@ -124,14 +182,7 @@ function actionPill(action) {
 }
 
 function formatTime(value, now = Date.now()) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  const diff = Math.floor((now - date.getTime()) / 60000);
-  if (diff < 1) return "Just now";
-  if (diff < 60) return `${diff}m ago`;
-  if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
-  return date.toLocaleDateString();
+  return formatRelativeTime(value, now);
 }
 
 function IconBubble({ icon: Icon, tone = "green" }) {
@@ -270,6 +321,25 @@ function SettingsNavigation({ tabs, active, onChange }) {
   );
 }
 
+function normalizeBranchStatus(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "2" || normalized === "inactive") return "Inactive";
+  if (normalized === "3" || normalized === "closed") return "Closed";
+  return "Active";
+}
+
+function normalizeBranch(branch) {
+  return {
+    id: branch.id ?? branch.Id,
+    name: branch.name ?? branch.Name ?? "",
+    location: branch.location ?? branch.Location ?? "",
+    phoneNumber: branch.phoneNumber ?? branch.PhoneNumber ?? "",
+    email: branch.email ?? branch.Email ?? "",
+    status: normalizeBranchStatus(branch.status ?? branch.Status),
+    createdAt: branch.createdAt ?? branch.CreatedAt ?? null,
+  };
+}
+
 function StoreSettings({ readOnly = false }) {
   const [form, setForm] = useState(INITIAL_STORE_INFO);
   const [company, setCompany] = useState({ name: "", field: "", email: "", phone: "" });
@@ -277,24 +347,16 @@ function StoreSettings({ readOnly = false }) {
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
   const [savingWorkspace, setSavingWorkspace] = useState(false);
   const [editingBranchId, setEditingBranchId] = useState(null);
+  const [editingBranchName, setEditingBranchName] = useState("");
+  const [isBranchEditOpen, setIsBranchEditOpen] = useState(false);
+  const [branchDraft, setBranchDraft] = useState(null);
   const [newBranch, setNewBranch] = useState({ name: "", location: "", phoneNumber: "", email: "", status: "Active" });
   const [errors, setErrors] = useState({});
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState("");
 
-  const updateForm = (field, value) => setForm((current) => ({ ...current, [field]: value }));
   const updateCompany = (field, value) => setCompany((current) => ({ ...current, [field]: value }));
   const updateBranch = (field, value) => setNewBranch((current) => ({ ...current, [field]: value }));
-
-  const normalizeBranch = (branch) => ({
-    id: branch.id ?? branch.Id,
-    name: branch.name ?? branch.Name ?? "",
-    location: branch.location ?? branch.Location ?? "",
-    phoneNumber: branch.phoneNumber ?? branch.PhoneNumber ?? "",
-    email: branch.email ?? branch.Email ?? "",
-    status: branch.status ?? branch.Status ?? "Active",
-    createdAt: branch.createdAt ?? branch.CreatedAt ?? null,
-  });
 
   const normalizeCompany = (data) => ({
     name: data?.name ?? data?.Name ?? "",
@@ -305,6 +367,15 @@ function StoreSettings({ readOnly = false }) {
 
   const hydrateWorkspace = useCallback(async () => {
     setWorkspaceLoading(true);
+    setMessage("");
+    try {
+      const companyData = await apiFetch("/api/Company/Get-Company");
+      setCompany(normalizeCompany(companyData));
+    } catch (error) {
+      console.error("Failed to load company settings:", error);
+      setMessage(error.message || "Failed to load company settings.");
+    }
+
     try {
       const branchData = await apiFetch("/api/Branch/Get-Branches");
       const normalizedBranches = Array.isArray(branchData) ? branchData.map(normalizeBranch) : [];
@@ -321,15 +392,11 @@ function StoreSettings({ readOnly = false }) {
           status: primaryBranch.status || INITIAL_STORE_INFO.status,
         });
         setEditingBranchId(primaryBranch.id ?? null);
-      }
-
-      const companyId = getCurrentCompanyId();
-      if (companyId) {
-        const companyData = await apiFetch(`/api/Company/Get-Company/${companyId}`);
-        setCompany(normalizeCompany(companyData));
+        setEditingBranchName(primaryBranch.name || "Primary branch");
       }
     } catch (error) {
-      console.error("Failed to load workspace settings:", error);
+      console.error("Failed to load branch settings:", error);
+      setMessage((current) => current || error.message || "Failed to load branch settings.");
     } finally {
       setWorkspaceLoading(false);
     }
@@ -368,60 +435,72 @@ function StoreSettings({ readOnly = false }) {
     }
   };
 
-  const saveWorkspace = async () => {
+  const saveCompany = async () => {
     setSavingWorkspace(true);
     setMessage("");
     try {
-      const companyId = getCurrentCompanyId();
+      await apiFetch("/api/Company/Update-Company", {
+        method: "PUT",
+        body: JSON.stringify(company),
+      });
 
-      if (companyId) {
-        await apiFetch(`/api/Company/Update-Company/${companyId}`, {
-          method: "PUT",
-          body: JSON.stringify(company),
-        });
-      }
-
-      if (editingBranchId) {
-        await apiFetch(`/api/Branch/Update-Branch/${editingBranchId}`, {
-          method: "PUT",
-          body: JSON.stringify({
-            id: editingBranchId,
-            name: form.storeName,
-            location: form.location,
-            phoneNumber: form.phone,
-            email: form.supportEmail,
-            status: form.status,
-          }),
-        });
-      }
-
-      setMessage("Workspace saved successfully.");
+      setMessage("Company saved successfully.");
       await hydrateWorkspace();
-    } catch {
-      setMessage("Failed to save workspace.");
+    } catch (error) {
+      setMessage(error.message || "Failed to save company.");
     } finally {
       setSavingWorkspace(false);
       window.setTimeout(() => setMessage(""), 3200);
     }
   };
 
-  const editBranch = async (branch) => {
+  const saveBranchEdits = async () => {
+    if (!editingBranchId) return;
+
+    const draft = branchDraft || form;
+    setSavingWorkspace(true);
+    setMessage("");
     try {
-      const detail = await apiFetch(`/api/Branch/Get-Branch/${branch.id}`);
-      const selected = normalizeBranch(detail || branch);
-      setEditingBranchId(selected.id);
-      setForm({
-        storeName: selected.name || "",
-        location: selected.location || "",
-        timezone: INITIAL_STORE_INFO.timezone,
-        supportEmail: selected.email || "",
-        phone: selected.phoneNumber || "",
-        status: selected.status || "Active",
+      const nextStatus = normalizeBranchStatus(draft.status);
+      await apiFetch(`/api/Branch/Update-Branch/${editingBranchId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          id: editingBranchId,
+          name: draft.storeName.trim(),
+          location: draft.location.trim(),
+          phoneNumber: draft.phone.trim(),
+          email: draft.supportEmail.trim(),
+          status: nextStatus,
+        }),
       });
-    } catch {
-      setMessage("Failed to load branch details.");
+
+      setMessage("Branch saved successfully.");
+      setIsBranchEditOpen(false);
+      setBranchDraft(null);
+      await hydrateWorkspace();
+    } catch (error) {
+      setMessage(error.message || "Failed to save branch.");
+    } finally {
+      setSavingWorkspace(false);
       window.setTimeout(() => setMessage(""), 3200);
     }
+  };
+
+  const editBranch = (branch) => {
+    const selected = normalizeBranch(branch);
+    const nextForm = {
+      storeName: selected.name || "",
+      location: selected.location || "",
+      timezone: INITIAL_STORE_INFO.timezone,
+      supportEmail: selected.email || "",
+      phone: selected.phoneNumber || "",
+      status: normalizeBranchStatus(selected.status),
+    };
+    setEditingBranchId(selected.id);
+    setEditingBranchName(selected.name || `Branch ${selected.id}`);
+    setForm(nextForm);
+    setBranchDraft(nextForm);
+    setIsBranchEditOpen(true);
   };
 
   const deleteBranch = async (branch) => {
@@ -438,15 +517,9 @@ function StoreSettings({ readOnly = false }) {
   };
 
   const deleteCompany = async () => {
-    const companyId = getCurrentCompanyId();
-    if (!companyId) {
-      setMessage("Company ID is not available.");
-      window.setTimeout(() => setMessage(""), 3200);
-      return;
-    }
     if (!window.confirm("Delete this company workspace? This cannot be undone.")) return;
     try {
-      await apiFetch(`/api/Company/Delete-Company/${companyId}`, { method: "DELETE" });
+      await apiFetch("/api/Company/Delete-Company", { method: "DELETE" });
       setMessage("Company deleted successfully.");
     } catch {
       setMessage("Failed to delete company.");
@@ -454,15 +527,6 @@ function StoreSettings({ readOnly = false }) {
       window.setTimeout(() => setMessage(""), 3200);
     }
   };
-
-  const infoFields = [
-    { key: "storeName", label: "Branch name", full: true },
-    { key: "location", label: "Location", icon: MapPin },
-    { key: "timezone", label: "Timezone", type: "select", options: ["GST (UTC+4)", "EST (UTC-5)", "PST (UTC-8)", "GMT (UTC+0)", "IST (UTC+5:30)", "EET (UTC+2)"] },
-    { key: "supportEmail", label: "Support email", type: "email", icon: Mail },
-    { key: "phone", label: "Phone number", type: "tel", icon: Phone },
-    { key: "status", label: "Status", type: "select", options: ["Active", "Inactive"] },
-  ];
 
   return (
     <div className="account-stack">
@@ -473,6 +537,12 @@ function StoreSettings({ readOnly = false }) {
       {readOnly && <ViewOnlyBanner>Only administrators can modify branch and workspace information.</ViewOnlyBanner>}
 
       {workspaceLoading && <div className="account-skeleton h-20" />}
+      {message && !message.includes("success") && (
+        <div className="account-inline-message danger">
+          <AlertCircle className="w-4 h-4" />
+          {message}
+        </div>
+      )}
 
       <div className="account-card">
         <div className="account-card-head">
@@ -501,61 +571,11 @@ function StoreSettings({ readOnly = false }) {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      <div className="account-card">
-        <div className="account-card-head">
-          <div>
-            <div className="account-card-title">Primary branch</div>
-            <div className="account-card-copy">Public contact and operating details for this branch.</div>
-          </div>
-          <span className={`account-pill ${statusClass(form.status)}`}>{form.status}</span>
-        </div>
-        <div className="account-card-body">
-          <div className="account-grid-2">
-            {infoFields.map((field) => {
-              const control = field.type === "select" ? (
-                <select
-                  className="account-select"
-                  value={form[field.key]}
-                  disabled={readOnly}
-                  onChange={(event) => updateForm(field.key, event.target.value)}
-                >
-                  {field.options.map((option) => <option key={option}>{option}</option>)}
-                </select>
-              ) : (
-                <input
-                  className="account-input"
-                  type={field.type || "text"}
-                  value={form[field.key]}
-                  readOnly={readOnly}
-                  onChange={(event) => updateForm(field.key, event.target.value)}
-                />
-              );
-
-              return (
-                <div className={`account-field ${field.full ? "md:col-span-2" : ""}`} key={field.key}>
-                  <label>{field.label}</label>
-                  {field.icon ? (
-                    <div className="account-input-icon">
-                      {createElement(field.icon, { className: "w-4 h-4" })}
-                      {control}
-                    </div>
-                  ) : control}
-                </div>
-              );
-            })}
-          </div>
           {!readOnly && (
             <div className="account-actions mt-5">
-              <button className="account-btn secondary" onClick={() => setForm(INITIAL_STORE_INFO)}>
-                <RefreshCcw className="w-4 h-4" />
-                Discard
-              </button>
-              <button className="account-btn primary" onClick={saveWorkspace} disabled={savingWorkspace}>
+              <button className="account-btn primary" onClick={saveCompany} disabled={savingWorkspace}>
                 <Save className="w-4 h-4" />
-                {savingWorkspace ? "Saving..." : "Save changes"}
+                {savingWorkspace ? "Saving..." : "Save company"}
               </button>
             </div>
           )}
@@ -656,6 +676,20 @@ function StoreSettings({ readOnly = false }) {
         </div>
       )}
 
+      {isBranchEditOpen && (
+        <BranchEditModal
+          form={branchDraft || form}
+          title={editingBranchName || "Branch"}
+          saving={savingWorkspace}
+          onChange={(field, value) => setBranchDraft((current) => ({ ...(current || form), [field]: value }))}
+          onClose={() => {
+            setIsBranchEditOpen(false);
+            setBranchDraft(null);
+          }}
+          onSave={saveBranchEdits}
+        />
+      )}
+
       {!readOnly && (
         <div className="account-card">
           <div className="account-card-head">
@@ -677,9 +711,11 @@ function StoreSettings({ readOnly = false }) {
 
 function UserManagement() {
   const [employees, setEmployees] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [assigningEmployee, setAssigningEmployee] = useState(null);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [submitting, setSubmitting] = useState(false);
@@ -692,7 +728,15 @@ function UserManagement() {
   const fetchEmployees = useCallback(async () => {
     try {
       const data = await apiFetch("/api/BusinessCore/Get-All-Employees");
-      setEmployees(Array.isArray(data) ? data : []);
+      const rows = Array.isArray(data) ? data : data?.data || data?.items || [];
+      const normalizedEmployees = rows.map(normalizeEmployee);
+      const companyId = getCurrentCompanyId();
+      const hasCompanyScopedRows = normalizedEmployees.some((employee) => employee.companyId !== undefined && employee.companyId !== null);
+      setEmployees(
+        companyId && hasCompanyScopedRows
+          ? normalizedEmployees.filter((employee) => String(employee.companyId) === String(companyId))
+          : normalizedEmployees
+      );
     } catch (error) {
       console.error("Failed to fetch employees:", error);
       setEmployees([]);
@@ -702,6 +746,21 @@ function UserManagement() {
   }, []);
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
+
+  useEffect(() => {
+    apiFetch("/api/Branch/Get-Branches-Menu")
+      .then((data) => {
+        const rows = Array.isArray(data) ? data : data?.data || data?.items || [];
+        setBranches(rows.map((branch) => ({
+          id: branch.id ?? branch.Id ?? branch.branchId ?? branch.BranchId,
+          name: branch.name ?? branch.Name ?? branch.branchName ?? branch.BranchName ?? "Branch",
+        })).filter((branch) => branch.id));
+      })
+      .catch((error) => {
+        console.error("Failed to load branch menu:", error);
+        setBranches([]);
+      });
+  }, []);
 
   const getEmployeeId = (employee) => {
     const candidates = [employee?.id, employee?.employeeId, employee?.userId, employee?.UserId];
@@ -733,10 +792,15 @@ function UserManagement() {
     const lastName = newEmployee.lastName.trim();
     const email = newEmployee.email.trim();
     const phoneNumber = newEmployee.phoneNumber.trim();
+    const tempPassword = newEmployee.tempPassword.trim();
     const fullName = `${firstName} ${lastName}`.trim();
 
     if (!firstName || !lastName || !email || !phoneNumber) {
       setEmployeeFormError("First name, last name, email, and phone are required.");
+      return;
+    }
+    if (!tempPassword) {
+      setEmployeeFormError("Temporary password is required.");
       return;
     }
     setEmployeeFormError("");
@@ -747,7 +811,7 @@ function UserManagement() {
         email,
         role: Number(newEmployee.role),
         phoneNumber,
-        ...(newEmployee.tempPassword.trim() ? { tempPassword: newEmployee.tempPassword } : {}),
+        tempPassword,
       };
       await apiFetch("/api/BusinessCore/Create-Employee", { method: "POST", body: JSON.stringify(payload) });
       await fetchEmployees();
@@ -756,8 +820,8 @@ function UserManagement() {
         email,
         role: Number(newEmployee.role),
       });
-    } catch {
-      setEmployeeFormError("Failed to create employee. Please check the details and try again.");
+    } catch (error) {
+      setEmployeeFormError(error.message || "Failed to create employee. Please check the details and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -832,19 +896,19 @@ function UserManagement() {
     }
   };
 
-  const assignBranch = async (employee) => {
+  const assignBranch = async (employee, branchId) => {
     const userId = getEmployeeId(employee);
-    const branchId = Number(prompt("Enter new Branch ID:"));
-    if (!userId || Number.isNaN(branchId)) return;
+    const nextBranchId = Number(branchId);
+    if (!userId || Number.isNaN(nextBranchId)) return;
 
     setAssigning(true);
     try {
-      const response = await fetch(`/api/BusinessCore/Assign-User?userId=${userId}&newBranchId=${branchId}`, {
+      await apiFetch(`/api/BusinessCore/Assign-User?userId=${userId}&newBranchId=${nextBranchId}`, {
         method: "PUT",
-        headers: authHeaders(),
+        body: JSON.stringify({}),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       await fetchEmployees();
+      setAssigningEmployee(null);
     } catch (error) {
       alert(`Failed to assign branch: ${error.message}`);
     } finally {
@@ -888,52 +952,56 @@ function UserManagement() {
             </div>
           </div>
         </div>
-        {loading ? (
-          <div className="p-5 space-y-3">{[...Array(5)].map((_, index) => <div className="account-skeleton h-12" key={index} />)}</div>
-        ) : filteredEmployees.length === 0 ? (
-          <EmptyState icon={Users} title="No employees found" copy="Try a different filter or add a new employee." />
-        ) : (
-          <div className="account-table-wrap">
-            <table className="account-table">
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Role</th>
-                  <th>Phone</th>
-                  <th>Branch</th>
-                  <th>Status</th>
-                  <th>Last active</th>
-                  <th className="text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEmployees.map((employee) => (
-                  <tr key={getEmployeeId(employee) || employee.email}>
-                    <td><strong>{employee.name}</strong><div className="text-xs text-gray-500">{employee.email}</div></td>
-                    <td><span className={`account-pill ${roleBadge(employee.role)}`}>{getRoleLabel(employee.role)}</span></td>
-                    <td>{employee.phoneNumber || "-"}</td>
-                    <td>
-                      {employee.branchId ? `Branch ${employee.branchId}` : employee.branchName || "-"}
-                      <button className="account-icon-btn ml-1" onClick={() => assignBranch(employee)} disabled={assigning} title="Assign branch">
-                        <Key className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                    <td><span className={`account-pill ${statusClass(employee.status)}`}>{employee.status || "Inactive"}</span></td>
-                    <td>{employee.lastActive || "-"}</td>
-                    <td className="text-right">
-                      <button className="account-btn secondary" onClick={() => openEmployee(employee)} title="View employee">
-                        View
-                      </button>
-                      <button className="account-icon-btn ml-1 text-red-600" onClick={() => deleteEmployee(employee)} title="Delete employee">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </td>
+        <div className="account-directory-frame">
+          {loading ? (
+            <div className="account-directory-loading">
+              {[...Array(5)].map((_, index) => <div className="account-skeleton h-12" key={index} />)}
+            </div>
+          ) : filteredEmployees.length === 0 ? (
+            <EmptyState icon={Users} title="No employees found" copy="Try a different filter or add a new employee." />
+          ) : (
+            <div className="account-table-wrap">
+              <table className="account-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Role</th>
+                    <th>Phone</th>
+                    <th>Branch</th>
+                    <th>Status</th>
+                    <th>Last active</th>
+                    <th className="text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {filteredEmployees.map((employee) => (
+                    <tr key={getEmployeeId(employee) || employee.email}>
+                      <td><strong>{employee.name}</strong><div className="text-xs text-gray-500">{employee.email}</div></td>
+                      <td><span className={`account-pill ${roleBadge(employee.role)}`}>{getRoleLabel(employee.role)}</span></td>
+                      <td>{employee.phoneNumber || "-"}</td>
+                      <td>
+                        {employee.branchId ? `Branch ${employee.branchId}` : employee.branchName || "-"}
+                        <button className="account-icon-btn ml-1" onClick={() => setAssigningEmployee(employee)} disabled={assigning} title="Assign branch">
+                          <Key className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                      <td><span className={`account-pill ${statusClass(employee.status)}`}>{employee.status || "Inactive"}</span></td>
+                      <td>{employee.lastActive || "-"}</td>
+                      <td className="text-right">
+                        <button className="account-btn secondary" onClick={() => openEmployee(employee)} title="View employee">
+                          View
+                        </button>
+                        <button className="account-icon-btn ml-1 text-red-600" onClick={() => deleteEmployee(employee)} title="Delete employee">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {showAdd && (
@@ -966,7 +1034,93 @@ function UserManagement() {
           saveLabel="Save changes"
         />
       )}
+
+      {assigningEmployee && (
+        <BranchAssignModal
+          employee={assigningEmployee}
+          branches={branches}
+          onClose={() => setAssigningEmployee(null)}
+          onSave={(branchId) => assignBranch(assigningEmployee, branchId)}
+          saving={assigning}
+        />
+      )}
     </div>
+  );
+}
+
+function BranchEditModal({ form, title, saving, onChange, onClose, onSave }) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  return createPortal(
+    <div className="account-modal-backdrop" role="presentation">
+      <div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="branch-edit-title">
+        <div className="account-modal-head">
+          <div>
+            <div className="account-section-title text-[24px]" id="branch-edit-title">Edit branch</div>
+            <div className="account-card-copy">{title}</div>
+          </div>
+          <button className="account-modal-close" onClick={onClose} aria-label="Close branch editor">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="account-card-body">
+          <div className="account-grid-2">
+            <div className="account-field account-field-wide">
+              <label>Branch name</label>
+              <input className="account-input" value={form.storeName} onChange={(event) => onChange("storeName", event.target.value)} autoComplete="organization" />
+            </div>
+            <div className="account-field">
+              <label>Location</label>
+              <div className="account-input-icon">
+                <MapPin className="w-4 h-4" />
+                <input className="account-input" value={form.location} onChange={(event) => onChange("location", event.target.value)} autoComplete="address-level2" />
+              </div>
+            </div>
+            <div className="account-field">
+              <label>Timezone</label>
+              <select className="account-select" value={form.timezone} onChange={(event) => onChange("timezone", event.target.value)}>
+                {["GST (UTC+4)", "EST (UTC-5)", "PST (UTC-8)", "GMT (UTC+0)", "IST (UTC+5:30)", "EET (UTC+2)"].map((option) => <option key={option}>{option}</option>)}
+              </select>
+            </div>
+            <div className="account-field">
+              <label>Support email</label>
+              <div className="account-input-icon">
+                <Mail className="w-4 h-4" />
+                <input className="account-input" type="email" value={form.supportEmail} onChange={(event) => onChange("supportEmail", event.target.value)} autoComplete="email" />
+              </div>
+            </div>
+            <div className="account-field">
+              <label>Phone number</label>
+              <div className="account-input-icon">
+                <Phone className="w-4 h-4" />
+                <input className="account-input" type="tel" value={form.phone} onChange={(event) => onChange("phone", event.target.value)} autoComplete="tel" />
+              </div>
+            </div>
+            <div className="account-field account-field-wide">
+              <label>Status</label>
+              <select className="account-select" value={form.status} onChange={(event) => onChange("status", event.target.value)}>
+                <option>Active</option>
+                <option>Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className="account-modal-footer">
+          <button className="account-btn secondary" onClick={onClose}>Cancel</button>
+          <button className="account-btn primary" onClick={onSave} disabled={saving}>
+            <Save className="w-4 h-4" />
+            {saving ? "Saving..." : "Save branch"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -986,10 +1140,17 @@ function EmployeeModal({
   onCreateAnother,
 }) {
   const setField = (field, value) => setEmployee((current) => ({ ...current, [field]: value }));
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
 
   if (createdEmployee) {
-    return (
-      <div className="account-modal-backdrop">
+    return createPortal(
+      <div className="account-modal-backdrop" role="presentation">
         <div className="account-modal account-modal-narrow">
           <div className="account-modal-head">
             <div>
@@ -1020,16 +1181,17 @@ function EmployeeModal({
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
-  return (
-    <div className="account-modal-backdrop">
-      <div className="account-modal">
+  return createPortal(
+    <div className="account-modal-backdrop" role="presentation">
+      <div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="employee-modal-title">
         <div className="account-modal-head">
           <div>
-            <div className="account-section-title text-[24px]">{title}</div>
+            <div className="account-section-title text-[24px]" id="employee-modal-title">{title}</div>
             <div className="account-card-copy">{subtitle}</div>
           </div>
           <button className="account-modal-close" onClick={onClose} aria-label="Close modal">
@@ -1067,14 +1229,14 @@ function EmployeeModal({
             <div className="account-field account-field-wide">
               <label>Role</label>
               <select className="account-select" value={employee.role || ROLE_IDS.STAFF} onChange={(event) => setField("role", Number(event.target.value))}>
-                {ROLE_OPTIONS.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+                {(createMode ? CREATE_EMPLOYEE_ROLE_OPTIONS : ROLE_OPTIONS).map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
               </select>
             </div>
             {allowPassword && (
               <div className="account-field account-field-wide">
                 <label>Temporary password</label>
                 <div className="account-input-row">
-                  <input className="account-input" value={employee.tempPassword || ""} onChange={(event) => setField("tempPassword", event.target.value)} placeholder="Auto-generate if left empty" />
+                  <input className="account-input" value={employee.tempPassword || ""} onChange={(event) => setField("tempPassword", event.target.value)} placeholder="Enter a temporary password" required />
                   <button className="account-btn secondary" type="button" onClick={() => setField("tempPassword", generateTemporaryPassword())}>
                     <RefreshCcw className="w-4 h-4" />
                     Generate
@@ -1091,6 +1253,296 @@ function EmployeeModal({
             {saving ? "Saving..." : saveLabel}
           </button>
         </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function BranchAssignModal({ employee, branches, onClose, onSave, saving }) {
+  const currentBranchId = employee?.branchId ? String(employee.branchId) : "";
+  const [branchId, setBranchId] = useState(currentBranchId || (branches[0]?.id ? String(branches[0].id) : ""));
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  return createPortal(
+    <div className="account-modal-backdrop" role="presentation">
+      <div className="account-modal account-modal-narrow" role="dialog" aria-modal="true" aria-labelledby="assign-branch-title">
+        <div className="account-modal-head">
+          <div>
+            <div className="account-section-title text-[24px]" id="assign-branch-title">Assign branch</div>
+            <div className="account-card-copy">{employee?.name || employee?.email || "Team member"}</div>
+          </div>
+          <button className="account-modal-close" onClick={onClose} aria-label="Close branch assignment">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="account-card-body">
+          <div className="account-field">
+            <label>Branch</label>
+            <select className="account-select" value={branchId} onChange={(event) => setBranchId(event.target.value)}>
+              {!branches.length && <option value="">No branches available</option>}
+              {branches.map((branch) => (
+                <option key={branch.id} value={branch.id}>{branch.name} - ID {branch.id}</option>
+              ))}
+            </select>
+            <p className="account-field-help">Branch options come from the backend branch menu.</p>
+          </div>
+        </div>
+        <div className="account-modal-footer">
+          <button className="account-btn secondary" onClick={onClose}>Cancel</button>
+          <button className="account-btn primary" onClick={() => onSave(branchId)} disabled={saving || !branchId}>
+            <Save className="w-4 h-4" />
+            {saving ? "Assigning..." : "Assign branch"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function CategorySettings({ readOnly = false }) {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [newName, setNewName] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editingName, setEditingName] = useState("");
+  const [query, setQuery] = useState("");
+
+  const loadCategories = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setCategories(await getCategories());
+    } catch (err) {
+      setError(err?.status === 401 || err?.status === 403
+        ? "You do not have access to load categories."
+        : "Categories could not be loaded right now. Please try again."
+      );
+      setCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
+  const showMessage = (nextMessage) => {
+    setMessage(nextMessage);
+    window.setTimeout(() => setMessage(""), 3000);
+  };
+
+  const validateName = (name, currentId = null) => {
+    const trimmed = name.trim();
+    if (!trimmed) return "Category name is required.";
+    const duplicate = categories.some((category) => (
+      category.id !== currentId && category.name.toLowerCase() === trimmed.toLowerCase()
+    ));
+    if (duplicate) return "That category already exists.";
+    return "";
+  };
+
+  const addCategory = async () => {
+    const validation = validateName(newName);
+    if (validation) {
+      setError(validation);
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      await createCategory(newName);
+      setNewName("");
+      showMessage("Category created.");
+      await loadCategories();
+    } catch (err) {
+      setError(err.message || "Failed to create category.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const startEdit = (category) => {
+    setEditingId(category.id);
+    setEditingName(category.name);
+    setError("");
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingName("");
+    setError("");
+  };
+
+  const saveEdit = async () => {
+    const validation = validateName(editingName, editingId);
+    if (validation) {
+      setError(validation);
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      await updateCategory({ id: editingId, name: editingName });
+      cancelEdit();
+      showMessage("Category updated.");
+      await loadCategories();
+    } catch (err) {
+      setError(err.message || "Failed to update category.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeCategory = async (category) => {
+    if (!window.confirm(`Delete ${category.name}? Products using it may need a new category.`)) return;
+
+    setSaving(true);
+    setError("");
+    try {
+      await deleteCategory(category.id);
+      showMessage("Category deleted.");
+      await loadCategories();
+    } catch (err) {
+      setError(err.message || "Failed to delete category.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredCategories = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return categories;
+    return categories.filter((category) => category.name.toLowerCase().includes(needle));
+  }, [categories, query]);
+
+  return (
+    <div className="account-stack">
+      <SectionHead
+        title="Categories"
+        copy="Manage the product groups available across inventory, product creation, and reports."
+      />
+      {readOnly && <ViewOnlyBanner>Only administrators and managers can modify product categories.</ViewOnlyBanner>}
+
+      <div className="account-grid-3">
+        <div className="account-stat"><div className="account-stat-value">{loading ? "-" : categories.length}</div><div className="account-stat-label">Total categories</div></div>
+        <div className="account-stat"><div className="account-stat-value text-[#0f8c5a]">{loading ? "-" : filteredCategories.length}</div><div className="account-stat-label">Shown now</div></div>
+        <div className="account-stat"><div className="account-stat-value text-[#66706a]">{loading ? "-" : "Ready"}</div><div className="account-stat-label">Library status</div></div>
+      </div>
+
+      {!readOnly && (
+        <div className="account-card">
+          <div className="account-card-head">
+            <div>
+              <div className="account-card-title">Create category</div>
+              <div className="account-card-copy">Add a reusable product category for the workspace.</div>
+            </div>
+          </div>
+          <div className="account-card-body">
+            <div className="account-input-row">
+              <input
+                className="account-input"
+                value={newName}
+                onChange={(event) => setNewName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") addCategory();
+                }}
+                placeholder="Category name"
+              />
+              <button className="account-btn primary" type="button" onClick={addCategory} disabled={saving}>
+                <Plus className="w-4 h-4" />
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="account-card">
+        <div className="account-card-head">
+          <div>
+            <div className="account-card-title">Category library</div>
+            <div className="account-card-copy">{filteredCategories.length} shown from {categories.length} total.</div>
+          </div>
+          <div className="account-input-icon account-search-compact">
+            <Search className="w-4 h-4" />
+            <input className="account-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search categories" />
+          </div>
+        </div>
+        {error && <div className="account-inline-message danger"><AlertCircle className="w-4 h-4" />{error}</div>}
+        {message && <div className="account-inline-message success"><CheckCircle2 className="w-4 h-4" />{message}</div>}
+        {loading ? (
+          <div className="p-5 space-y-3">{[...Array(5)].map((_, index) => <div className="account-skeleton h-12" key={index} />)}</div>
+        ) : filteredCategories.length === 0 ? (
+          <EmptyState icon={Tags} title="No categories found" copy="Create categories here, then select them when creating products." />
+        ) : (
+          <div className="account-table-wrap">
+            <table className="account-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  {!readOnly && <th className="text-right">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCategories.map((category) => (
+                  <tr key={category.id || category.name}>
+                    <td>
+                      {editingId === category.id ? (
+                        <input
+                          className="account-input"
+                          value={editingName}
+                          onChange={(event) => setEditingName(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") saveEdit();
+                            if (event.key === "Escape") cancelEdit();
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        <strong>{category.name}</strong>
+                      )}
+                    </td>
+                    {!readOnly && (
+                      <td className="text-right">
+                        {editingId === category.id ? (
+                          <>
+                            <button className="account-btn secondary mr-2" type="button" onClick={cancelEdit}>Cancel</button>
+                            <button className="account-btn primary" type="button" onClick={saveEdit} disabled={saving}>
+                              <Save className="w-4 h-4" />
+                              Save
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button className="account-btn secondary mr-2" type="button" onClick={() => startEdit(category)}>Edit</button>
+                            <button className="account-icon-btn text-red-600" type="button" onClick={() => removeCategory(category)} disabled={saving} aria-label={`Delete ${category.name}`}>
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1290,6 +1742,66 @@ function AIFeatures({ readOnly = false }) {
   );
 }
 
+function ConfigurationSettings({
+  defaultSection,
+  canManageCategories,
+  canViewAlerts,
+  canEditAlerts,
+  canViewAi,
+  canEditAi,
+  onSectionChange,
+}) {
+  const sections = useMemo(() => {
+    const items = [];
+    if (canManageCategories) items.push({ id: "categories", label: "Categories", desc: "Product groups", icon: Tags });
+    if (canViewAlerts) items.push({ id: "alerts", label: "Alerts", desc: canEditAlerts ? "Thresholds and channels" : "View alert rules", icon: Bell });
+    if (canViewAi) items.push({ id: "ai", label: "AI", desc: canEditAi ? "Automation settings" : "View automation", icon: Sparkles });
+    return items;
+  }, [canEditAi, canEditAlerts, canManageCategories, canViewAi, canViewAlerts]);
+
+  const initialSection = sections.some((section) => section.id === defaultSection)
+    ? defaultSection
+    : sections[0]?.id;
+  const [activeSection, setActiveSection] = useState(initialSection);
+
+  const selectSection = (sectionId) => {
+    setActiveSection(sectionId);
+    onSectionChange(sectionId);
+  };
+
+  if (!sections.length) {
+    return <EmptyState icon={SlidersHorizontal} title="No configurations available" copy="Your role does not include configuration access." />;
+  }
+
+  return (
+    <div className="account-stack">
+      <div className="config-bar">
+        <div>
+          <h2 className="account-section-title">Configurations</h2>
+          <p className="account-section-copy">Categories, alert behavior, and AI automation.</p>
+        </div>
+        <nav className="config-nav" aria-label="Configuration sections">
+          {sections.map((section) => (
+            <button
+              className={`config-nav-button ${activeSection === section.id ? "active" : ""}`}
+              key={section.id}
+              onClick={() => selectSection(section.id)}
+              title={section.desc}
+              type="button"
+            >
+              {createElement(section.icon, { className: "w-4 h-4" })}
+              <span>{section.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+      {activeSection === "categories" && canManageCategories && <CategorySettings />}
+      {activeSection === "alerts" && canViewAlerts && <AlertConfigurations readOnly={!canEditAlerts} />}
+      {activeSection === "ai" && canViewAi && <AIFeatures readOnly={!canEditAi} />}
+    </div>
+  );
+}
+
 function AuditLogs() {
   const navigate = useNavigate();
   const [logs, setLogs] = useState([]);
@@ -1316,7 +1828,7 @@ function AuditLogs() {
         setTotalPages(response?.totalPages > 0 ? response.totalPages : Math.max(1, Math.ceil(nextTotalCount / AUDIT_PAGE_SIZE)));
         setStats({
           total: nextTotalCount,
-          today: rows.filter((row) => row.createdAt && new Date(row.createdAt).toDateString() === today).length,
+          today: rows.filter((row) => parseAppDate(row.createdAt)?.toDateString() === today).length,
           users: new Set(rows.map((row) => row.userId)).size,
         });
         setLoadedAt(Date.now());
@@ -1415,6 +1927,89 @@ function AuditLogs() {
 }
 
 function SecuritySettings() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const [form, setForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const setField = (field) => (event) => {
+    setForm((current) => ({ ...current, [field]: event.target.value }));
+    setMessage("");
+    setError("");
+    setDeleteError("");
+  };
+
+  const updatePassword = async () => {
+    const currentPassword = form.currentPassword.trim();
+    const newPassword = form.newPassword.trim();
+    const confirmPassword = form.confirmPassword.trim();
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError("Enter your current password and confirm the new one.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setError("New password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("The new passwords do not match.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await apiFetch("/api/Auth/change-password", {
+        method: "PUT",
+        body: JSON.stringify({
+          oldPassword: currentPassword,
+          newPassword,
+        }),
+      });
+      setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setMessage("Password updated successfully.");
+    } catch (err) {
+      setError(err.message || "Could not update password.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (deleteConfirmation !== "DELETE") {
+      setDeleteError("Type DELETE to confirm account deletion.");
+      return;
+    }
+    if (!window.confirm("Delete this account permanently? This cannot be undone.")) return;
+
+    setDeletingAccount(true);
+    setDeleteError("");
+    setMessage("");
+    try {
+      await deleteAccountFully();
+      logout();
+      navigate("/signin", { replace: true });
+    } catch (err) {
+      setDeleteError(err.message || "Could not delete this account.");
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   return (
     <div className="account-stack">
       <SectionHead title="Security" copy="Update password details for the current account." />
@@ -1427,16 +2022,84 @@ function SecuritySettings() {
           <IconBubble icon={Key} tone="purple" />
         </div>
         <div className="account-card-body">
+          {message && (
+            <div className="account-form-success">
+              <CheckCircle2 className="w-4 h-4" />
+              {message}
+            </div>
+          )}
+          {error && <div className="account-form-error">{error}</div>}
           <div className="account-grid-2">
-            {["Current password", "New password", "Confirm new password"].map((label, index) => (
-              <div className={`account-field ${index === 0 ? "md:col-span-2" : ""}`} key={label}>
-                <label>{label}</label>
-                <input className="account-input" type="password" placeholder={`Enter ${label.toLowerCase()}`} />
-              </div>
-            ))}
+            <div className="account-field md:col-span-2">
+              <label>Current password</label>
+              <input
+                className="account-input"
+                type="password"
+                placeholder="Enter current password"
+                value={form.currentPassword}
+                onChange={setField("currentPassword")}
+                autoComplete="current-password"
+              />
+            </div>
+            <div className="account-field">
+              <label>New password</label>
+              <input
+                className="account-input"
+                type="password"
+                placeholder="Enter new password"
+                value={form.newPassword}
+                onChange={setField("newPassword")}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="account-field">
+              <label>Confirm new password</label>
+              <input
+                className="account-input"
+                type="password"
+                placeholder="Confirm new password"
+                value={form.confirmPassword}
+                onChange={setField("confirmPassword")}
+                autoComplete="new-password"
+              />
+            </div>
           </div>
           <div className="account-actions mt-5">
-            <button className="account-btn primary"><Save className="w-4 h-4" />Update password</button>
+            <button className="account-btn primary" onClick={updatePassword} disabled={saving}>
+              <Save className="w-4 h-4" />
+              {saving ? "Updating..." : "Update password"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="account-card">
+        <div className="account-card-head">
+          <div>
+            <div className="account-card-title text-red-700">Delete account</div>
+            <div className="account-card-copy">Permanently remove this account and all related access.</div>
+          </div>
+          <IconBubble icon={Trash2} tone="red" />
+        </div>
+        <div className="account-card-body">
+          <div className="account-field">
+            <label>Type DELETE to confirm</label>
+            <input
+              className="account-input"
+              value={deleteConfirmation}
+              onChange={(event) => {
+                setDeleteConfirmation(event.target.value);
+                setDeleteError("");
+              }}
+              placeholder="DELETE"
+            />
+          </div>
+          {deleteError && <div className="account-form-error mt-3">{deleteError}</div>}
+          <div className="account-actions mt-5">
+            <button className="account-btn secondary text-red-600" onClick={deleteAccount} disabled={deletingAccount}>
+              <Trash2 className="w-4 h-4" />
+              {deletingAccount ? "Deleting..." : "Delete account"}
+            </button>
           </div>
         </div>
       </div>
@@ -1456,33 +2119,44 @@ export function SettingsPage() {
   const roleKey = normalizeRoleKey(currentUser?.role || roleId);
   const canManageWorkspace = can("update_company") || can("create_branch");
   const canViewWorkspace = roleKey !== ROLE_KEYS.STAFF && (can("view_company") || can("view_branch"));
+  const canManageCategories = [ROLE_KEYS.ADMIN, ROLE_KEYS.MANAGER].includes(roleKey);
   const canManageUsers = can("manage_users");
   const canViewAlerts = can("view_alert_config");
   const canEditAlerts = can("update_alert_config");
   const canViewAi = can("view_ai_config");
   const canEditAi = can("update_ai_config");
+  const canViewConfigurations = canManageCategories || canViewAlerts || canViewAi;
   const canViewAudit = can("view_audit_logs");
   const roleLabel = getRoleLabel(roleId);
-  const requestedTab = new URLSearchParams(location.search).get("tab") || location.state?.tab;
+  const searchParams = new URLSearchParams(location.search);
+  const requestedTab = searchParams.get("tab") || location.state?.tab;
+  const requestedSection = searchParams.get("section") || location.state?.section;
   const [activeTab, setActiveTab] = useState(canViewWorkspace ? "store" : "security");
 
   const tabs = useMemo(() => {
     const items = [];
     if (canViewWorkspace) items.push({ id: "store", label: "Workspace", desc: canManageWorkspace ? "Branches and contacts" : "Branch details", icon: Building2 });
+    if (canViewConfigurations) items.push({ id: "configurations", label: "Configurations", desc: "Categories, alerts, AI", icon: SlidersHorizontal });
     if (canManageUsers) items.push({ id: "users", label: "People", desc: "Team and access", icon: Users });
-    if (canViewAlerts) items.push({ id: "alerts", label: "Alerts", desc: canEditAlerts ? "Thresholds and channels" : "View alert rules", icon: Bell });
-    if (canViewAi) items.push({ id: "ai", label: "AI", desc: canEditAi ? "Automation settings" : "View automation", icon: Sparkles });
     if (canViewAudit) items.push({ id: "audit", label: "Audit trail", desc: "System activity", icon: Activity });
     items.push({ id: "security", label: "Security", desc: "Password controls", icon: Shield });
     return items;
-  }, [canEditAi, canEditAlerts, canManageUsers, canManageWorkspace, canViewAi, canViewAlerts, canViewAudit, canViewWorkspace]);
+  }, [canManageUsers, canManageWorkspace, canViewAudit, canViewConfigurations, canViewWorkspace]);
 
-  const selectedTab = requestedTab || activeTab;
+  const legacyConfigurationTabs = new Set(["categories", "alerts", "ai"]);
+  const selectedTab = legacyConfigurationTabs.has(requestedTab) ? "configurations" : requestedTab || activeTab;
   const effectiveActiveTab = tabs.some((tab) => tab.id === selectedTab) ? selectedTab : tabs[0]?.id || "security";
+  const configurationSection = legacyConfigurationTabs.has(requestedTab)
+    ? requestedTab
+    : requestedSection || "categories";
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     navigate({ pathname: "/settings", search: `?tab=${tabId}` }, { replace: true });
+  };
+
+  const handleConfigurationSectionChange = (sectionId) => {
+    navigate({ pathname: "/settings", search: `?tab=configurations&section=${sectionId}` }, { replace: true });
   };
 
   return (
@@ -1493,9 +2167,19 @@ export function SettingsPage() {
           <SettingsNavigation tabs={tabs} active={effectiveActiveTab} onChange={handleTabChange} />
           <main>
             {effectiveActiveTab === "store" && (canManageWorkspace ? <StoreSettings /> : <ManagerStoreReadOnly />)}
+            {effectiveActiveTab === "configurations" && canViewConfigurations && (
+              <ConfigurationSettings
+                key={configurationSection}
+                defaultSection={configurationSection}
+                canManageCategories={canManageCategories}
+                canViewAlerts={canViewAlerts}
+                canEditAlerts={canEditAlerts}
+                canViewAi={canViewAi}
+                canEditAi={canEditAi}
+                onSectionChange={handleConfigurationSectionChange}
+              />
+            )}
             {effectiveActiveTab === "users" && canManageUsers && <UserManagement />}
-            {effectiveActiveTab === "alerts" && canViewAlerts && <AlertConfigurations readOnly={!canEditAlerts} />}
-            {effectiveActiveTab === "ai" && canViewAi && <AIFeatures readOnly={!canEditAi} />}
             {effectiveActiveTab === "audit" && canViewAudit && <AuditLogs />}
             {effectiveActiveTab === "security" && <SecuritySettings />}
           </main>

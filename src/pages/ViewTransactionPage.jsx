@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Package, User, DollarSign, Hash, FileText, ArrowUpCircle, ArrowDownCircle, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
-import { useNavigate, useParams, Link } from 'react-router';
+import { ArrowLeft, Package, User, DollarSign, Hash, FileText, ArrowUpCircle, ArrowDownCircle, RefreshCw, AlertCircle } from 'lucide-react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ToneIcon } from '../components/ToneIcon';
+import { PageLoadingState } from '../components/LoadingStates';
+import { formatAppDate, formatAppTime } from '../utils/dateTime';
 
 // ============================
 // Design system styles (green accent)
@@ -75,8 +77,8 @@ function normalizeTransaction(t) {
   return {
     id: t.id,
     transactionId: t.transactionId,
-    date: new Date(t.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-    time: new Date(t.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+    date: formatAppDate(t.createdAt, { month: "short", day: "numeric", year: "numeric" }),
+    time: formatAppTime(t.createdAt, { hour: "2-digit", minute: "2-digit" }),
     type: TYPE_MAP[t.type] ?? "Unknown",
     productName: firstItem?.product?.name ?? "—",
     sku: firstItem?.product?.sku ?? "—",
@@ -126,9 +128,13 @@ export function ViewTransactionPage() {
 
   if (isLoading) {
     return (
-      <div className="view-transaction-root flex items-center justify-center h-96">
+      <div className="view-transaction-root">
         <style>{VIEW_TRANSACTION_STYLES}</style>
-        <Loader2 className="w-8 h-8 text-[#0f8c5a] animate-spin" />
+        <PageLoadingState
+          title="Loading transaction"
+          detail="Retrieving movement type, product, user, and quantity details."
+          variant="detail"
+        />
       </div>
     );
   }

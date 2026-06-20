@@ -16,27 +16,48 @@ export function CSVReviewModal({ isOpen, onClose, data, type, onConfirmImport })
   ];
 
   const supplierFields = [
-    { key: 'name', label: 'Name' },
-    { key: 'ontimepercentage', label: 'On-Time %', altKeys: ['onTimePercentage', 'on-time percentage'] },
-    { key: 'leadtime', label: 'Lead Time', altKeys: ['leadTime', 'lead time'] },
-    { key: 'qualityscore', label: 'Quality Score', altKeys: ['qualityScore', 'quality score'] },
-    { key: 'badge', label: 'Badge' },
-    { key: 'status', label: 'Status' }
+    { key: 'supplierName', label: 'Supplier Name', altKeys: ['name'] },
+    { key: 'contactPersonName', label: 'Contact Person', altKeys: ['contact person name', 'contactPerson'] },
+    { key: 'email', label: 'Email' },
+    { key: 'phoneNumberOne', label: 'Primary Phone', altKeys: ['phone number one', 'primaryPhone'] },
+    { key: 'phoneNumberTwo', label: 'Secondary Phone', altKeys: ['phone number two', 'secondaryPhone'] },
+    { key: 'street', label: 'Street' },
+    { key: 'city', label: 'City' },
+    { key: 'country', label: 'Country' },
+    { key: 'websiteURL', label: 'Website', altKeys: ['website', 'websiteUrl'] },
+    { key: 'tax_Id', label: 'Tax ID', altKeys: ['taxId', 'tax id'] },
+    { key: 'notes', label: 'Notes' },
+    { key: 'supplierStatus', label: 'Status', altKeys: ['status'] }
   ];
 
   const fields = type === 'products' ? productFields : supplierFields;
 
+  const isBlank = (value) => value === null || value === undefined || value === '';
+
   const getFieldValue = (item, field) => {
     let value = item[field.key];
-    if (!value && field.altKeys) {
+    if (isBlank(value) && field.altKeys) {
       for (const altKey of field.altKeys) {
-        if (item[altKey]) {
+        if (!isBlank(item[altKey])) {
           value = item[altKey];
           break;
         }
       }
     }
     return value;
+  };
+
+  const displayFieldValue = (item, field) => {
+    const value = getFieldValue(item, field);
+    if (field.key === 'price' && !isBlank(value)) {
+      return `$${parseFloat(value).toFixed(2)}`;
+    }
+    if (type === 'suppliers' && field.key === 'supplierStatus' && !isBlank(value)) {
+      const normalized = String(value).toLowerCase();
+      if (normalized === '1' || normalized === 'active') return 'Active';
+      if (normalized === '0' || normalized === 'inactive') return 'Inactive';
+    }
+    return isBlank(value) ? '-' : value;
   };
 
   const toggleSelectAll = () => {
@@ -83,7 +104,7 @@ export function CSVReviewModal({ isOpen, onClose, data, type, onConfirmImport })
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="app-modal-layer fixed inset-0 flex items-center justify-center bg-black/50">
       <div className="app-card w-full max-w-6xl max-h-[90vh] flex flex-col">
 
         {/* Header */}
@@ -152,9 +173,7 @@ export function CSVReviewModal({ isOpen, onClose, data, type, onConfirmImport })
                     </td>
                     {fields.map(field => (
                       <td key={field.key} className="px-4 py-3 text-sm text-gray-900">
-                        {field.key === 'price' && getFieldValue(item, field)
-                          ? `$${parseFloat(getFieldValue(item, field)).toFixed(2)}`
-                          : getFieldValue(item, field) || '-'}
+                        {displayFieldValue(item, field)}
                       </td>
                     ))}
                     <td className="px-4 py-3 text-sm">

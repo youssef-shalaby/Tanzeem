@@ -11,25 +11,23 @@ import {
   Edit,
   Trash2,
   Package,
+  PackagePlus,
   Tags,
+  RotateCcw,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { CSVUploadModal } from "../ui/CSVUploadModal";
 import { CSVReviewModal } from "../ui/CSVReviewModal";
 import { DeleteProductModal } from "../ui/DeleteProductModal";
+import { EmptyState } from "../components/EmptyState";
+import { formatAppDate } from "../utils/dateTime";
 import { useAuth } from "../contexts/AuthContext";
 import { StatCard } from "../components/StatCard";
+import { apiRequest } from "../services/api";
+import { lookupCategories } from "../services/categoriesApi";
 
 const ITEMS_PER_PAGE = 8;
-
-function getToken() {
-  try {
-    return JSON.parse(localStorage.getItem("tanzeem_auth"))?.token || null;
-  } catch {
-    return null;
-  }
-}
 
 function getProductStatusPill(status) {
   const normalized = String(status || "").toLowerCase();
@@ -38,14 +36,22 @@ function getProductStatusPill(status) {
   return "pill-gray";
 }
 
+function hasProductId(product) {
+  return product.id !== null && product.id !== undefined && product.id !== "";
+}
+
+function hasBranchInventoryProduct(product) {
+  return product.stock !== null && product.stock !== undefined;
+}
+
 function ProductActionMenu({ position, onClose, onView, onEdit, onDelete, canEdit, canDelete }) {
   if (!position) return null;
 
   return createPortal(
     <>
-      <button className="fixed inset-0 z-40 cursor-default" onClick={onClose} aria-label="Close product actions" />
+      <button className="app-floating-backdrop fixed inset-0 cursor-default" onClick={onClose} aria-label="Close product actions" />
       <div
-        className="app-menu fixed z-50 w-48 py-1"
+        className="app-menu app-floating-menu fixed w-48 py-1"
         style={{ top: position.top, left: position.left }}
       >
         <button onClick={onView} className="app-menu-item">
@@ -92,7 +98,20 @@ export function ProductsPage() {
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [importedData, setImportedData] = useState([]);
+  const [importVersion, setImportVersion] = useState(0);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, product: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    lookupCategories()
+      .then((items) => {
+        if (!cancelled) setCategories(items);
+      })
+      .catch((error) => console.error("Failed to load categories:", error));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ================================
   // FETCH PRODUCTS FROM DATABASE
@@ -101,7 +120,7 @@ export function ProductsPage() {
     let url = "/api/Products/Get-Products";
     const params = new URLSearchParams();
 
-    if (searchQuery) params.append("searchTerm", searchQuery);
+    if (searchQuery) params.append("searchQuery", searchQuery);
     if (filterId !== "all") params.append("filterId", filterId);
     if (sortId !== "") params.append("sortId", sortId);
 
@@ -114,44 +133,41 @@ export function ProductsPage() {
       setLoading(true);
       setError(null);
 
-      fetch(url, {
-        headers: {
-          "Content-Type": "application/json",
-          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-        },
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error(`Server returned status: ${res.status}`);
-          return res.json();
-        })
+      apiRequest(url)
         .then((data) => {
           if (cancelled) return;
           const rawArray = Array.isArray(data) ? data : (data?.data || []);
+          const branchProducts = rawArray.filter(hasBranchInventoryProduct);
 
-          const normalizedProducts = rawArray.map((product, index) => ({
-            id: product.id || index + 1,
-            name: product.name || "Unnamed Product",
-            sku: product.sku || "—",
-            category: product.category || "Uncategorized",
-            stockLevel: product.stock !== null && product.stock !== undefined ? product.stock : 0,
-            price: product.sellingPrice ?? product.price ?? 0,
-            costPrice: product.costPrice ?? 0,
-            expiryDate: product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : "N/A",
-            status: product.status || "Active",
-            barcode: product.barcode || "—",
-            description: product.description || "",
-            reorderLevel: product.reorderLevel ?? 0,
-          }));
+          const normalizedProducts = branchProducts.map((product, index) => {
+            const realId = product.id ?? product.productId ?? product.productID ?? null;
+
+            return {
+              id: realId,
+              rowKey: realId ?? product.sku ?? `${product.name || "product"}-${index}`,
+              name: product.name || "Unnamed Product",
+              sku: product.sku || "—",
+              category: product.category || "Uncategorized",
+              stockLevel: product.stock !== null && product.stock !== undefined ? product.stock : 0,
+              price: product.sellingPrice ?? product.price ?? 0,
+              costPrice: product.costPrice ?? 0,
+              expiryDate: product.expiryDate ? formatAppDate(product.expiryDate) : "N/A",
+              status: product.status || "Active",
+              barcode: product.barcode || "—",
+              description: product.description || "",
+              reorderLevel: product.reorderLevel ?? 0,
+            };
+          });
 
           setProductsList(normalizedProducts);
 
           if (filterId === "all") {
             const unique = [...new Map(
-              rawArray
+              branchProducts
                 .filter((p) => p.categoryId && p.category)
                 .map((p) => [p.categoryId, { id: p.categoryId, name: p.category }])
             ).values()];
-            setCategories(unique);
+            setCategories((current) => current.length ? current : unique);
           }
 
           setLoading(false);
@@ -159,7 +175,8 @@ export function ProductsPage() {
         .catch((err) => {
           if (cancelled) return;
           console.error("Fetch operation error:", err);
-          setError(err.message || "Failed to process product data.");
+          const details = err.details?.length ? ` ${err.details.slice(0, 3).join(" ")}` : "";
+          setError(`${err.message || "Failed to process product data."}${details}`);
           setLoading(false);
         });
     }, 0);
@@ -168,7 +185,7 @@ export function ProductsPage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [searchQuery, filterId, sortId]);
+  }, [searchQuery, filterId, sortId, importVersion]);
 
   // ================================
   // CSV IMPORT
@@ -218,6 +235,7 @@ export function ProductsPage() {
   // Stats cards data
   const totalCategories = [...new Set(productsList.map((p) => p.category))].length;
   const activeProducts = productsList.filter((product) => product.status === "Active").length;
+  const hasProductFilters = searchQuery.trim() !== "" || filterId !== "all" || sortId !== "";
 
   const toggleActionMenu = (productId, event) => {
     if (openDropdown === productId) {
@@ -385,7 +403,7 @@ export function ProductsPage() {
         <div className="db-card-header">
           <span className="db-card-title">Product list</span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="app-table-frame overflow-x-auto">
           {loading ? (
             <div className="p-10 text-center">
               <div className="db-skeleton h-10 mb-3" />
@@ -394,6 +412,44 @@ export function ProductsPage() {
             </div>
           ) : error ? (
             <div className="app-empty">Product data could not be loaded.</div>
+          ) : productsList.length === 0 ? (
+            <EmptyState
+              icon={hasProductFilters ? Search : PackagePlus}
+              tone={hasProductFilters ? "blue" : "green"}
+              title={hasProductFilters ? "No products match these filters" : "Add your first product"}
+              message={
+                hasProductFilters
+                  ? "Products that match the current search, category, and sort settings will appear here."
+                  : "Product records hold the SKUs, stock levels, prices, expiry dates, and reorder points your team will work from."
+              }
+              actions={
+                hasProductFilters
+                  ? [
+                      {
+                        label: "Clear filters",
+                        icon: RotateCcw,
+                        variant: "secondary",
+                        onClick: () => {
+                          setSearchQuery("");
+                          setFilterId("all");
+                          setSortId("");
+                          setCurrentPage(1);
+                        },
+                      },
+                    ]
+                  : canCreateProducts
+                    ? [
+                        { label: "Add product", icon: Plus, to: "/add-item" },
+                        {
+                          label: "Import CSV",
+                          icon: Upload,
+                          variant: "secondary",
+                          onClick: () => setCsvModalOpen(true),
+                        },
+                      ]
+                    : []
+              }
+            />
           ) : (
             <table className="db-table w-full">
               <thead>
@@ -411,7 +467,7 @@ export function ProductsPage() {
               </thead>
               <tbody>
                 {paginatedProducts.map((product) => (
-                  <tr key={product.id}>
+                  <tr key={product.rowKey}>
                     <td className="font-medium">{product.name}</td>
                     <td>{product.sku}</td>
                     <td>
@@ -431,13 +487,13 @@ export function ProductsPage() {
                     <td>
                       <div className="relative">
                         <button
-                          onClick={(event) => toggleActionMenu(product.id, event)}
+                          onClick={(event) => toggleActionMenu(product.rowKey, event)}
                           className="db-icon-btn"
                           aria-label={`Open actions for ${product.name}`}
                         >
                           <MoreVertical className="w-5 h-5" />
                         </button>
-                        {openDropdown === product.id && (
+                        {openDropdown === product.rowKey && (
                           <ProductActionMenu
                             position={menuPosition}
                             canEdit={canEditProducts}
@@ -449,17 +505,29 @@ export function ProductsPage() {
                             onView={() => {
                               setOpenDropdown(null);
                               setMenuPosition(null);
-                              navigate(`/products/view-product/${product.id}`, { state: { product } });
+                              if (hasProductId(product)) {
+                                navigate(`/products/view-product/${product.id}`, { state: { product } });
+                              } else {
+                                setError(`Cannot open "${product.name}" because the server did not return a product ID.`);
+                              }
                             }}
                             onEdit={() => {
                               setOpenDropdown(null);
                               setMenuPosition(null);
-                              navigate(`/products/edit-product/${product.id}`);
+                              if (hasProductId(product)) {
+                                navigate(`/products/edit-product/${product.id}`);
+                              } else {
+                                setError(`Cannot edit "${product.name}" because the server did not return a product ID.`);
+                              }
                             }}
                             onDelete={() => {
                               setOpenDropdown(null);
                               setMenuPosition(null);
-                              setDeleteModal({ isOpen: true, product });
+                              if (hasProductId(product)) {
+                                setDeleteModal({ isOpen: true, product });
+                              } else {
+                                setError(`Cannot delete "${product.name}" because the server did not return a product ID.`);
+                              }
                             }}
                           />
                         )}
@@ -467,13 +535,6 @@ export function ProductsPage() {
                     </td>
                   </tr>
                 ))}
-                {paginatedProducts.length === 0 && (
-                  <tr>
-                    <td colSpan="9" className="text-center py-12 text-gray-500">
-                      No products found.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           )}
@@ -534,6 +595,11 @@ export function ProductsPage() {
         isOpen={csvModalOpen}
         onClose={() => setCsvModalOpen(false)}
         type="products"
+        importEndpoint="/api/Products/Import-CSV"
+        onImportSuccess={() => {
+          setCurrentPage(1);
+          setImportVersion((version) => version + 1);
+        }}
         onUploadComplete={handleCSVUpload}
       />
       <CSVReviewModal

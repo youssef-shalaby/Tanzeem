@@ -11,12 +11,15 @@ import {
   Users,
   CheckCircle,
   XCircle,
+  RotateCcw,
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router-dom';
 import { DeleteSupplierModal } from '../ui/DeleteSupplierModal';
 import { CSVUploadModal } from '../ui/CSVUploadModal';
 import { CSVReviewModal } from '../ui/CSVReviewModal';
 import { StatCard } from '../components/StatCard';
+import { EmptyState } from '../components/EmptyState';
+import { PageLoadingState } from '../components/LoadingStates';
 
 // ============================
 // Helper functions
@@ -54,13 +57,26 @@ function getBadgeStyle(badge) {
   }
 }
 
+function getOnTimePercentage(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const percentage = Number(value);
+  return Number.isFinite(percentage) ? Math.round(percentage) : null;
+}
+
+function getOnTimeFillClass(percentage) {
+  if (percentage === null) return 'bg-gray-300';
+  if (percentage >= 90) return 'bg-green-500';
+  if (percentage >= 75) return 'bg-yellow-500';
+  return 'bg-red-500';
+}
+
 function mapSupplier(supplier) {
   return {
     id: supplier.id,
     name: supplier.supplierName || 'N/A',
     email: supplier.email || '',
     status: mapStatus(supplier.supplierStatus),
-    onTimePercentage: Math.round(supplier.onTimePercentage ?? 0),
+    onTimePercentage: getOnTimePercentage(supplier.onTimePercentage),
     leadTime: supplier.leadTime != null ? `${Number(supplier.leadTime).toFixed(1)} days` : 'N/A',
     qualityScore: supplier.qualityScore != null ? Number(supplier.qualityScore).toFixed(1) : null,
     badge: supplier.badge || '',
@@ -83,9 +99,9 @@ function SupplierActionMenu({ position, onClose, onView, onEdit, onDelete }) {
 
   return createPortal(
     <>
-      <button className="fixed inset-0 z-40 cursor-default" onClick={onClose} aria-label="Close supplier actions" />
+      <button className="app-floating-backdrop fixed inset-0 cursor-default" onClick={onClose} aria-label="Close supplier actions" />
       <div
-        className="app-menu fixed z-50 w-56 py-1"
+        className="app-menu app-floating-menu fixed w-56 py-1"
         style={{ top: position.top, left: position.left }}
       >
         <button onClick={onView} className="app-menu-item">
@@ -179,6 +195,7 @@ export function SuppliersPage() {
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [importedData, setImportedData] = useState([]);
+  const [importVersion, setImportVersion] = useState(0);
 
   const [suppliersList, setSuppliersList] = useState([]);
   const [supplierStats, setSupplierStats] = useState(null);
@@ -233,7 +250,7 @@ export function SuppliersPage() {
 
   useEffect(() => {
     fetchSuppliers();
-  }, [fetchSuppliers]);
+  }, [fetchSuppliers, importVersion]);
 
   useEffect(() => {
     fetch('/api/Supplier/mini_dashboard', {
@@ -277,11 +294,14 @@ export function SuppliersPage() {
       id: suppliersList.length + index + 1,
       name: item.name || item.supplierName || 'N/A',
       email: item.email || '',
-      status: item.status || 'Active',
-      onTimePercentage: parseInt(item.onTimePercentage || item.ontimepercentage || '0'),
+      status: item.status || (String(item.supplierStatus).toLowerCase() === '0' || String(item.supplierStatus).toLowerCase() === 'inactive' ? 'Inactive' : 'Active'),
+      onTimePercentage: getOnTimePercentage(item.onTimePercentage ?? item.ontimepercentage),
       leadTime: item.leadTime || item.leadtime || 'N/A',
       qualityScore: item.qualityScore || null,
       badge: item.badge || '',
+      phoneNumberOne: item.phoneNumberOne || '',
+      city: item.city || '',
+      country: item.country || '',
     }));
     setSuppliersList((prev) => [...newSuppliers, ...prev]);
     setReviewModalOpen(false);
@@ -292,6 +312,7 @@ export function SuppliersPage() {
   const activeCount = supplierStats?.activeSuppliers ?? supplierStats?.active ?? supplierStats?.activeCount ?? suppliersList.filter((s) => s.status === 'Active').length;
   const inactiveCount = supplierStats?.inactiveSuppliers ?? supplierStats?.inactive ?? supplierStats?.inactiveCount ?? suppliersList.length - activeCount;
   const displayedTotalSuppliers = supplierStats?.totalSuppliers ?? supplierStats?.total ?? supplierStats?.totalCount ?? totalCount;
+  const hasSupplierSearch = searchQuery.trim() !== '' || searchInput.trim() !== '';
 
   const toggleActionMenu = (supplierId, event) => {
     if (openDropdown === supplierId) {
@@ -316,9 +337,10 @@ export function SuppliersPage() {
   if (loading) {
     return (
       <div className="suppliers-root">
-        <div className="flex items-center justify-center p-12 text-gray-500 text-sm">
-          <div className="db-skeleton h-10 w-48" />
-        </div>
+        <PageLoadingState
+          title="Loading suppliers"
+          detail="Checking supplier records, statuses, and contact summaries."
+        />
       </div>
     );
   }
@@ -379,45 +401,68 @@ export function SuppliersPage() {
         </div>
 
         {/* TABLE */}
-        <div className={`overflow-x-auto transition-opacity duration-200 ${searching ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-          <table className="db-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>On-Time %</th>
-                <th>Lead Time</th>
-                <th>Badge</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {suppliersList.length === 0 ? (
+        <div className={`app-table-frame overflow-x-auto transition-opacity duration-200 ${searching ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+          {suppliersList.length === 0 ? (
+            <EmptyState
+              icon={hasSupplierSearch ? Search : Users}
+              tone={hasSupplierSearch ? 'blue' : 'green'}
+              title={hasSupplierSearch ? 'No suppliers match this search' : 'Add your first supplier'}
+              message={
+                hasSupplierSearch
+                  ? 'Supplier records that match the current search will appear here.'
+                  : 'Supplier records keep contact details, lead times, status, and delivery performance available when orders start moving.'
+              }
+              actions={
+                hasSupplierSearch
+                  ? [
+                      {
+                        label: 'Clear search',
+                        icon: RotateCcw,
+                        variant: 'secondary',
+                        onClick: () => {
+                          setSearchInput('');
+                          setSearchQuery('');
+                          setCurrentPage(1);
+                        },
+                      },
+                    ]
+                  : [
+                      { label: 'Add supplier', icon: Plus, to: '/suppliers/add' },
+                      {
+                        label: 'Import CSV',
+                        icon: Upload,
+                        variant: 'secondary',
+                        onClick: () => setCsvModalOpen(true),
+                      },
+                    ]
+              }
+            />
+          ) : (
+            <table className="db-table">
+              <thead>
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-gray-500">
-                    No suppliers found.
-                  </td>
+                  <th>Name</th>
+                  <th>On-Time %</th>
+                  <th>Lead Time</th>
+                  <th>Badge</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ) : (
-                suppliersList.map((supplier) => (
+              </thead>
+              <tbody>
+                {suppliersList.map((supplier) => (
                   <tr key={supplier.id}>
                     <td className="font-medium">{supplier.name}</td>
                     <td>
                       <div className="flex items-center gap-2">
                         <div className="progress-bar-bg">
                           <div
-                            className={`progress-bar-fill ${
-                              supplier.onTimePercentage >= 90
-                                ? 'bg-green-500'
-                                : supplier.onTimePercentage >= 75
-                                ? 'bg-yellow-500'
-                                : 'bg-red-500'
-                            }`}
-                            style={{ width: `${Math.min(supplier.onTimePercentage, 100)}%` }}
+                            className={`progress-bar-fill ${getOnTimeFillClass(supplier.onTimePercentage)}`}
+                            style={{ width: `${supplier.onTimePercentage === null ? 0 : Math.min(supplier.onTimePercentage, 100)}%` }}
                           />
                         </div>
                         <span className="text-gray-900 font-medium whitespace-nowrap">
-                          {supplier.onTimePercentage}%
+                          {supplier.onTimePercentage === null ? '--' : `${supplier.onTimePercentage}%`}
                         </span>
                       </div>
                     </td>
@@ -468,10 +513,10 @@ export function SuppliersPage() {
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* PAGINATION */}
@@ -525,6 +570,11 @@ export function SuppliersPage() {
         isOpen={csvModalOpen}
         onClose={() => setCsvModalOpen(false)}
         type="suppliers"
+        importEndpoint="/api/Supplier/Import-CSV"
+        onImportSuccess={() => {
+          setCurrentPage(1);
+          setImportVersion((version) => version + 1);
+        }}
         onUploadComplete={handleCSVUpload}
       />
       <CSVReviewModal

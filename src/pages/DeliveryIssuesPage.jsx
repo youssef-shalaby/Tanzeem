@@ -1,7 +1,10 @@
-import { Search, AlertTriangle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { Search, AlertTriangle, XCircle, ChevronLeft, ChevronRight, CheckCircle2, RotateCcw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { StatCard } from '../components/StatCard';
+import { EmptyState } from '../components/EmptyState';
+import { PageLoadingState } from '../components/LoadingStates';
+import { formatAppDate } from '../utils/dateTime';
 
 // ============================
 // Design system styles (matching Dashboard)
@@ -89,7 +92,13 @@ export function DeliveryIssuesPage() {
       if (cancelled) return;
       setLoading(true);
 
-      fetch(`/api/DeliveryIssues?page=${currentPage}&page_size=${itemsPerPage}`, {
+      const params = new URLSearchParams({
+        page: currentPage,
+        page_size: itemsPerPage,
+      });
+      if (searchQuery.trim()) params.set('searchTerm', searchQuery.trim());
+
+      fetch(`/api/DeliveryIssues?${params.toString()}`, {
         headers: {
           "Content-Type": "application/json",
           ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
@@ -117,7 +126,7 @@ export function DeliveryIssuesPage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [currentPage]);
+  }, [currentPage, searchQuery]);
 
   const getIssueTypeLabels = (items) => {
     const types = new Set();
@@ -130,24 +139,20 @@ export function DeliveryIssuesPage() {
     return [...types];
   };
 
-  const filteredIssues = issues.filter((issue) => {
-    const id = issue.stringId?.toLowerCase() || '';
-    const orderId = String(issue.orderId);
-    const supplier = issue.supplierName?.toLowerCase() || '';
-    return (
-      id.includes(searchQuery.toLowerCase()) ||
-      orderId.includes(searchQuery) ||
-      supplier.includes(searchQuery.toLowerCase())
-    );
-  });
-
   const stats = {
     total: totalCount,
     itemsAffected: issues.reduce((sum, i) => sum + (i.itemsAffected || 0), 0),
     discrepancy: issues.reduce((sum, i) => sum + (i.discrepancy || 0), 0),
   };
+  const hasIssueSearch = searchQuery.trim() !== '';
 
-  if (loading) return <div className="delivery-root p-6 text-gray-500">Loading delivery issues...</div>;
+  if (loading) return (
+    <PageLoadingState
+      className="delivery-root"
+      title="Loading delivery issues"
+      detail="Checking open discrepancies and affected order items."
+    />
+  );
   if (error) return <div className="delivery-root p-6 text-red-600">Error: {error}</div>;
 
   return (
@@ -182,7 +187,10 @@ export function DeliveryIssuesPage() {
               placeholder="Search by issue ID, order ID, or supplier..."
               className="db-search-input pl-11"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
         </div>
@@ -193,29 +201,46 @@ export function DeliveryIssuesPage() {
         <div className="db-card-header">
           <span className="db-card-title">Issue Log</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="db-table">
-            <thead>
-              <tr>
-                <th>Issue ID</th>
-                <th>Order ID</th>
-                <th>Date Received</th>
-                <th>Supplier</th>
-                <th>Issue Types</th>
-                <th className="text-center">Items Affected</th>
-                <th className="text-center">Discrepancy</th>
-                <th className="text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredIssues.length === 0 ? (
+        <div className="app-table-frame overflow-x-auto">
+          {issues.length === 0 ? (
+            <EmptyState
+              icon={hasIssueSearch ? Search : CheckCircle2}
+              tone={hasIssueSearch ? 'blue' : 'green'}
+              title={hasIssueSearch ? 'No delivery issues match this search' : 'No delivery issues'}
+              message={
+                hasIssueSearch
+                  ? 'Delivery issues matching the current issue ID, order ID, or supplier search will appear here.'
+                  : 'When delivered orders have missing, damaged, defective, or incorrect items, they will appear here for follow-up.'
+              }
+              actions={
+                hasIssueSearch
+                  ? [
+                      {
+                        label: 'Clear search',
+                        icon: RotateCcw,
+                        variant: 'secondary',
+                        onClick: () => setSearchQuery(''),
+                      },
+                    ]
+                  : []
+              }
+            />
+          ) : (
+            <table className="db-table">
+              <thead>
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-gray-500">
-                    No delivery issues found.
-                  </td>
+                  <th>Issue ID</th>
+                  <th>Order ID</th>
+                  <th>Date Received</th>
+                  <th>Supplier</th>
+                  <th>Issue Types</th>
+                  <th className="text-center">Items Affected</th>
+                  <th className="text-center">Discrepancy</th>
+                  <th className="text-center">Actions</th>
                 </tr>
-              ) : (
-                filteredIssues.map((issue) => (
+              </thead>
+              <tbody>
+                {issues.map((issue) => (
                   <tr key={issue.id}>
                     <td className="font-medium">{issue.stringId}</td>
                     <td>
@@ -227,7 +252,7 @@ export function DeliveryIssuesPage() {
                       </button>
                     </td>
                     <td>
-                      {new Date(issue.recievedDate).toLocaleDateString('en-US', {
+                      {formatAppDate(issue.recievedDate, {
                         year: 'numeric', month: 'short', day: 'numeric'
                       })}
                     </td>
@@ -249,16 +274,15 @@ export function DeliveryIssuesPage() {
                       <button
                         onClick={() => navigate(`/delivery-issues/${issue.id}`)}
                         className="db-secondary-btn"
-                        style={{ padding: "6px 12px", fontSize: "12px" }}
                       >
                         View
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Pagination */}

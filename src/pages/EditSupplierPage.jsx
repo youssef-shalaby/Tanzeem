@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router-dom';
+import { PageLoadingState } from '../components/LoadingStates';
 
 // ============================
 // Design system styles (green accent)
@@ -162,9 +163,13 @@ export function EditSupplierPage() {
 
   if (loading) {
     return (
-      <div className="edit-supplier-root p-6 text-gray-500 text-sm">
+      <div className="edit-supplier-root">
         <style>{EDIT_SUPPLIER_STYLES}</style>
-        Loading supplier...
+        <PageLoadingState
+          title="Loading supplier"
+          detail="Preparing supplier contact details and editable status fields."
+          variant="detail"
+        />
       </div>
     );
   }

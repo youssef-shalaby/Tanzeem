@@ -1,25 +1,26 @@
 import {
   ArrowLeft,
-  Mail,
-  Phone,
   MapPin,
   Globe,
+  PhoneCall,
   Edit,
   Trash2,
   AlertCircle,
   Copy,
   Check,
   User,
-  Hash,
+  FileText,
   TrendingUp,
   Clock,
   Award,
 } from 'lucide-react';
 
-import { useNavigate, useParams, Link } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { Children, createElement, isValidElement, useState, useEffect } from 'react';
 import { DeleteSupplierModal } from '../ui/DeleteSupplierModal';
 import { ToneIcon } from '../components/ToneIcon';
+import { PageLoadingState } from '../components/LoadingStates';
+import { formatAppDate } from '../utils/dateTime';
 
 // ============================
 // Design system styles (green accent)
@@ -50,17 +51,184 @@ const VIEW_SUPPLIER_STYLES = `
     color: #444; cursor: pointer; transition: background .15s;
   }
   .db-secondary-btn:hover { background: #f5f6f3; }
+  .db-danger-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: transparent; border: 1px solid rgba(220,38,38,.18);
+    border-radius: 100px; font-size: 13px; font-weight: 500;
+    color: #dc2626; cursor: pointer; transition: background .15s, border-color .15s;
+  }
+  .db-danger-btn:hover { background: #fef2f2; border-color: rgba(220,38,38,.28); }
   .db-icon-btn {
     width: 36px; height: 36px; border-radius: 10px; background: transparent; border: none;
     display: inline-flex; align-items: center; justify-content: center;
     color: #666; cursor: pointer; transition: background .15s, color .15s;
   }
   .db-icon-btn:hover { background: #f0f0ec; color: #1a1a18; }
-  .supplier-detail-stack { overflow: hidden; }
-  .supplier-detail-item {
+  .supplier-details-card {
+    padding: 4px 0;
+  }
+  .supplier-detail-group {
+    padding: 18px 20px;
     border-top: 1px solid var(--app-line);
   }
-  .supplier-detail-item:first-child { border-top: 0; }
+  .supplier-detail-group:first-child { border-top: 0; }
+  .supplier-detail-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    color: var(--app-ink);
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .supplier-detail-grid {
+    display: grid;
+    border: 1px solid var(--app-line);
+    border-radius: 12px;
+    background: var(--app-soft);
+    overflow: hidden;
+  }
+  .supplier-detail-tile {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(130px, 210px) minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--app-line);
+  }
+  .supplier-detail-tile:first-child {
+    border-top: 0;
+  }
+  .supplier-detail-label {
+    color: var(--app-subtle);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .supplier-detail-value {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--app-ink);
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 0;
+  }
+  .supplier-detail-value.is-multiline { align-items: flex-start; line-height: 1.6; white-space: pre-line; }
+  .supplier-detail-value a {
+    min-width: 0;
+    color: var(--app-green);
+    text-decoration: none;
+  }
+  .supplier-detail-value a:hover { text-decoration: underline; }
+  .supplier-copy-btn {
+    opacity: 0;
+    transform: translateX(-2px);
+    transition: opacity .15s, transform .15s, background .15s, color .15s;
+  }
+  .supplier-detail-tile:hover .supplier-copy-btn,
+  .supplier-detail-tile:focus-within .supplier-copy-btn {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .supplier-empty-line {
+    color: var(--app-subtle);
+    font-size: 13px;
+  }
+  .supplier-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .supplier-stat-body {
+    min-height: 118px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+  }
+  .supplier-stat-main {
+    min-width: 0;
+  }
+  .supplier-stat-value {
+    color: var(--app-ink);
+    font-size: 26px;
+    font-weight: 650;
+    line-height: 1.05;
+  }
+  .supplier-stat-value.is-serif {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 500;
+    font-size: 30px;
+  }
+  .supplier-stat-sub {
+    color: var(--app-muted);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-top: 5px;
+  }
+  .supplier-stat-progress {
+    width: 132px;
+    height: 5px;
+    margin-top: 10px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
+  }
+  .supplier-stat-progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: #f3b300;
+  }
+  .supplier-activity-list {
+    display: grid;
+    padding: 6px 20px;
+  }
+  .supplier-activity-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-top: 1px solid var(--app-line);
+    padding: 12px 0;
+    color: inherit;
+    text-decoration: none;
+  }
+  .supplier-activity-item:first-child { border-top: 0; }
+  .supplier-activity-item:hover .supplier-activity-title { color: var(--app-green); }
+  .supplier-activity-title {
+    color: var(--app-ink);
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .supplier-activity-copy {
+    color: var(--app-subtle);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .supplier-activity-meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+    color: var(--app-subtle);
+    font-size: 12px;
+  }
+  .supplier-activity-empty {
+    color: var(--app-subtle);
+    font-size: 13px;
+    padding: 16px 20px 20px;
+  }
+  @media (max-width: 760px) {
+    .supplier-stat-grid { grid-template-columns: 1fr; }
+    .supplier-detail-tile { grid-template-columns: 1fr; gap: 5px; }
+    .supplier-activity-item { align-items: flex-start; flex-direction: column; }
+    .supplier-activity-meta { justify-content: flex-start; }
+    .supplier-copy-btn { opacity: 1; transform: none; }
+  }
   .db-fade-in { animation: dbFadeIn .4s ease both; }
   @keyframes dbFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 `;
@@ -70,10 +238,10 @@ function mapStatus(supplierStatus) {
   return supplierStatus === 1 ? 'Active' : 'Inactive';
 }
 
-function deliveryTone(percentage) {
-  if (percentage >= 90) return 'green';
-  if (percentage >= 75) return 'amber';
-  return 'red';
+function getOnTimePercentage(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const percentage = Number(value);
+  return Number.isFinite(percentage) ? Math.round(percentage) : null;
 }
 
 function mapBadgeLabel(badge) {
@@ -85,7 +253,7 @@ function mapBadgeLabel(badge) {
     Standard: 'Standard',
     Average: 'Average',
   };
-  return map[badge] || badge || '—';
+  return map[badge] || badge || 'Not rated';
 }
 
 function getBadgeStyle(badge) {
@@ -100,6 +268,47 @@ function getBadgeStyle(badge) {
   }
 }
 
+function isPlaceholderValue(value) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return !normalized || normalized === 'n/a' || normalized === 'na' || normalized === 'none' || normalized === 'null';
+}
+
+function normalizeOptionalText(value) {
+  return isPlaceholderValue(value) ? '' : String(value).trim();
+}
+
+function formatTel(phone) {
+  return `tel:${String(phone).replace(/[^\d+]/g, '')}`;
+}
+
+function getListFromResponse(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.result)) return data.result;
+  return [];
+}
+
+function getOrderId(order) {
+  return order?.id ?? order?.orderId ?? order?.orderID;
+}
+
+function orderMatchesSupplier(order, supplier) {
+  if (!order || !supplier) return false;
+  const orderSupplierId = order.supplierId ?? order.SupplierId;
+  if (orderSupplierId && supplier.id) return String(orderSupplierId) === String(supplier.id);
+  const orderSupplierName = normalizeOptionalText(order.supplierName ?? order.SupplierName).toLowerCase();
+  return !!orderSupplierName && orderSupplierName === supplier.name.toLowerCase();
+}
+
+function issueMatchesSupplier(issue, supplier) {
+  if (!issue || !supplier) return false;
+  const issueSupplierId = issue.supplierId ?? issue.SupplierId;
+  if (issueSupplierId && supplier.id) return String(issueSupplierId) === String(supplier.id);
+  const issueSupplierName = normalizeOptionalText(issue.supplierName ?? issue.SupplierName).toLowerCase();
+  return !!issueSupplierName && issueSupplierName === supplier.name.toLowerCase();
+}
+
 // ------- CopyButton -------
 function CopyButton({ value }) {
   const [copied, setCopied] = useState(false);
@@ -112,13 +321,83 @@ function CopyButton({ value }) {
   return (
     <button
       onClick={handleCopy}
-      className="ml-2 p-1 rounded hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600 flex-shrink-0"
+      className="supplier-copy-btn p-1 rounded hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600 flex-shrink-0"
       title="Copy to clipboard"
+      aria-label="Copy to clipboard"
     >
       {copied
         ? <Check className="w-3.5 h-3.5 text-green-500" />
         : <Copy className="w-3.5 h-3.5" />}
     </button>
+  );
+}
+
+function DetailTile({ label, value, href, copyValue, multiline = false }) {
+  if (!value) return null;
+
+  return (
+    <div className="supplier-detail-tile">
+      <div className="supplier-detail-label">{label}</div>
+      <div className={`supplier-detail-value ${multiline ? 'is-multiline' : ''}`}>
+        {href ? (
+          <a href={href} target="_blank" rel="noopener noreferrer" className="truncate">
+            {value}
+          </a>
+        ) : multiline ? (
+          <span>{value}</span>
+        ) : (
+          <span className="truncate">{value}</span>
+        )}
+        {copyValue && <CopyButton value={copyValue} />}
+      </div>
+    </div>
+  );
+}
+
+function DetailGroup({ icon, title, children, emptyText }) {
+  const items = Children.toArray(children).filter((child) => {
+    if (!isValidElement(child)) return Boolean(child);
+    return !isPlaceholderValue(child.props.value);
+  });
+  const hasItems = items.length > 0;
+
+  return (
+    <section className="supplier-detail-group">
+      <div className="supplier-detail-group-title">
+        {createElement(icon, { className: "w-4 h-4 text-[var(--app-green)]" })}
+        {title}
+      </div>
+      {hasItems ? (
+        <div className="supplier-detail-grid">{items}</div>
+      ) : (
+        <div className="supplier-empty-line">{emptyText}</div>
+      )}
+    </section>
+  );
+}
+
+function SupplierStatCard({ title, value, sub, icon, tone, serif = false, progress }) {
+  return (
+    <div className="db-card">
+      <div className="db-card-header">
+        <span className="db-card-title">{title}</span>
+      </div>
+      <div className="supplier-stat-body">
+        <div className="supplier-stat-main">
+          <div className={`supplier-stat-value ${serif ? 'is-serif' : ''}`}>{value}</div>
+          {progress !== undefined && (
+            <div className="supplier-stat-progress" aria-hidden="true">
+              <div
+                className="supplier-stat-progress-fill"
+                style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }}
+              />
+            </div>
+          )}
+          {sub && <div className="supplier-stat-sub">{sub}</div>}
+        </div>
+        <ToneIcon icon={icon} tone={tone} size="md" iconClassName="w-5 h-5" />
+      </div>
+    </div>
   );
 }
 
@@ -139,6 +418,9 @@ export function ViewSupplierPage() {
   const [supplier, setSupplier] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [relatedOrders, setRelatedOrders] = useState([]);
+  const [relatedIssues, setRelatedIssues] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
   useEffect(() => {
     let isCancelled = false;
@@ -160,20 +442,20 @@ export function ViewSupplierPage() {
         if (isCancelled) return;
         setSupplier({
           id: data.id,
-          name: data.supplierName || 'N/A',
-          contactPerson: data.contactPersonName || '',
-          email: data.email || '',
-          phone: data.phoneNumberOne || '',
-          alternativePhone: data.phoneNumberTwo || '',
-          address: data.street || '',
-          city: data.city || '',
-          country: data.country || '',
-          website: data.websiteURL || '',
-          taxId: data.tax_Id || '',
-          notes: data.notes || '',
+          name: data.supplierName || 'Unnamed supplier',
+          contactPerson: normalizeOptionalText(data.contactPersonName),
+          email: normalizeOptionalText(data.email),
+          phone: normalizeOptionalText(data.phoneNumberOne),
+          alternativePhone: normalizeOptionalText(data.phoneNumberTwo),
+          address: normalizeOptionalText(data.street),
+          city: normalizeOptionalText(data.city),
+          country: normalizeOptionalText(data.country),
+          website: normalizeOptionalText(data.websiteURL),
+          taxId: normalizeOptionalText(data.tax_Id),
+          notes: normalizeOptionalText(data.notes),
           status: mapStatus(data.supplierStatus),
           badge: data.badge || '',
-          onTimePercentage: Math.round(data.onTimePercentage ?? 0),
+          onTimePercentage: getOnTimePercentage(data.onTimePercentage),
           leadTime: data.leadTime != null ? Number(data.leadTime).toFixed(1) : null,
         });
         setLoading(false);
@@ -190,6 +472,51 @@ export function ViewSupplierPage() {
     };
   }, [supplierId]);
 
+  useEffect(() => {
+    if (!supplier) return;
+
+    let isCancelled = false;
+    const loadingTimer = window.setTimeout(() => {
+      if (!isCancelled) setRelatedLoading(true);
+    }, 0);
+
+    Promise.allSettled([
+      fetch('/api/Order?page=1&page_size=100', {
+        headers: {
+          "Content-Type": "application/json",
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
+      }).then((res) => (res.ok ? res.json() : null)),
+      fetch('/api/DeliveryIssues?page=1&page_size=100', {
+        headers: {
+          "Content-Type": "application/json",
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
+      }).then((res) => (res.ok ? res.json() : null)),
+    ])
+      .then(([ordersResult, issuesResult]) => {
+        if (isCancelled) return;
+
+        const orders = ordersResult.status === 'fulfilled'
+          ? getListFromResponse(ordersResult.value).filter((order) => orderMatchesSupplier(order, supplier)).slice(0, 3)
+          : [];
+        const issues = issuesResult.status === 'fulfilled'
+          ? getListFromResponse(issuesResult.value).filter((issue) => issueMatchesSupplier(issue, supplier)).slice(0, 3)
+          : [];
+
+        setRelatedOrders(orders);
+        setRelatedIssues(issues);
+      })
+      .finally(() => {
+        if (!isCancelled) setRelatedLoading(false);
+      });
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(loadingTimer);
+    };
+  }, [supplier]);
+
   const handleDelete = () => {
     setDeleteModalOpen(false);
     navigate('/suppliers');
@@ -200,7 +527,14 @@ export function ViewSupplierPage() {
     return url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
   };
 
-  if (loading) return <div className="view-supplier-root p-6 text-gray-500 text-sm">Loading supplier...</div>;
+  if (loading) return (
+    <PageLoadingState
+      className="view-supplier-root"
+      title="Loading supplier"
+      detail="Fetching supplier contact details, performance, and recent activity."
+      variant="detail"
+    />
+  );
   if (error)   return <div className="view-supplier-root p-6 text-red-600 text-sm">Error: {error}</div>;
 
   if (!supplier) {
@@ -216,6 +550,10 @@ export function ViewSupplierPage() {
   }
 
   const addressLine = [supplier.address, supplier.city, supplier.country].filter(Boolean).join(', ');
+  const headerMeta = [
+    supplier.contactPerson ? `Contact: ${supplier.contactPerson}` : null,
+    [supplier.city, supplier.country].filter(Boolean).join(', '),
+  ].filter(Boolean);
 
   return (
     <div className="view-supplier-root space-y-6">
@@ -240,11 +578,19 @@ export function ViewSupplierPage() {
                 </span>
               )}
             </div>
-            <p className="app-page-subtitle">Supplier details.</p>
+            <p className="app-page-subtitle">
+              {headerMeta.length > 0 ? headerMeta.join(' | ') : 'Supplier profile'}
+            </p>
           </div>
         </div>
 
         <div className="app-page-actions">
+          {supplier.phone && (
+            <a className="db-secondary-btn" href={formatTel(supplier.phone)}>
+              <PhoneCall className="w-[18px] h-[18px]" />
+              Call Supplier
+            </a>
+          )}
           <Link
             to={`/suppliers/edit-supplier/${supplier.id}`}
             className="db-secondary-btn"
@@ -254,7 +600,7 @@ export function ViewSupplierPage() {
           </Link>
           <button
             onClick={() => setDeleteModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 text-sm rounded-full hover:bg-red-50 transition-colors"
+            className="db-danger-btn"
           >
             <Trash2 className="w-[18px] h-[18px]" />
             Delete
@@ -262,200 +608,110 @@ export function ViewSupplierPage() {
         </div>
       </div>
 
-      {/* PERFORMANCE STATS (dashboard style) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">On-Time Delivery</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">{supplier.onTimePercentage}%</div>
-              <div className="w-32 mt-2 bg-gray-200 rounded-full h-1.5">
-                <div
-                  className={`h-1.5 rounded-full transition-all ${
-                    supplier.onTimePercentage >= 90 ? 'bg-green-500' :
-                    supplier.onTimePercentage >= 75 ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${Math.min(supplier.onTimePercentage, 100)}%` }}
-                />
-              </div>
-            </div>
-            <ToneIcon icon={TrendingUp} tone={deliveryTone(supplier.onTimePercentage)} />
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Lead Time</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">{supplier.leadTime ?? '—'}</div>
-              <div className="text-xs text-gray-500 mt-1">days average</div>
-            </div>
-            <ToneIcon icon={Clock} tone="amber" />
-          </div>
-        </div>
-
-        <div className="db-card db-fade-in">
-          <div className="db-card-header">
-            <span className="db-card-title">Supplier Badge</span>
-          </div>
-          <div className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-xl font-semibold text-gray-900">{mapBadgeLabel(supplier.badge)}</div>
-              <div className="text-xs text-gray-500 mt-1">Performance rating</div>
-            </div>
-            <ToneIcon icon={Award} tone="blue" />
-          </div>
-        </div>
-      </div>
-
       {/* MAIN CONTENT */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT — Contact Information */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="db-card">
-            <div className="db-card-header">
-              <span className="db-card-title">Contact Information</span>
-            </div>
-            <div className="supplier-detail-stack">
-              {supplier.email && (
-                <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
-                  <ToneIcon icon={Mail} tone="green" size="sm" iconClassName="w-4 h-4" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-gray-500 mb-0.5">Email</div>
-                    <a href={`mailto:${supplier.email}`} className="text-sm text-[#0f8c5a] hover:underline truncate block">
-                      {supplier.email}
-                    </a>
-                  </div>
-                  <CopyButton value={supplier.email} />
-                </div>
-              )}
-
-              {supplier.phone && (
-                <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
-                  <ToneIcon icon={Phone} tone="green" size="sm" iconClassName="w-4 h-4" />
-                  <div className="flex-1">
-                    <div className="text-xs text-gray-500 mb-0.5">Phone</div>
-                    <div className="text-sm text-gray-900">{supplier.phone}</div>
-                    {supplier.alternativePhone && (
-                      <div className="text-sm text-gray-500 mt-0.5">
-                        {supplier.alternativePhone} <span className="text-xs">(Alt)</span>
-                      </div>
-                    )}
-                  </div>
-                  <CopyButton value={supplier.alternativePhone ? `${supplier.phone}, ${supplier.alternativePhone}` : supplier.phone} />
-                </div>
-              )}
-
-              {addressLine && (
-                <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
-                  <ToneIcon icon={MapPin} tone="green" size="sm" iconClassName="w-4 h-4" />
-                  <div className="flex-1">
-                    <div className="text-xs text-gray-500 mb-0.5">Address</div>
-                    <div className="text-sm text-gray-900">{addressLine}</div>
-                  </div>
-                  <CopyButton value={addressLine} />
-                </div>
-              )}
-
-              {supplier.website && (
-                <div className="supplier-detail-item flex items-center gap-4 px-6 py-4">
-                  <ToneIcon icon={Globe} tone="green" size="sm" iconClassName="w-4 h-4" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-gray-500 mb-0.5">Website</div>
-                    <a
-                      href={formatWebsite(supplier.website)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-[#0f8c5a] hover:underline truncate block"
-                    >
-                      {supplier.website}
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Notes */}
-          {supplier.notes && (
-            <div className="db-card">
-              <div className="db-card-header">
-                <span className="db-card-title">Notes</span>
-              </div>
-              <div className="px-6 py-5">
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{supplier.notes}</p>
-              </div>
-            </div>
-          )}
+      <div className="space-y-6">
+        <div className="supplier-stat-grid">
+          <SupplierStatCard
+            title="On-Time Delivery"
+            value={supplier.onTimePercentage === null ? 'Not available' : `${supplier.onTimePercentage}%`}
+            icon={TrendingUp}
+            tone={supplier.onTimePercentage === null || supplier.onTimePercentage >= 75 ? 'amber' : 'red'}
+            serif={supplier.onTimePercentage !== null}
+            progress={supplier.onTimePercentage ?? 0}
+          />
+          <SupplierStatCard
+            title="Lead Time"
+            value={supplier.leadTime ?? 'Not available'}
+            sub={supplier.leadTime ? 'days average' : ''}
+            icon={Clock}
+            tone="amber"
+            serif={!!supplier.leadTime}
+          />
+          <SupplierStatCard
+            title="Supplier Badge"
+            value={mapBadgeLabel(supplier.badge)}
+            sub="Performance rating"
+            icon={Award}
+            tone="blue"
+          />
         </div>
 
-        {/* RIGHT — Business Details & Quick Actions */}
+        {/* Supplier Details */}
         <div className="space-y-6">
           <div className="db-card">
             <div className="db-card-header">
-              <span className="db-card-title">Business Details</span>
+              <span className="db-card-title">Supplier Details</span>
             </div>
-            <div className="supplier-detail-stack">
-              {supplier.contactPerson && (
-                <div className="supplier-detail-item flex items-center gap-3 px-6 py-4">
-                  <ToneIcon icon={User} tone="gray" size="sm" iconClassName="w-4 h-4" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-gray-500 mb-0.5">Contact Person</div>
-                    <div className="text-sm font-medium text-gray-900 truncate">{supplier.contactPerson}</div>
-                  </div>
-                </div>
-              )}
-              {supplier.taxId && (
-                <div className="supplier-detail-item flex items-center gap-3 px-6 py-4">
-                  <ToneIcon icon={Hash} tone="gray" size="sm" iconClassName="w-4 h-4" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-gray-500 mb-0.5">Tax ID / VAT</div>
-                    <div className="text-sm font-medium text-gray-900 truncate">{supplier.taxId}</div>
-                  </div>
-                  <CopyButton value={supplier.taxId} />
-                </div>
-              )}
+            <div className="supplier-details-card">
+              <DetailGroup icon={User} title="Contact" emptyText="No contact details added.">
+                <DetailTile label="Contact person" value={supplier.contactPerson} />
+                <DetailTile label="Email" value={supplier.email} copyValue={supplier.email} />
+                <DetailTile label="Phone" value={supplier.phone} copyValue={supplier.phone} />
+                <DetailTile label="Alternative phone" value={supplier.alternativePhone} copyValue={supplier.alternativePhone} />
+              </DetailGroup>
+
+              <DetailGroup icon={MapPin} title="Location" emptyText="No location details added.">
+                <DetailTile label="Address" value={supplier.address} copyValue={supplier.address} />
+                <DetailTile label="City" value={supplier.city} />
+                <DetailTile label="Country" value={supplier.country} />
+                <DetailTile label="Full address" value={addressLine} copyValue={addressLine} />
+              </DetailGroup>
+
+              <DetailGroup icon={Globe} title="Business" emptyText="No business identifiers added.">
+                <DetailTile label="Website" value={supplier.website} href={supplier.website ? formatWebsite(supplier.website) : ''} />
+                <DetailTile label="Tax ID / VAT" value={supplier.taxId} copyValue={supplier.taxId} />
+              </DetailGroup>
+
+              <DetailGroup icon={FileText} title="Notes" emptyText="No supplier notes added.">
+                <DetailTile label="Supplier notes" value={supplier.notes} multiline />
+              </DetailGroup>
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div className="db-card">
             <div className="db-card-header">
-              <span className="db-card-title">Quick Actions</span>
+              <span className="db-card-title">Recent Activity</span>
             </div>
-            <div className="p-4 space-y-2">
-              {supplier.email && (
-                <a
-                  href={`mailto:${supplier.email}`}
-                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <Mail className="w-4 h-4 text-gray-400" />
-                  Send Email
-                </a>
-              )}
-              {supplier.website && (
-                <a
-                  href={formatWebsite(supplier.website)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <Globe className="w-4 h-4 text-gray-400" />
-                  Visit Website
-                </a>
-              )}
-              <Link
-                to={`/suppliers/edit-supplier/${supplier.id}`}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <Edit className="w-4 h-4 text-gray-400" />
-                Edit Details
-              </Link>
-            </div>
+            {relatedLoading ? (
+              <div className="supplier-activity-list">
+                {[1, 2, 3].map((item) => (
+                  <div className="db-skeleton h-14" key={item} />
+                ))}
+              </div>
+            ) : relatedOrders.length === 0 && relatedIssues.length === 0 ? (
+              <div className="supplier-activity-empty">No recent orders or delivery issues found for this supplier.</div>
+            ) : (
+              <div className="supplier-activity-list">
+                {relatedOrders.map((order) => {
+                  const orderId = getOrderId(order);
+                  const orderDate = order.orderDate ?? order.createdAt ?? order.date;
+                  return (
+                    <Link to={`/orders/${orderId}`} className="supplier-activity-item" key={`order-${orderId}`}>
+                      <div>
+                        <div className="supplier-activity-title">{order.stringId || `Order ${orderId}`}</div>
+                        <div className="supplier-activity-copy">Purchase order</div>
+                      </div>
+                      <div className="supplier-activity-meta">
+                        <span>{orderDate ? formatAppDate(orderDate, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}</span>
+                        <span className="db-stat-pill pill-blue">Order</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+                {relatedIssues.map((issue) => (
+                  <Link to={`/delivery-issues/${issue.id}`} className="supplier-activity-item" key={`issue-${issue.id}`}>
+                    <div>
+                      <div className="supplier-activity-title">{issue.stringId || `Issue ${issue.id}`}</div>
+                      <div className="supplier-activity-copy">Delivery issue</div>
+                    </div>
+                    <div className="supplier-activity-meta">
+                      <span>{issue.recievedDate ? formatAppDate(issue.recievedDate, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}</span>
+                      <span className="db-stat-pill pill-red">Issue</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
