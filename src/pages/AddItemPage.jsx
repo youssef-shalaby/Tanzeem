@@ -255,21 +255,19 @@ function BarcodeScannerModal({ onClose, onDetected }) {
           BarcodeFormat.UPC_E,
           BarcodeFormat.CODE_128,
           BarcodeFormat.CODE_39,
-          BarcodeFormat.CODE_93,
-          BarcodeFormat.QR_CODE,
         ]);
 
         const reader = new BrowserMultiFormatReader(hints, {
-          delayBetweenScanAttempts: 150,
-          delayBetweenScanSuccess: 500,
+          delayBetweenScanAttempts: 60,
+          delayBetweenScanSuccess: 250,
         });
 
         const controls = await reader.decodeFromConstraints({
           audio: false,
           video: {
             facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
+            width: { ideal: 960 },
+            height: { ideal: 540 },
           },
         }, videoRef.current, (result, scanError, scanControls) => {
           if (!active) return;
